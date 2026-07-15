@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
-        android:label="아들 용돈 관리"
+        android:label="Allowance Manager"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

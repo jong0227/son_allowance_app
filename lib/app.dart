@@ -17,7 +17,7 @@ class AllowanceApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp(
-      title: '아들 용돈 관리',
+      title: 'Allowance Manager',
       debugShowCheckedModeBanner: false,
       themeMode: settings.themeMode,
       theme: buildLightTheme(),
