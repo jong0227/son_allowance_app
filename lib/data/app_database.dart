@@ -24,6 +24,10 @@ class Children extends Table {
   IntColumn get bonusDayOfWeek => integer().withDefault(const Constant(4))(); // 4=목
   IntColumn get bonusThreshold => integer().withDefault(const Constant(1000))();
   IntColumn get bonusAmount => integer().withDefault(const Constant(500))();
+  // 저축 이자 규칙 (잔액에 주기적으로 이자를 붙여 저축 장려)
+  BoolColumn get interestEnabled => boolean().withDefault(const Constant(false))();
+  RealColumn get interestPercent => real().withDefault(const Constant(1.0))(); // 회당 %
+  IntColumn get interestPeriod => integer().withDefault(const Constant(1))(); // 0=주간,1=월간
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -142,7 +146,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -164,12 +168,18 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(goals);
             await m.createTable(allowanceRates);
           }
+          if (from < 6) {
+            await m.addColumn(children, children.interestEnabled);
+            await m.addColumn(children, children.interestPercent);
+            await m.addColumn(children, children.interestPeriod);
+          }
         },
       );
 
   /// 시스템 예약 카테고리 (사용자 편집 목록과 분리)
   static const kRegularAllowance = '정기용돈';
   static const kSavingsBonus = '절약보너스';
+  static const kInterest = '이자';
 
   // ---------------- Children ----------------
   Stream<List<Child>> watchChildren() =>
@@ -414,6 +424,100 @@ class AppDatabase extends _$AppDatabase {
               t.date.isSmallerThanValue(weekEnd)))
         .get();
     return rows.isNotEmpty;
+  }
+
+  // ---------------- 저축 이자 ----------------
+  /// 현재 주기(주간/월간)의 시작 시각.
+  DateTime _periodStart(int period, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    if (period == 0) {
+      return today.subtract(Duration(days: now.weekday - 1)); // 이번 주 월요일
+    }
+    return DateTime(now.year, now.month, 1); // 이번 달 1일
+  }
+
+  Future<bool> interestGivenThisPeriod(String childId, int period) async {
+    final start = _periodStart(period, DateTime.now());
+    final rows = await (select(transactionEntries)
+          ..where((t) =>
+              t.childId.equals(childId) &
+              t.deletedAt.isNull() &
+              t.category.equals(kInterest) &
+              t.date.isBiggerOrEqualValue(start)))
+        .get();
+    return rows.isNotEmpty;
+  }
+
+  /// 이번 주기에 지급 가능한 이자 금액(현재 잔액 × 이율). 원 단위 반올림.
+  Future<int> pendingInterestAmount(Child child) async {
+    final summary = await computeSummary(child.id);
+    final balance = summary['balance'] ?? 0;
+    if (balance <= 0) return 0;
+    return (balance * child.interestPercent / 100).round();
+  }
+
+  /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
+  Future<bool> giveInterest(Child child, String editedBy) async {
+    if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return false;
+    final amount = await pendingInterestAmount(child);
+    if (amount <= 0) return false;
+    final now = DateTime.now();
+    await upsertTransaction(TransactionEntriesCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      date: now,
+      flow: 'income',
+      category: kInterest,
+      amount: amount,
+      memo: Value('저축 이자 ${child.interestPercent}%'),
+      editedBy: Value(editedBy),
+      updatedAt: Value(now),
+    ));
+    return true;
+  }
+
+  // ---------------- 연간 통계 ----------------
+  /// 연도별 집계. key: 연도, value: {regular, special, bonus, interest, expense, transfer}
+  Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) async {
+    final txs = await (select(transactionEntries)
+          ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+        .get();
+    final transfers = await (select(stockTransfers)
+          ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+        .get();
+    final map = <int, Map<String, int>>{};
+    Map<String, int> yearOf(int y) => map.putIfAbsent(
+        y,
+        () => {
+              'regular': 0,
+              'special': 0,
+              'bonus': 0,
+              'interest': 0,
+              'expense': 0,
+              'transfer': 0,
+            });
+    for (final t in txs) {
+      final y = yearOf(t.date.year);
+      if (t.flow == 'expense') {
+        y['expense'] = y['expense']! + t.amount;
+      } else {
+        switch (t.category) {
+          case kRegularAllowance:
+            y['regular'] = y['regular']! + t.amount;
+          case kSavingsBonus:
+            y['bonus'] = y['bonus']! + t.amount;
+          case kInterest:
+            y['interest'] = y['interest']! + t.amount;
+          default:
+            y['special'] = y['special']! + t.amount;
+        }
+      }
+    }
+    for (final s in transfers) {
+      final y = yearOf(s.date.year);
+      y['transfer'] = y['transfer']! + s.amount;
+    }
+    return map;
   }
 
   // ---------------- Stock transfers ----------------

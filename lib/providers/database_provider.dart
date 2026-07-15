@@ -64,3 +64,17 @@ final allowanceRatesProvider =
     StreamProvider.family<List<AllowanceRate>, String>((ref, childId) {
   return ref.watch(databaseProvider).watchAllowanceRates(childId);
 });
+
+/// 이번 주기 이자 지급 여부 (childId, period=0주간/1월간)
+final interestGivenProvider =
+    FutureProvider.family<bool, ({String childId, int period})>((ref, args) async {
+  ref.watch(transactionsProvider(args.childId));
+  return ref.watch(databaseProvider).interestGivenThisPeriod(args.childId, args.period);
+});
+
+final yearlyStatsProvider =
+    FutureProvider.family<Map<int, Map<String, int>>, String>((ref, childId) async {
+  ref.watch(transactionsProvider(childId));
+  ref.watch(stockTransfersProvider(childId));
+  return ref.watch(databaseProvider).yearlyBreakdown(childId);
+});

@@ -94,6 +94,7 @@ class OverviewScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   _SavingsRateCard(income: income, expense: expense, savings: savings, rate: rate),
                   _buildBonus(context, ref, balance),
+                  _buildInterest(context, ref, balance),
                 ],
               );
             },
@@ -302,6 +303,12 @@ class OverviewScreen extends ConsumerWidget {
             error: (e, _) => Text('오류: $e'),
             data: (map) => _MonthSummaryCard(monthly: map),
           ),
+          const SectionHeader('올해 요약'),
+          ref.watch(yearlyStatsProvider(child.id)).when(
+                loading: () => const _LoadingBox(height: 120),
+                error: (e, _) => Text('오류: $e'),
+                data: (byYear) => _YearSummaryCard(byYear: byYear),
+              ),
           const SectionHeader('월별 수입 vs 지출'),
           monthlyAsync.when(
             loading: () => const _LoadingBox(height: 160),
@@ -501,6 +508,54 @@ class OverviewScreen extends ConsumerWidget {
   Future<void> _giveBonus(WidgetRef ref) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
     await ref.read(databaseProvider).giveSavingsBonus(child, owner);
+  }
+
+  /// 저축 이자 카드 (원버튼 지급). 규칙이 켜져 있을 때만 표시.
+  Widget _buildInterest(BuildContext context, WidgetRef ref, int balance) {
+    if (!child.interestEnabled) return const SizedBox.shrink();
+    final given = ref
+            .watch(interestGivenProvider((childId: child.id, period: child.interestPeriod)))
+            .valueOrNull ??
+        false;
+    if (given) return const SizedBox.shrink();
+    final amount = (balance * child.interestPercent / 100).round();
+    if (amount <= 0) return const SizedBox.shrink();
+    final pair = appPalette(context).savings;
+    final periodName = child.interestPeriod == 0 ? '이번 주' : '이번 달';
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          children: [
+            Icon(Icons.percent, color: pair.fg, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$periodName 저축 이자',
+                      style: TextStyle(color: pair.fg, fontWeight: FontWeight.w800, fontSize: 14.5)),
+                  Text('잔액 ${formatWon(balance)}의 ${child.interestPercent}%',
+                      style: TextStyle(color: pair.fg, fontSize: 12.5)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () => _giveInterest(ref),
+              child: Text('+${formatWon(amount)}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _giveInterest(WidgetRef ref) async {
+    final owner = ref.read(settingsProvider).deviceOwner ?? '';
+    await ref.read(databaseProvider).giveInterest(child, owner);
   }
 
   /// Export를 오래 안 했으면 상단에 백업 공유 안내 배너.
@@ -981,6 +1036,110 @@ class _GoalCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _YearSummaryCard extends StatefulWidget {
+  final Map<int, Map<String, int>> byYear;
+  const _YearSummaryCard({required this.byYear});
+
+  @override
+  State<_YearSummaryCard> createState() => _YearSummaryCardState();
+}
+
+class _YearSummaryCardState extends State<_YearSummaryCard> {
+  late int _year;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = DateTime.now().year;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final years = widget.byYear.keys.toList()..sort();
+    if (years.isEmpty) {
+      return const _MutedCard(text: '아직 올해 데이터가 없어요.');
+    }
+    if (!widget.byYear.containsKey(_year)) _year = years.last;
+    final d = widget.byYear[_year]!;
+    final palette = appPalette(context);
+    final regular = d['regular'] ?? 0;
+    final special = d['special'] ?? 0;
+    final bonus = d['bonus'] ?? 0;
+    final interest = d['interest'] ?? 0;
+    final expense = d['expense'] ?? 0;
+    final transfer = d['transfer'] ?? 0;
+    final income = regular + special + bonus + interest;
+    final saved = transfer; // 주식계좌로 보낸 저축액
+
+    final idx = years.indexOf(_year);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: idx > 0 ? () => setState(() => _year = years[idx - 1]) : null,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text('$_year년',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed:
+                      idx < years.length - 1 ? () => setState(() => _year = years[idx + 1]) : null,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _bigRow(context, '총 수입', formatWon(income), palette.income.fg),
+            const Divider(height: 18),
+            _sub(context, '정기 용돈', formatWon(regular)),
+            _sub(context, '특별 수입', formatWon(special)),
+            if (bonus > 0) _sub(context, '절약 보너스', formatWon(bonus)),
+            if (interest > 0) _sub(context, '저축 이자', formatWon(interest)),
+            const Divider(height: 18),
+            _bigRow(context, '총 소비', formatWon(expense), palette.expense.fg),
+            _bigRow(context, '주식계좌 저축', formatWon(saved), palette.savings.fg),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bigRow(BuildContext context, String label, String value, Color color) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(value,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800, letterSpacing: -0.4, color: color, fontSize: 15)),
+          ],
+        ),
+      );
+
+  Widget _sub(BuildContext context, String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
 }
 
 class _MonthSummaryCard extends StatelessWidget {

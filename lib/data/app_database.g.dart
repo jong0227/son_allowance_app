@@ -134,6 +134,45 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     requiredDuringInsert: false,
     defaultValue: const Constant(500),
   );
+  static const VerificationMeta _interestEnabledMeta = const VerificationMeta(
+    'interestEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> interestEnabled = GeneratedColumn<bool>(
+    'interest_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("interest_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _interestPercentMeta = const VerificationMeta(
+    'interestPercent',
+  );
+  @override
+  late final GeneratedColumn<double> interestPercent = GeneratedColumn<double>(
+    'interest_percent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1.0),
+  );
+  static const VerificationMeta _interestPeriodMeta = const VerificationMeta(
+    'interestPeriod',
+  );
+  @override
+  late final GeneratedColumn<int> interestPeriod = GeneratedColumn<int>(
+    'interest_period',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -182,6 +221,9 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     bonusDayOfWeek,
     bonusThreshold,
     bonusAmount,
+    interestEnabled,
+    interestPercent,
+    interestPeriod,
     createdAt,
     updatedAt,
     deletedAt,
@@ -289,6 +331,33 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         ),
       );
     }
+    if (data.containsKey('interest_enabled')) {
+      context.handle(
+        _interestEnabledMeta,
+        interestEnabled.isAcceptableOrUnknown(
+          data['interest_enabled']!,
+          _interestEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_percent')) {
+      context.handle(
+        _interestPercentMeta,
+        interestPercent.isAcceptableOrUnknown(
+          data['interest_percent']!,
+          _interestPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_period')) {
+      context.handle(
+        _interestPeriodMeta,
+        interestPeriod.isAcceptableOrUnknown(
+          data['interest_period']!,
+          _interestPeriodMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -360,6 +429,18 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         DriftSqlType.int,
         data['${effectivePrefix}bonus_amount'],
       )!,
+      interestEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}interest_enabled'],
+      )!,
+      interestPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}interest_percent'],
+      )!,
+      interestPeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_period'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -395,6 +476,9 @@ class Child extends DataClass implements Insertable<Child> {
   final int bonusDayOfWeek;
   final int bonusThreshold;
   final int bonusAmount;
+  final bool interestEnabled;
+  final double interestPercent;
+  final int interestPeriod;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -410,6 +494,9 @@ class Child extends DataClass implements Insertable<Child> {
     required this.bonusDayOfWeek,
     required this.bonusThreshold,
     required this.bonusAmount,
+    required this.interestEnabled,
+    required this.interestPercent,
+    required this.interestPeriod,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -432,6 +519,9 @@ class Child extends DataClass implements Insertable<Child> {
     map['bonus_day_of_week'] = Variable<int>(bonusDayOfWeek);
     map['bonus_threshold'] = Variable<int>(bonusThreshold);
     map['bonus_amount'] = Variable<int>(bonusAmount);
+    map['interest_enabled'] = Variable<bool>(interestEnabled);
+    map['interest_percent'] = Variable<double>(interestPercent);
+    map['interest_period'] = Variable<int>(interestPeriod);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -457,6 +547,9 @@ class Child extends DataClass implements Insertable<Child> {
       bonusDayOfWeek: Value(bonusDayOfWeek),
       bonusThreshold: Value(bonusThreshold),
       bonusAmount: Value(bonusAmount),
+      interestEnabled: Value(interestEnabled),
+      interestPercent: Value(interestPercent),
+      interestPeriod: Value(interestPeriod),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -488,6 +581,9 @@ class Child extends DataClass implements Insertable<Child> {
       bonusDayOfWeek: serializer.fromJson<int>(json['bonusDayOfWeek']),
       bonusThreshold: serializer.fromJson<int>(json['bonusThreshold']),
       bonusAmount: serializer.fromJson<int>(json['bonusAmount']),
+      interestEnabled: serializer.fromJson<bool>(json['interestEnabled']),
+      interestPercent: serializer.fromJson<double>(json['interestPercent']),
+      interestPeriod: serializer.fromJson<int>(json['interestPeriod']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -508,6 +604,9 @@ class Child extends DataClass implements Insertable<Child> {
       'bonusDayOfWeek': serializer.toJson<int>(bonusDayOfWeek),
       'bonusThreshold': serializer.toJson<int>(bonusThreshold),
       'bonusAmount': serializer.toJson<int>(bonusAmount),
+      'interestEnabled': serializer.toJson<bool>(interestEnabled),
+      'interestPercent': serializer.toJson<double>(interestPercent),
+      'interestPeriod': serializer.toJson<int>(interestPeriod),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -526,6 +625,9 @@ class Child extends DataClass implements Insertable<Child> {
     int? bonusDayOfWeek,
     int? bonusThreshold,
     int? bonusAmount,
+    bool? interestEnabled,
+    double? interestPercent,
+    int? interestPeriod,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -544,6 +646,9 @@ class Child extends DataClass implements Insertable<Child> {
     bonusDayOfWeek: bonusDayOfWeek ?? this.bonusDayOfWeek,
     bonusThreshold: bonusThreshold ?? this.bonusThreshold,
     bonusAmount: bonusAmount ?? this.bonusAmount,
+    interestEnabled: interestEnabled ?? this.interestEnabled,
+    interestPercent: interestPercent ?? this.interestPercent,
+    interestPeriod: interestPeriod ?? this.interestPeriod,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -579,6 +684,15 @@ class Child extends DataClass implements Insertable<Child> {
       bonusAmount: data.bonusAmount.present
           ? data.bonusAmount.value
           : this.bonusAmount,
+      interestEnabled: data.interestEnabled.present
+          ? data.interestEnabled.value
+          : this.interestEnabled,
+      interestPercent: data.interestPercent.present
+          ? data.interestPercent.value
+          : this.interestPercent,
+      interestPeriod: data.interestPeriod.present
+          ? data.interestPeriod.value
+          : this.interestPeriod,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -599,6 +713,9 @@ class Child extends DataClass implements Insertable<Child> {
           ..write('bonusDayOfWeek: $bonusDayOfWeek, ')
           ..write('bonusThreshold: $bonusThreshold, ')
           ..write('bonusAmount: $bonusAmount, ')
+          ..write('interestEnabled: $interestEnabled, ')
+          ..write('interestPercent: $interestPercent, ')
+          ..write('interestPeriod: $interestPeriod, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -619,6 +736,9 @@ class Child extends DataClass implements Insertable<Child> {
     bonusDayOfWeek,
     bonusThreshold,
     bonusAmount,
+    interestEnabled,
+    interestPercent,
+    interestPeriod,
     createdAt,
     updatedAt,
     deletedAt,
@@ -638,6 +758,9 @@ class Child extends DataClass implements Insertable<Child> {
           other.bonusDayOfWeek == this.bonusDayOfWeek &&
           other.bonusThreshold == this.bonusThreshold &&
           other.bonusAmount == this.bonusAmount &&
+          other.interestEnabled == this.interestEnabled &&
+          other.interestPercent == this.interestPercent &&
+          other.interestPeriod == this.interestPeriod &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -655,6 +778,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
   final Value<int> bonusDayOfWeek;
   final Value<int> bonusThreshold;
   final Value<int> bonusAmount;
+  final Value<bool> interestEnabled;
+  final Value<double> interestPercent;
+  final Value<int> interestPeriod;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -671,6 +797,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.bonusDayOfWeek = const Value.absent(),
     this.bonusThreshold = const Value.absent(),
     this.bonusAmount = const Value.absent(),
+    this.interestEnabled = const Value.absent(),
+    this.interestPercent = const Value.absent(),
+    this.interestPeriod = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -688,6 +817,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.bonusDayOfWeek = const Value.absent(),
     this.bonusThreshold = const Value.absent(),
     this.bonusAmount = const Value.absent(),
+    this.interestEnabled = const Value.absent(),
+    this.interestPercent = const Value.absent(),
+    this.interestPeriod = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -706,6 +838,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Expression<int>? bonusDayOfWeek,
     Expression<int>? bonusThreshold,
     Expression<int>? bonusAmount,
+    Expression<bool>? interestEnabled,
+    Expression<double>? interestPercent,
+    Expression<int>? interestPeriod,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -725,6 +860,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       if (bonusDayOfWeek != null) 'bonus_day_of_week': bonusDayOfWeek,
       if (bonusThreshold != null) 'bonus_threshold': bonusThreshold,
       if (bonusAmount != null) 'bonus_amount': bonusAmount,
+      if (interestEnabled != null) 'interest_enabled': interestEnabled,
+      if (interestPercent != null) 'interest_percent': interestPercent,
+      if (interestPeriod != null) 'interest_period': interestPeriod,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -744,6 +882,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Value<int>? bonusDayOfWeek,
     Value<int>? bonusThreshold,
     Value<int>? bonusAmount,
+    Value<bool>? interestEnabled,
+    Value<double>? interestPercent,
+    Value<int>? interestPeriod,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -763,6 +904,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       bonusDayOfWeek: bonusDayOfWeek ?? this.bonusDayOfWeek,
       bonusThreshold: bonusThreshold ?? this.bonusThreshold,
       bonusAmount: bonusAmount ?? this.bonusAmount,
+      interestEnabled: interestEnabled ?? this.interestEnabled,
+      interestPercent: interestPercent ?? this.interestPercent,
+      interestPeriod: interestPeriod ?? this.interestPeriod,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -810,6 +954,15 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     if (bonusAmount.present) {
       map['bonus_amount'] = Variable<int>(bonusAmount.value);
     }
+    if (interestEnabled.present) {
+      map['interest_enabled'] = Variable<bool>(interestEnabled.value);
+    }
+    if (interestPercent.present) {
+      map['interest_percent'] = Variable<double>(interestPercent.value);
+    }
+    if (interestPeriod.present) {
+      map['interest_period'] = Variable<int>(interestPeriod.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -839,6 +992,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
           ..write('bonusDayOfWeek: $bonusDayOfWeek, ')
           ..write('bonusThreshold: $bonusThreshold, ')
           ..write('bonusAmount: $bonusAmount, ')
+          ..write('interestEnabled: $interestEnabled, ')
+          ..write('interestPercent: $interestPercent, ')
+          ..write('interestPeriod: $interestPeriod, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4081,6 +4237,9 @@ typedef $$ChildrenTableCreateCompanionBuilder =
       Value<int> bonusDayOfWeek,
       Value<int> bonusThreshold,
       Value<int> bonusAmount,
+      Value<bool> interestEnabled,
+      Value<double> interestPercent,
+      Value<int> interestPeriod,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -4099,6 +4258,9 @@ typedef $$ChildrenTableUpdateCompanionBuilder =
       Value<int> bonusDayOfWeek,
       Value<int> bonusThreshold,
       Value<int> bonusAmount,
+      Value<bool> interestEnabled,
+      Value<double> interestPercent,
+      Value<int> interestPeriod,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -4166,6 +4328,21 @@ class $$ChildrenTableFilterComposer
 
   ColumnFilters<int> get bonusAmount => $composableBuilder(
     column: $table.bonusAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get interestEnabled => $composableBuilder(
+    column: $table.interestEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get interestPercent => $composableBuilder(
+    column: $table.interestPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestPeriod => $composableBuilder(
+    column: $table.interestPeriod,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4249,6 +4426,21 @@ class $$ChildrenTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get interestEnabled => $composableBuilder(
+    column: $table.interestEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get interestPercent => $composableBuilder(
+    column: $table.interestPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestPeriod => $composableBuilder(
+    column: $table.interestPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4325,6 +4517,21 @@ class $$ChildrenTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get interestEnabled => $composableBuilder(
+    column: $table.interestEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get interestPercent => $composableBuilder(
+    column: $table.interestPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestPeriod => $composableBuilder(
+    column: $table.interestPeriod,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4374,6 +4581,9 @@ class $$ChildrenTableTableManager
                 Value<int> bonusDayOfWeek = const Value.absent(),
                 Value<int> bonusThreshold = const Value.absent(),
                 Value<int> bonusAmount = const Value.absent(),
+                Value<bool> interestEnabled = const Value.absent(),
+                Value<double> interestPercent = const Value.absent(),
+                Value<int> interestPeriod = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4390,6 +4600,9 @@ class $$ChildrenTableTableManager
                 bonusDayOfWeek: bonusDayOfWeek,
                 bonusThreshold: bonusThreshold,
                 bonusAmount: bonusAmount,
+                interestEnabled: interestEnabled,
+                interestPercent: interestPercent,
+                interestPeriod: interestPeriod,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4408,6 +4621,9 @@ class $$ChildrenTableTableManager
                 Value<int> bonusDayOfWeek = const Value.absent(),
                 Value<int> bonusThreshold = const Value.absent(),
                 Value<int> bonusAmount = const Value.absent(),
+                Value<bool> interestEnabled = const Value.absent(),
+                Value<double> interestPercent = const Value.absent(),
+                Value<int> interestPeriod = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4424,6 +4640,9 @@ class $$ChildrenTableTableManager
                 bonusDayOfWeek: bonusDayOfWeek,
                 bonusThreshold: bonusThreshold,
                 bonusAmount: bonusAmount,
+                interestEnabled: interestEnabled,
+                interestPercent: interestPercent,
+                interestPeriod: interestPeriod,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

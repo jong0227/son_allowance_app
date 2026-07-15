@@ -228,6 +228,8 @@ class ExportImportService {
   String _str(dynamic v, [String fallback = '']) => v is String ? v : fallback;
   String? _strn(dynamic v) => v is String ? v : null;
   bool _bool(dynamic v, [bool fallback = false]) => v is bool ? v : fallback;
+  double _double(dynamic v, double fallback) =>
+      v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? fallback : fallback);
 
   String _pad2(int v) => v.toString().padLeft(2, '0');
 
@@ -243,6 +245,9 @@ class ExportImportService {
         'bonusDayOfWeek': c.bonusDayOfWeek,
         'bonusThreshold': c.bonusThreshold,
         'bonusAmount': c.bonusAmount,
+        'interestEnabled': c.interestEnabled,
+        'interestPercent': c.interestPercent,
+        'interestPeriod': c.interestPeriod,
         'createdAt': c.createdAt.toIso8601String(),
         'updatedAt': c.updatedAt.toIso8601String(),
         'deletedAt': c.deletedAt?.toIso8601String(),
@@ -262,6 +267,9 @@ class ExportImportService {
       bonusDayOfWeek: Value(_int(j['bonusDayOfWeek'], 4)),
       bonusThreshold: Value(_int(j['bonusThreshold'], 1000)),
       bonusAmount: Value(_int(j['bonusAmount'], 500)),
+      interestEnabled: Value(_bool(j['interestEnabled'], false)),
+      interestPercent: Value(_double(j['interestPercent'], 1.0)),
+      interestPeriod: Value(_int(j['interestPeriod'], 1)),
       createdAt: Value(_dtOr(j['createdAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),

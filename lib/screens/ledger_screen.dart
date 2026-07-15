@@ -11,7 +11,26 @@ import '../widgets/ui_kit.dart';
 
 enum _Filter { all, income, expense }
 
+enum _Period { all, thisMonth, lastMonth, thisYear }
+
 final _filterProvider = StateProvider<_Filter>((ref) => _Filter.all);
+final _periodProvider = StateProvider<_Period>((ref) => _Period.all);
+final _queryProvider = StateProvider<String>((ref) => '');
+
+bool _inPeriod(DateTime d, _Period p) {
+  final now = DateTime.now();
+  switch (p) {
+    case _Period.all:
+      return true;
+    case _Period.thisMonth:
+      return d.year == now.year && d.month == now.month;
+    case _Period.lastMonth:
+      final lm = DateTime(now.year, now.month - 1, 1);
+      return d.year == lm.year && d.month == lm.month;
+    case _Period.thisYear:
+      return d.year == now.year;
+  }
+}
 
 /// 용돈일정 + 사용내역을 합친 통합 장부 화면.
 class LedgerScreen extends ConsumerStatefulWidget {
@@ -23,10 +42,18 @@ class LedgerScreen extends ConsumerStatefulWidget {
 }
 
 class _LedgerScreenState extends ConsumerState<LedgerScreen> {
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _syncSchedule();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -51,6 +78,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final schedulesAsync = ref.watch(schedulesProvider(widget.child.id));
     final txsAsync = ref.watch(transactionsProvider(widget.child.id));
     final filter = ref.watch(_filterProvider);
+    final period = ref.watch(_periodProvider);
+    final query = ref.watch(_queryProvider).trim();
     final palette = appPalette(context);
 
     return Scaffold(
@@ -76,6 +105,49 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             },
           ),
           const SectionHeader('전체 내역'),
+          // 검색창
+          TextField(
+            controller: _searchController,
+            onChanged: (v) => ref.read(_queryProvider.notifier).state = v,
+            decoration: InputDecoration(
+              hintText: '카테고리·메모·받은사람 검색',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        ref.read(_queryProvider.notifier).state = '';
+                      },
+                    ),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // 기간 칩
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final e in const [
+                  (_Period.all, '전체 기간'),
+                  (_Period.thisMonth, '이번 달'),
+                  (_Period.lastMonth, '지난 달'),
+                  (_Period.thisYear, '올해'),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(e.$2),
+                      selected: period == e.$1,
+                      onSelected: (_) => ref.read(_periodProvider.notifier).state = e.$1,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: SegmentedButton<_Filter>(
@@ -95,22 +167,44 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                 padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())),
             error: (e, _) => Text('오류: $e'),
             data: (txs) {
-              final filtered = switch (filter) {
+              var filtered = switch (filter) {
                 _Filter.all => txs,
                 _Filter.income => txs.where((t) => t.flow == 'income').toList(),
                 _Filter.expense => txs.where((t) => t.flow == 'expense').toList(),
               };
+              filtered = filtered.where((t) => _inPeriod(t.date, period)).toList();
+              if (query.isNotEmpty) {
+                filtered = filtered
+                    .where((t) =>
+                        t.category.contains(query) ||
+                        (t.memo?.contains(query) ?? false) ||
+                        (t.giver?.contains(query) ?? false))
+                    .toList();
+              }
               if (filtered.isEmpty) {
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
-                    child: Text('내역이 없어요. 오른쪽 아래 + 버튼으로 추가해보세요.',
+                    child: Text(
+                        (query.isNotEmpty || period != _Period.all)
+                            ? '조건에 맞는 내역이 없어요.'
+                            : '내역이 없어요. 오른쪽 아래 + 버튼으로 추가해보세요.',
                         style: TextStyle(color: palette.savings.fg.withValues(alpha: 0.8))),
                   ),
                 );
               }
+              final incomeSum = filtered
+                  .where((t) => t.flow == 'income')
+                  .fold<int>(0, (a, b) => a + b.amount);
+              final expenseSum = filtered
+                  .where((t) => t.flow == 'expense')
+                  .fold<int>(0, (a, b) => a + b.amount);
               return Column(
-                children: [for (final t in filtered) _LedgerTxRow(t: t, onTap: () => _openEdit(t))],
+                children: [
+                  _FilterSummary(
+                      count: filtered.length, income: incomeSum, expense: expenseSum),
+                  for (final t in filtered) _LedgerTxRow(t: t, onTap: () => _openEdit(t)),
+                ],
               );
             },
           ),
@@ -535,6 +629,39 @@ class _LedgerTxRow extends StatelessWidget {
         trailing: Icon(Icons.chevron_right,
             size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _FilterSummary extends StatelessWidget {
+  final int count;
+  final int income;
+  final int expense;
+  const _FilterSummary({required this.count, required this.income, required this.expense});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = appPalette(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+      child: Row(
+        children: [
+          Text('$count건',
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          const Spacer(),
+          if (income > 0) ...[
+            Text('수입 +${formatWon(income)}',
+                style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w700, color: palette.income.fg)),
+            const SizedBox(width: 10),
+          ],
+          if (expense > 0)
+            Text('지출 -${formatWon(expense)}',
+                style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w700, color: palette.expense.fg)),
+        ],
       ),
     );
   }
