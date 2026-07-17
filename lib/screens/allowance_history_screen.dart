@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
@@ -11,7 +12,9 @@ enum _Range { all, thisYear, thisMonth, last3Months }
 final _rangeProvider = StateProvider.autoDispose<_Range>((ref) => _Range.all);
 
 /// 정기 용돈 지급 이력 화면.
-/// 정규 지급일마다 실제로 지급됐는지/안 됐는지, 기간별 총 지급액을 보여준다.
+/// - "받은 정기용돈"은 실제 정기용돈 수입 내역(거래) 기준이라, 일정 기록이 없던
+///   과거 지급분까지 전부 보인다.
+/// - 아직 안 준 일정(밀린/예정)은 이 화면에서 바로 "지급"할 수 있다.
 class AllowanceHistoryScreen extends ConsumerWidget {
   final Child child;
   const AllowanceHistoryScreen({super.key, required this.child});
@@ -34,7 +37,9 @@ class AllowanceHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final schedulesAsync = ref.watch(schedulesProvider(child.id));
+    final txsAsync = ref.watch(transactionsProvider(child.id));
     final range = ref.watch(_rangeProvider);
+    final isChild = ref.watch(settingsProvider).isChild;
     final palette = appPalette(context);
 
     return Scaffold(
@@ -42,15 +47,25 @@ class AllowanceHistoryScreen extends ConsumerWidget {
       body: schedulesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('오류: $e')),
-        data: (all) {
-          // 지급 이력은 "정규 지급일"이 기준이므로 scheduledDate로 필터/정렬.
-          final filtered = all.where((s) => _inRange(s.scheduledDate, range)).toList()
-            ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-          final paid = filtered.where((s) => s.isPaid).toList();
-          final unpaid = filtered.where((s) => !s.isPaid).toList();
-          final totalPaid = paid.fold<int>(0, (a, b) => a + b.amount);
+        data: (schedules) {
+          final txs = txsAsync.valueOrNull ?? const [];
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
+
+          // 예정일 조회용: scheduleId -> scheduledDate
+          final schedById = {for (final s in schedules) s.id: s};
+
+          // 실제 받은 정기용돈 = 정기용돈 카테고리 수입 내역 (일정 유무와 무관하게 전부)
+          final received = txs
+              .where((t) => t.flow == 'income' && t.category == AppDatabase.kRegularAllowance)
+              .where((t) => _inRange(t.date, range))
+              .toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+          final totalReceived = received.fold<int>(0, (a, b) => a + b.amount);
+
+          // 아직 안 준 일정(밀린 + 예정)은 기간 필터와 무관하게 항상 보여 지급 가능하게 함
+          final unpaid = schedules.where((s) => !s.isPaid).toList()
+            ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -71,8 +86,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                         child: ChoiceChip(
                           label: Text(e.$2),
                           selected: range == e.$1,
-                          onSelected: (_) =>
-                              ref.read(_rangeProvider.notifier).state = e.$1,
+                          onSelected: (_) => ref.read(_rangeProvider.notifier).state = e.$1,
                         ),
                       ),
                   ],
@@ -87,18 +101,18 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('이 기간 지급 합계',
+                      Text('이 기간 받은 정기용돈',
                           style: TextStyle(
                               fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.8))),
                       const SizedBox(height: 4),
-                      Text(formatWon(totalPaid),
+                      Text(formatWon(totalReceived),
                           style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.8,
                               color: palette.allowance.fg)),
                       const SizedBox(height: 8),
-                      Text('지급 완료 ${paid.length}회 · 미지급 ${unpaid.length}회',
+                      Text('받은 횟수 ${received.length}회 · 안 준 용돈 ${unpaid.length}건',
                           style: TextStyle(
                               fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.9))),
                     ],
@@ -106,18 +120,37 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const SectionHeader('지급일별 상세'),
-              if (filtered.isEmpty)
-                const _Muted('이 기간에는 지급 일정이 없어요.')
-              else
-                for (final s in filtered)
-                  _PaymentRow(
+
+              // 아직 안 준 용돈 — 여기서 바로 지급 (부모만)
+              if (unpaid.isNotEmpty && !isChild) ...[
+                const SectionHeader('아직 안 준 용돈'),
+                for (final s in unpaid)
+                  _UnpaidRow(
                     schedule: s,
                     palette: palette,
-                    isFutureUnpaid: !s.isPaid &&
-                        !DateTime(s.scheduledDate.year, s.scheduledDate.month,
-                                s.scheduledDate.day)
-                            .isBefore(today),
+                    overdue: DateTime(s.scheduledDate.year, s.scheduledDate.month,
+                            s.scheduledDate.day)
+                        .isBefore(today),
+                    onPay: () async {
+                      final owner = ref.read(settingsProvider).deviceOwner ?? '';
+                      await ref.read(databaseProvider).markSchedulePaid(s, owner, child);
+                    },
+                  ),
+                const SizedBox(height: 8),
+              ],
+
+              // 받은 정기용돈 이력 (과거 전부)
+              SectionHeader('받은 정기용돈 이력 ${received.length}건'),
+              if (received.isEmpty)
+                const _Muted('이 기간에 받은 정기용돈이 없어요.')
+              else
+                for (final t in received)
+                  _ReceivedRow(
+                    tx: t,
+                    palette: palette,
+                    scheduledDate: t.linkedScheduleId != null
+                        ? schedById[t.linkedScheduleId!]?.scheduledDate
+                        : null,
                   ),
             ],
           );
@@ -127,70 +160,65 @@ class AllowanceHistoryScreen extends ConsumerWidget {
   }
 }
 
-class _PaymentRow extends StatelessWidget {
+/// 아직 안 준 일정 한 줄 + 지급 버튼.
+class _UnpaidRow extends StatelessWidget {
   final AllowanceSchedule schedule;
   final AppPalette palette;
-  final bool isFutureUnpaid;
-  const _PaymentRow({
+  final bool overdue;
+  final Future<void> Function() onPay;
+  const _UnpaidRow({
     required this.schedule,
     required this.palette,
-    required this.isFutureUnpaid,
+    required this.overdue,
+    required this.onPay,
   });
 
   @override
   Widget build(BuildContext context) {
     final s = schedule;
-    // 상태: 지급완료 / 지급예정(오늘 이후) / 미지급(지났는데 안 줌)
-    final PastelPair pair;
-    final IconData icon;
-    final String status;
-    if (s.isPaid) {
-      pair = palette.income;
-      icon = Icons.check_circle;
-      // 실제 지급한 날짜(예정일과 다르면 늦게 준 것)
-      status = s.paidDate != null ? '실제 지급: ${formatDateShort(s.paidDate!)}' : '지급 완료';
-    } else if (isFutureUnpaid) {
-      pair = palette.allowance;
-      icon = Icons.schedule;
-      status = '아직 지급 안 함 (예정)';
-    } else {
-      pair = palette.expense;
-      icon = Icons.cancel_outlined;
-      status = '미지급 (지난 지급일)';
-    }
-    final scheme = Theme.of(context).colorScheme;
-
+    final pair = overdue ? palette.expense : palette.allowance;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            CircleAvatar(radius: 18, backgroundColor: pair.bg, child: Icon(icon, color: pair.fg)),
-            const SizedBox(width: 12),
-            // 예정일(정규 지급 날짜) + 실제 지급일
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${formatDate(s.scheduledDate)} (${weekdayName(s.scheduledDate.weekday)})',
-                      style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2)),
-                  const SizedBox(height: 2),
-                  Text(status,
-                      style: TextStyle(
-                          fontSize: 12.5,
-                          color: s.isPaid ? pair.fg : scheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
-            // 용돈 금액
-            Text(formatWon(s.amount),
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    fontSize: 15,
-                    color: s.isPaid ? pair.fg : scheme.onSurfaceVariant)),
-          ],
-        ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(14, 4, 10, 4),
+        leading: CircleAvatar(
+            backgroundColor: pair.bg,
+            child: Icon(overdue ? Icons.history : Icons.schedule, color: pair.fg)),
+        title: Text('${formatDate(s.scheduledDate)} (${weekdayName(s.scheduledDate.weekday)})',
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(overdue ? '밀린 용돈 · ${formatWon(s.amount)}' : '지급 예정 · ${formatWon(s.amount)}'),
+        trailing: FilledButton(onPressed: onPay, child: const Text('지급')),
+      ),
+    );
+  }
+}
+
+/// 실제 받은 정기용돈 한 줄. 예정일(있으면)과 실제 받은 날을 함께 표시.
+class _ReceivedRow extends StatelessWidget {
+  final TransactionEntry tx;
+  final AppPalette palette;
+  final DateTime? scheduledDate;
+  const _ReceivedRow({required this.tx, required this.palette, this.scheduledDate});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final pair = palette.income;
+    final sameDay = scheduledDate != null &&
+        scheduledDate!.year == tx.date.year &&
+        scheduledDate!.month == tx.date.month &&
+        scheduledDate!.day == tx.date.day;
+    final sub = scheduledDate == null
+        ? '받은 날: ${formatDate(tx.date)}'
+        : (sameDay
+            ? '예정일에 지급 · ${formatDate(tx.date)}'
+            : '예정일 ${formatDateShort(scheduledDate!)} → 실제 ${formatDateShort(tx.date)}');
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        leading: CircleAvatar(backgroundColor: pair.bg, child: Icon(Icons.check_circle, color: pair.fg)),
+        title: Text(formatWon(tx.amount),
+            style: TextStyle(fontWeight: FontWeight.w800, color: pair.fg, letterSpacing: -0.3)),
+        subtitle: Text(sub, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
       ),
     );
   }
