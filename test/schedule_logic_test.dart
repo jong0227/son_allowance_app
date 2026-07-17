@@ -118,6 +118,39 @@ void main() {
     expect(upcoming.isNotEmpty, true);
   });
 
+  test('지급 기록이 전혀 없어도 과거 날짜 정기용돈을 소급 지급할 수 있다', () async {
+    final child = await createChild();
+    final past = today.subtract(const Duration(days: 5));
+    await db.addPastAllowance(child, past, 3000, 'test');
+
+    // 과거 날짜로 지급 완료 일정 + 정기용돈 수입 내역 생성
+    final paid = (await alive()).where((s) => s.isPaid).toList();
+    expect(paid.length, 1);
+    expect(DateTime(paid.first.scheduledDate.year, paid.first.scheduledDate.month,
+            paid.first.scheduledDate.day),
+        DateTime(past.year, past.month, past.day));
+
+    final txs = (await db.allTransactionsRaw()).where((t) => t.deletedAt == null).toList();
+    expect(txs.length, 1);
+    expect(txs.first.category, '정기용돈');
+    expect(txs.first.amount, 3000);
+    // 수입 내역 날짜가 과거 지급일과 같아야 한다
+    expect(DateTime(txs.first.date.year, txs.first.date.month, txs.first.date.day),
+        DateTime(past.year, past.month, past.day));
+    final summary = await db.computeSummary(child.id);
+    expect(summary['balance'], 3000);
+  });
+
+  test('소급 지급을 두 번 해도 같은 날짜면 중복 지급되지 않는다', () async {
+    final child = await createChild();
+    final past = today.subtract(const Duration(days: 7));
+    await db.addPastAllowance(child, past, 3000, 'test');
+    await db.addPastAllowance(child, past, 3000, 'test');
+    final txs = (await db.allTransactionsRaw()).where((t) => t.deletedAt == null).toList();
+    expect(txs.length, 1);
+    expect((await db.computeSummary(child.id))['balance'], 3000);
+  });
+
   test('지급요일 변경 시 미래 예정만 이동하고 밀린 용돈은 그대로 둔다', () async {
     final child = await createChild();
     await db.upsertSchedule(AllowanceSchedulesCompanion.insert(

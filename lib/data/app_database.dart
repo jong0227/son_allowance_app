@@ -290,6 +290,71 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertSchedule(AllowanceSchedulesCompanion s) =>
       into(allowanceSchedules).insertOnConflictUpdate(s);
 
+  /// 과거 날짜의 정기용돈을 소급 지급한다.
+  /// 자동 백필은 "마지막 지급일 이후"만 채우므로, 지급 기록이 전혀 없거나 앱을
+  /// 늦게 시작한 경우 그 이전 주는 나타나지 않는다. 이 메서드로 부모가 특정 과거
+  /// 지급일을 직접 지정해 지급 처리할 수 있다.
+  /// - 해당 날짜(±0일)에 이미 일정이 있으면 그것을 지급 처리(중복 방지)
+  /// - 없으면 지급 완료 상태의 일정 + 그 날짜로 기록된 정기용돈 수입 내역을 생성
+  Future<void> addPastAllowance(
+      Child child, DateTime date, int amount, String editedBy) async {
+    final now = DateTime.now();
+    final d = DateTime(date.year, date.month, date.day);
+
+    // 같은 날짜의 기존 일정이 있으면 재활용
+    final existing = await (select(allowanceSchedules)
+          ..where((t) => t.childId.equals(child.id) & t.deletedAt.isNull()))
+        .get();
+    AllowanceSchedule? sameDay;
+    for (final s in existing) {
+      final sd = DateTime(s.scheduledDate.year, s.scheduledDate.month, s.scheduledDate.day);
+      if (sd == d) {
+        sameDay = s;
+        break;
+      }
+    }
+
+    final scheduleId = sameDay?.id ?? const Uuid().v4();
+    if (sameDay == null) {
+      await upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: scheduleId,
+        childId: child.id,
+        scheduledDate: d,
+        amount: amount,
+        isPaid: const Value(true),
+        paidDate: Value(now),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    } else {
+      await (update(allowanceSchedules)..where((t) => t.id.equals(scheduleId))).write(
+        AllowanceSchedulesCompanion(
+          amount: Value(amount),
+          isPaid: const Value(true),
+          paidDate: Value(now),
+          editedBy: Value(editedBy),
+          updatedAt: Value(now),
+        ),
+      );
+    }
+    // 연결된 정기용돈 수입 내역이 없으면 과거 날짜로 생성
+    final linked = await findTransactionByScheduleId(scheduleId);
+    if (linked == null) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        date: d,
+        flow: 'income',
+        category: kRegularAllowance,
+        amount: amount,
+        memo: Value('${d.month}/${d.day} 정기용돈 (소급 지급)'),
+        linkedScheduleId: Value(scheduleId),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+  }
+
   /// 용돈 "지급" 처리. 부분 컬럼만 갱신하므로 upsert가 아니라 update로 처리한다.
   /// (upsert에 일부 컬럼만 넘기면 NOT NULL 제약으로 실패 → 예전에 지급 버튼이 무반응이던 버그)
   /// 지급과 동시에 연결된 수입 내역을 자동 생성하고, 다음 주 예정 일정을 만든다.

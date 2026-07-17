@@ -370,7 +370,98 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                 _showSpecialIncomeSheet();
               },
             ),
+            ListTile(
+              leading: CircleAvatar(
+                  backgroundColor: palette.allowance.bg,
+                  child: Icon(Icons.history, color: palette.allowance.fg)),
+              title: const Text('지난 정기용돈 추가'),
+              subtitle: const Text('예전에 안 준 정기용돈을 과거 날짜로 소급 지급'),
+              onTap: () {
+                Navigator.pop(context);
+                _showPastAllowanceDialog();
+              },
+            ),
             const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 예전에 안 준 정기용돈을 과거 날짜로 소급 지급하는 다이얼로그.
+  void _showPastAllowanceDialog() {
+    // 기본 날짜: 오늘 기준 가장 최근의 지급 요일(과거)
+    final now = DateTime.now();
+    DateTime lastPayday = DateTime(now.year, now.month, now.day);
+    while (lastPayday.weekday != widget.child.payDayOfWeek) {
+      lastPayday = lastPayday.subtract(const Duration(days: 1));
+    }
+    DateTime date = lastPayday;
+    final amountController =
+        TextEditingController(text: '${widget.child.weeklyAllowanceDefault}');
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('지난 정기용돈 추가'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('예전에 주지 못한 정기용돈을 지급일(과거 날짜)로 기록해요. '
+                    '그 날짜로 지급 완료 처리되고 잔액에 합산됩니다.'),
+                const SizedBox(height: 16),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: date,
+                      firstDate: DateTime(2015),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setState(() => date = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16),
+                        const SizedBox(width: 10),
+                        Text('${formatDate(date)} (${weekdayName(date.weekday)}요일)'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: '금액(원)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            FilledButton(
+              onPressed: () async {
+                final amount = int.tryParse(amountController.text);
+                if (amount == null || amount <= 0) return;
+                final owner = ref.read(settingsProvider).deviceOwner ?? '';
+                await ref
+                    .read(databaseProvider)
+                    .addPastAllowance(widget.child, date, amount, owner);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('지급 처리'),
+            ),
           ],
         ),
       ),
