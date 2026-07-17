@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
@@ -350,6 +352,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
+
+        const SectionHeader('앱 정보'),
+        const Card(child: _AppVersionTile()),
       ],
     );
   }
@@ -1094,6 +1099,45 @@ class SettingsScreen extends ConsumerWidget {
             .showSnackBar(const SnackBar(content: Text('가져오기가 완료되었습니다.')));
       }
     }
+  }
+}
+
+/// 현재 설치된 앱 버전 표시. pubspec의 version(빌드 시 주입)을 그대로 읽는다.
+class _AppVersionTile extends StatefulWidget {
+  const _AppVersionTile();
+  @override
+  State<_AppVersionTile> createState() => _AppVersionTileState();
+}
+
+class _AppVersionTileState extends State<_AppVersionTile> {
+  String _version = '확인 중...';
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = 'v${info.version} (빌드 ${info.buildNumber})');
+    }).catchError((_) {
+      if (mounted) setState(() => _version = '버전 정보를 읽을 수 없어요');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.info_outline),
+      title: const Text('앱 버전'),
+      subtitle: Text(_version),
+      trailing: TextButton(
+        onPressed: () => Clipboard.setData(ClipboardData(text: _version)).then((_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('버전을 복사했어요.')));
+          }
+        }),
+        child: const Text('복사'),
+      ),
+    );
   }
 }
 
