@@ -20,6 +20,7 @@ class AppSettings {
   final bool weeklyReportEnabled;
   final DateTime? lastExportedAt;
   final DateTime? lastImportedAt;
+  final String? familyCode; // 실시간 동기화(Firebase) 가족 코드. null이면 미연결
 
   final List<String> expenseCategories; // 지출 카테고리
   final List<String> incomeCategories; // 특별 수입 종류 (정기용돈 제외)
@@ -35,6 +36,7 @@ class AppSettings {
     this.weeklyReportEnabled = false,
     this.lastExportedAt,
     this.lastImportedAt,
+    this.familyCode,
     this.expenseCategories = defaultExpenseCategories,
     this.incomeCategories = defaultIncomeCategories,
     this.givers = defaultGivers,
@@ -54,6 +56,7 @@ class AppSettings {
     bool? weeklyReportEnabled,
     DateTime? lastExportedAt,
     DateTime? lastImportedAt,
+    String? familyCode,
     List<String>? expenseCategories,
     List<String>? incomeCategories,
     List<String>? givers,
@@ -68,11 +71,30 @@ class AppSettings {
       weeklyReportEnabled: weeklyReportEnabled ?? this.weeklyReportEnabled,
       lastExportedAt: lastExportedAt ?? this.lastExportedAt,
       lastImportedAt: lastImportedAt ?? this.lastImportedAt,
+      familyCode: familyCode ?? this.familyCode,
       expenseCategories: expenseCategories ?? this.expenseCategories,
       incomeCategories: incomeCategories ?? this.incomeCategories,
       givers: givers ?? this.givers,
     );
   }
+
+  /// familyCode를 명시적으로 null로 만든 새 인스턴스 (동기화 연결 해제용).
+  /// copyWith는 ??-병합이라 null을 넘겨도 지워지지 않으므로 별도 제공.
+  AppSettings withoutFamilyCode() => AppSettings(
+        deviceOwner: deviceOwner,
+        themeMode: themeMode,
+        lockEnabled: lockEnabled,
+        pinHash: pinHash,
+        pinSalt: pinSalt,
+        notificationsEnabled: notificationsEnabled,
+        weeklyReportEnabled: weeklyReportEnabled,
+        lastExportedAt: lastExportedAt,
+        lastImportedAt: lastImportedAt,
+        familyCode: null,
+        expenseCategories: expenseCategories,
+        incomeCategories: incomeCategories,
+        givers: givers,
+      );
 }
 
 class SettingsNotifier extends StateNotifier<AppSettings> {
@@ -103,6 +125,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       weeklyReportEnabled: prefs.getBool('weeklyReportEnabled') ?? false,
       lastExportedAt: lastExportedStr != null ? DateTime.tryParse(lastExportedStr) : null,
       lastImportedAt: lastImportedStr != null ? DateTime.tryParse(lastImportedStr) : null,
+      familyCode: prefs.getString('familyCode'),
       expenseCategories:
           listOr('expenseCategories', AppSettings.defaultExpenseCategories),
       incomeCategories: listOr('incomeCategories', AppSettings.defaultIncomeCategories),
@@ -222,6 +245,16 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final now = DateTime.now();
     await prefs.setString('lastImportedAt', now.toIso8601String());
     state = state.copyWith(lastImportedAt: now);
+  }
+
+  Future<void> setFamilyCode(String code) async {
+    await prefs.setString('familyCode', code);
+    state = state.copyWith(familyCode: code);
+  }
+
+  Future<void> clearFamilyCode() async {
+    await prefs.remove('familyCode');
+    state = state.withoutFamilyCode();
   }
 
   String _randomSalt() {

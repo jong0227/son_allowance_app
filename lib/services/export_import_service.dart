@@ -126,7 +126,12 @@ class ExportImportService {
   Future<ImportPreview> previewImport(File jsonFile, AppDatabase db) async {
     final content = await jsonFile.readAsString();
     final data = jsonDecode(content) as Map<String, dynamic>;
+    return previewImportData(data, db);
+  }
 
+  /// 파일이 아니라 이미 메모리에 있는 JSON(Map)으로 미리보기를 만든다.
+  /// Firestore 실시간 동기화처럼 파일을 거치지 않는 경로에서 재사용한다.
+  Future<ImportPreview> previewImportData(Map<String, dynamic> data, AppDatabase db) async {
     int newCount = 0, updatedCount = 0, unchangedCount = 0;
 
     Future<void> diff<T>(

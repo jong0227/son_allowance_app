@@ -7,8 +7,10 @@ import 'package:share_plus/share_plus.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/export_import_service.dart';
 import '../services/notification_service.dart';
+import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/child_avatar.dart';
@@ -146,7 +148,15 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
 
-        const SectionHeader('동기화 (가족과 공유)'),
+        const SectionHeader('실시간 자동 동기화'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildSyncPanel(context, ref, settings),
+          ),
+        ),
+
+        const SectionHeader('수동 백업 (파일로 주고받기)'),
         Card(
           child: Column(
             children: [
@@ -575,6 +585,180 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  // ---------- 실시간 자동 동기화 (Firebase) ----------
+  Widget _buildSyncPanel(BuildContext context, WidgetRef ref, AppSettings settings) {
+    final code = settings.familyCode;
+
+    if (code == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('앱을 켜두면 아내/남편 폰과 자동으로 동기화돼요. 파일을 주고받을 필요 없어요.',
+              style: TextStyle(
+                  fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => _handleCreateFamily(context, ref),
+            icon: const Icon(Icons.add_link),
+            label: const Text('동기화 시작하기 (코드 발급)'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _handleJoinFamily(context, ref),
+            icon: const Icon(Icons.link),
+            label: const Text('상대방 코드로 참여하기'),
+          ),
+        ],
+      );
+    }
+
+    final statusAsync = ref.watch(syncStatusProvider);
+    final service = ref.watch(familySyncServiceProvider);
+    final statusText = statusAsync.when(
+      data: (s) => switch (s) {
+        SyncStatus.syncing => '동기화 중...',
+        SyncStatus.error => '동기화 오류 (인터넷 연결을 확인해주세요)',
+        SyncStatus.idle => service.lastSyncedAt != null
+            ? '마지막 동기화: ${formatDate(service.lastSyncedAt!)}'
+            : '연결됨',
+      },
+      loading: () => '연결하는 중...',
+      error: (_, __) => '상태 확인 불가',
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.sync, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('가족 코드: $code',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15.5, letterSpacing: 1)),
+                  Text(statusText,
+                      style: TextStyle(
+                          fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: '코드 공유',
+              onPressed: () => Share.share(
+                  '용돈관리 앱 동기화 코드: $code\n앱 설정 > 실시간 자동 동기화 > "상대방 코드로 참여하기"에 입력해주세요.'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _handleLeaveFamily(context, ref),
+            icon: const Icon(Icons.link_off, size: 18),
+            label: const Text('동기화 끊기'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleCreateFamily(BuildContext context, WidgetRef ref) async {
+    final owner = ref.read(settingsProvider).deviceOwner ?? '';
+    try {
+      final code = await ref.read(familySyncServiceProvider).createFamily(owner);
+      await ref.read(settingsProvider.notifier).setFamilyCode(code);
+      if (!context.mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('동기화 코드가 발급됐어요'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(code,
+                  style:
+                      const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 3)),
+              const SizedBox(height: 10),
+              const Text('이 코드를 상대방에게 알려주고, 상대방 폰의 설정 > 실시간 자동 동기화 > '
+                  '"상대방 코드로 참여하기"에 입력하면 자동으로 연결돼요.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Share.share('용돈관리 앱 동기화 코드: $code'),
+              child: const Text('카톡으로 공유'),
+            ),
+            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('동기화 시작 실패: $e')));
+    }
+  }
+
+  Future<void> _handleJoinFamily(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('상대방 코드로 참여'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(labelText: '6자리 코드'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('참여'),
+          ),
+        ],
+      ),
+    );
+    if (code == null || code.isEmpty) return;
+    if (!context.mounted) return;
+    final owner = ref.read(settingsProvider).deviceOwner ?? '';
+    try {
+      await ref.read(familySyncServiceProvider).joinFamily(code, owner);
+      await ref.read(settingsProvider.notifier).setFamilyCode(code.trim().toUpperCase());
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('동기화에 연결됐어요.')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _handleLeaveFamily(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('동기화를 끊을까요?'),
+        content: const Text('이 기기에서만 자동 동기화가 중단됩니다. 지금까지의 데이터는 그대로 남아있어요.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('끊기')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(familySyncServiceProvider).leaveFamily();
+    await ref.read(settingsProvider.notifier).clearFamilyCode();
   }
 
   Future<void> _handleExport(BuildContext context, WidgetRef ref) async {

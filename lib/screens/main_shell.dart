@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/backup_service.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/responsive_scaffold.dart';
@@ -35,6 +36,15 @@ class _MainShellState extends ConsumerState<MainShell> {
         ref.read(selectedChildIdProvider.notifier).state = primary;
       }
       const BackupService().autoBackupIfNeeded(db, editedBy: owner);
+      // 가족 동기화가 이미 설정되어 있으면 앱을 켤 때마다 조용히 재연결
+      final code = ref.read(settingsProvider).familyCode;
+      if (code != null) {
+        try {
+          await ref.read(familySyncServiceProvider).resume(code, owner);
+        } catch (_) {
+          // 오프라인 등으로 실패해도 앱 사용에는 지장 없음. 재시도는 다음 실행 때.
+        }
+      }
     });
   }
 

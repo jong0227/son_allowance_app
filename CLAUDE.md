@@ -58,6 +58,7 @@ Set-Location "C:\dev\son_allowance_app"
 - 절약 보너스(조건부, 원버튼) / **저축 이자**(주기별, 원버튼) — Child 테이블에 규칙 저장.
 - 저축 목표(위시리스트), 이번 주 예산, 용돈 변경 이력, 백업 리마인더, 주간 리포트 알림.
 - Export/Import: 전체 데이터 JSON + 사람이 읽는 요약 txt. id+updatedAt 기준 스마트 병합. 방어적 파싱(구버전 백업도 호환). avatarPath는 기기 로컬이라 동기화 제외.
+- **실시간 자동 동기화 (Firebase)**: `lib/services/sync_service.dart`. Firestore 프로젝트 `kids-allowance-48c8e`, 문서 하나(`families/{6자리코드}`)에 `serializeAll()` 결과를 통째로 저장하는 방식(테이블별 서브컬렉션 아님). 익명 로그인(firebase_auth) + `db.tableUpdates()` 구독으로 로컬 변경 시 자동 업로드(디바운스 1.2s), Firestore `snapshots()` 구독으로 원격 변경 자동 병합. 기존 Export/Import의 id+updatedAt 병합 로직(`ExportImportService.previewImportData/applyImport`)을 그대로 재사용. 신호값(정렬된 JSON 문자열) 비교로 자기 자신이 올린 변경의 반향을 걸러냄. Firestore 보안 규칙: `request.auth != null`만 요구(가족 코드가 사실상의 비밀번호 역할). google-services.json은 공개 저장소에 커밋됨(Firebase 클라이언트 설정은 비밀 아님, 실제 보안은 Rules가 담당 — Google 공식 가이드).
 - 앱 잠금(PIN/생체), 다크모드, 폴드/플립 반응형.
 
 ## 주의사항 / 함정
