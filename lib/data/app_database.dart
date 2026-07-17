@@ -199,6 +199,49 @@ class AppDatabase extends _$AppDatabase {
   Future<List<TransactionEntry>> allTransactionsRaw() => select(transactionEntries).get();
   Future<List<StockTransfer>> allStockTransfersRaw() => select(stockTransfers).get();
 
+  /// 서로 다른 기기에서 각각 온보딩하면 아이 프로필이 2개(서로 다른 id) 생긴다.
+  /// Import 후/앱 시작 시 이걸 호출해 "데이터가 가장 많은 프로필 하나"로 정리한다.
+  /// - 데이터가 가장 많은 프로필을 대표(primary)로 선택해서 반환
+  /// - 나머지 중 "완전히 빈(거래·이체 0)" 프로필은 소프트 삭제(온보딩 잔여물 정리)
+  /// - 실제 데이터가 있는 다른 프로필은 지우지 않음(데이터 보존)
+  Future<String?> reconcileToSingleChild(String editedBy) async {
+    final kids = await (select(children)..where((t) => t.deletedAt.isNull())).get();
+    if (kids.isEmpty) return null;
+    if (kids.length == 1) return kids.first.id;
+
+    Future<int> txCount(String cid) async => (await (select(transactionEntries)
+              ..where((t) => t.childId.equals(cid) & t.deletedAt.isNull()))
+            .get())
+        .length;
+    Future<int> trCount(String cid) async => (await (select(stockTransfers)
+              ..where((t) => t.childId.equals(cid) & t.deletedAt.isNull()))
+            .get())
+        .length;
+
+    String primary = kids.first.id;
+    int bestScore = -1;
+    final scores = <String, int>{};
+    for (final k in kids) {
+      final score = await txCount(k.id) + await trCount(k.id);
+      scores[k.id] = score;
+      if (score > bestScore) {
+        bestScore = score;
+        primary = k.id;
+      }
+    }
+    // 대표가 아니면서 완전히 빈 프로필만 정리
+    final now = DateTime.now();
+    for (final k in kids) {
+      if (k.id == primary) continue;
+      if ((scores[k.id] ?? 0) == 0) {
+        await (update(children)..where((t) => t.id.equals(k.id))).write(
+          ChildrenCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+      }
+    }
+    return primary;
+  }
+
   // ---------------- Allowance schedules ----------------
   Stream<List<AllowanceSchedule>> watchSchedules(String childId) => (select(allowanceSchedules)
         ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())

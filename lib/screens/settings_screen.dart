@@ -637,6 +637,13 @@ class SettingsScreen extends ConsumerWidget {
             );
       }
       await ref.read(settingsProvider.notifier).recordImport();
+      // 서로 다른 기기에서 온보딩해 생긴 중복 프로필을 하나로 정리하고,
+      // 데이터가 들어있는 프로필을 화면에 선택해준다.
+      final owner = ref.read(settingsProvider).deviceOwner ?? '';
+      final primary = await db.reconcileToSingleChild(owner);
+      if (primary != null) {
+        ref.read(selectedChildIdProvider.notifier).state = primary;
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('가져오기가 완료되었습니다.')));

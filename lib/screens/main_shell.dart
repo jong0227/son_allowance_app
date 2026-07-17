@@ -26,11 +26,15 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      const BackupService().autoBackupIfNeeded(
-        ref.read(databaseProvider),
-        editedBy: ref.read(settingsProvider).deviceOwner ?? '',
-      );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final db = ref.read(databaseProvider);
+      final owner = ref.read(settingsProvider).deviceOwner ?? '';
+      // 앱 시작 시 중복 프로필 정리 + 데이터 있는 프로필 자동 선택(동기화 후 self-heal)
+      final primary = await db.reconcileToSingleChild(owner);
+      if (primary != null && primary != widget.child.id) {
+        ref.read(selectedChildIdProvider.notifier).state = primary;
+      }
+      const BackupService().autoBackupIfNeeded(db, editedBy: owner);
     });
   }
 
