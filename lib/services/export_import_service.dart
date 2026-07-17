@@ -353,6 +353,9 @@ class ExportImportService {
         'date': s.date.toIso8601String(),
         'amount': s.amount,
         'memo': s.memo,
+        'ticker': s.ticker,
+        'companyName': s.companyName,
+        'shares': s.shares,
         'editedBy': s.editedBy,
         'updatedAt': s.updatedAt.toIso8601String(),
         'deletedAt': s.deletedAt?.toIso8601String(),
@@ -360,12 +363,16 @@ class ExportImportService {
 
   StockTransfersCompanion _transferFromJson(Map<String, dynamic> j) {
     final now = DateTime.now();
+    final sharesRaw = j['shares'];
     return StockTransfersCompanion.insert(
       id: _str(j['id']),
       childId: _str(j['childId']),
       date: _dtOr(j['date'], now),
       amount: _int(j['amount']),
       memo: Value(_strn(j['memo'])),
+      ticker: Value(_strn(j['ticker'])),
+      companyName: Value(_strn(j['companyName'])),
+      shares: Value(sharesRaw is num ? sharesRaw.toDouble() : null),
       editedBy: Value(_str(j['editedBy'])),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),

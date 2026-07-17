@@ -56,6 +56,30 @@ void main() {
     expect((await db.allRequestsRaw()).first.status, 'approved');
   });
 
+  test('주식 요청 → 부모가 구매 결과 입력하면 주식이체 내역이 종목정보와 함께 생긴다', () async {
+    final child = await makeChild();
+    await db.requestStock(child, '삼성전자', '005930.KS', 100000, '아들');
+    final req = (await db.allRequestsRaw()).firstWhere((r) => r.type == 'stock');
+    expect(req.title, '삼성전자');
+    expect(req.memo, '005930.KS');
+    expect(req.amount, 100000);
+
+    await db.fulfillStockRequest(req,
+        actualAmount: 98000, shares: 2, memo: '1주 49,000원', resolvedBy: '아빠');
+
+    final transfers = (await db.allStockTransfersRaw()).where((t) => t.deletedAt == null).toList();
+    expect(transfers.length, 1);
+    expect(transfers.first.companyName, '삼성전자');
+    expect(transfers.first.ticker, '005930.KS');
+    expect(transfers.first.shares, 2);
+    expect(transfers.first.amount, 98000);
+
+    final after = (await db.allRequestsRaw()).firstWhere((r) => r.type == 'stock');
+    expect(after.status, 'approved');
+    // 이체액이 누적 이체(주식계좌)에 반영된다
+    expect((await db.computeSummary(child.id))['totalTransfer'], 98000);
+  });
+
   test('거절하면 내역/목표가 생기지 않고 요청은 rejected', () async {
     final child = await makeChild();
     await db.requestBonus(child, '아들');

@@ -2321,6 +2321,35 @@ class $StockTransfersTable extends StockTransfers
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tickerMeta = const VerificationMeta('ticker');
+  @override
+  late final GeneratedColumn<String> ticker = GeneratedColumn<String>(
+    'ticker',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _companyNameMeta = const VerificationMeta(
+    'companyName',
+  );
+  @override
+  late final GeneratedColumn<String> companyName = GeneratedColumn<String>(
+    'company_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+    'shares',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _editedByMeta = const VerificationMeta(
     'editedBy',
   );
@@ -2363,6 +2392,9 @@ class $StockTransfersTable extends StockTransfers
     date,
     amount,
     memo,
+    ticker,
+    companyName,
+    shares,
     editedBy,
     updatedAt,
     deletedAt,
@@ -2414,6 +2446,27 @@ class $StockTransfersTable extends StockTransfers
         memo.isAcceptableOrUnknown(data['memo']!, _memoMeta),
       );
     }
+    if (data.containsKey('ticker')) {
+      context.handle(
+        _tickerMeta,
+        ticker.isAcceptableOrUnknown(data['ticker']!, _tickerMeta),
+      );
+    }
+    if (data.containsKey('company_name')) {
+      context.handle(
+        _companyNameMeta,
+        companyName.isAcceptableOrUnknown(
+          data['company_name']!,
+          _companyNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('shares')) {
+      context.handle(
+        _sharesMeta,
+        shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta),
+      );
+    }
     if (data.containsKey('edited_by')) {
       context.handle(
         _editedByMeta,
@@ -2461,6 +2514,18 @@ class $StockTransfersTable extends StockTransfers
         DriftSqlType.string,
         data['${effectivePrefix}memo'],
       ),
+      ticker: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ticker'],
+      ),
+      companyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_name'],
+      ),
+      shares: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}shares'],
+      ),
       editedBy: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}edited_by'],
@@ -2488,6 +2553,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
   final DateTime date;
   final int amount;
   final String? memo;
+  final String? ticker;
+  final String? companyName;
+  final double? shares;
   final String editedBy;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -2497,6 +2565,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
     required this.date,
     required this.amount,
     this.memo,
+    this.ticker,
+    this.companyName,
+    this.shares,
     required this.editedBy,
     required this.updatedAt,
     this.deletedAt,
@@ -2510,6 +2581,15 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
     map['amount'] = Variable<int>(amount);
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
+    }
+    if (!nullToAbsent || ticker != null) {
+      map['ticker'] = Variable<String>(ticker);
+    }
+    if (!nullToAbsent || companyName != null) {
+      map['company_name'] = Variable<String>(companyName);
+    }
+    if (!nullToAbsent || shares != null) {
+      map['shares'] = Variable<double>(shares);
     }
     map['edited_by'] = Variable<String>(editedBy);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2526,6 +2606,15 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
       date: Value(date),
       amount: Value(amount),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      ticker: ticker == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ticker),
+      companyName: companyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(companyName),
+      shares: shares == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shares),
       editedBy: Value(editedBy),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -2545,6 +2634,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
       date: serializer.fromJson<DateTime>(json['date']),
       amount: serializer.fromJson<int>(json['amount']),
       memo: serializer.fromJson<String?>(json['memo']),
+      ticker: serializer.fromJson<String?>(json['ticker']),
+      companyName: serializer.fromJson<String?>(json['companyName']),
+      shares: serializer.fromJson<double?>(json['shares']),
       editedBy: serializer.fromJson<String>(json['editedBy']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -2559,6 +2651,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
       'date': serializer.toJson<DateTime>(date),
       'amount': serializer.toJson<int>(amount),
       'memo': serializer.toJson<String?>(memo),
+      'ticker': serializer.toJson<String?>(ticker),
+      'companyName': serializer.toJson<String?>(companyName),
+      'shares': serializer.toJson<double?>(shares),
       'editedBy': serializer.toJson<String>(editedBy),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -2571,6 +2666,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
     DateTime? date,
     int? amount,
     Value<String?> memo = const Value.absent(),
+    Value<String?> ticker = const Value.absent(),
+    Value<String?> companyName = const Value.absent(),
+    Value<double?> shares = const Value.absent(),
     String? editedBy,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -2580,6 +2678,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
     date: date ?? this.date,
     amount: amount ?? this.amount,
     memo: memo.present ? memo.value : this.memo,
+    ticker: ticker.present ? ticker.value : this.ticker,
+    companyName: companyName.present ? companyName.value : this.companyName,
+    shares: shares.present ? shares.value : this.shares,
     editedBy: editedBy ?? this.editedBy,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -2591,6 +2692,11 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
       date: data.date.present ? data.date.value : this.date,
       amount: data.amount.present ? data.amount.value : this.amount,
       memo: data.memo.present ? data.memo.value : this.memo,
+      ticker: data.ticker.present ? data.ticker.value : this.ticker,
+      companyName: data.companyName.present
+          ? data.companyName.value
+          : this.companyName,
+      shares: data.shares.present ? data.shares.value : this.shares,
       editedBy: data.editedBy.present ? data.editedBy.value : this.editedBy,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -2605,6 +2711,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
           ..write('date: $date, ')
           ..write('amount: $amount, ')
           ..write('memo: $memo, ')
+          ..write('ticker: $ticker, ')
+          ..write('companyName: $companyName, ')
+          ..write('shares: $shares, ')
           ..write('editedBy: $editedBy, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -2619,6 +2728,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
     date,
     amount,
     memo,
+    ticker,
+    companyName,
+    shares,
     editedBy,
     updatedAt,
     deletedAt,
@@ -2632,6 +2744,9 @@ class StockTransfer extends DataClass implements Insertable<StockTransfer> {
           other.date == this.date &&
           other.amount == this.amount &&
           other.memo == this.memo &&
+          other.ticker == this.ticker &&
+          other.companyName == this.companyName &&
+          other.shares == this.shares &&
           other.editedBy == this.editedBy &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -2643,6 +2758,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
   final Value<DateTime> date;
   final Value<int> amount;
   final Value<String?> memo;
+  final Value<String?> ticker;
+  final Value<String?> companyName;
+  final Value<double?> shares;
   final Value<String> editedBy;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -2653,6 +2771,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
     this.date = const Value.absent(),
     this.amount = const Value.absent(),
     this.memo = const Value.absent(),
+    this.ticker = const Value.absent(),
+    this.companyName = const Value.absent(),
+    this.shares = const Value.absent(),
     this.editedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -2664,6 +2785,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
     required DateTime date,
     required int amount,
     this.memo = const Value.absent(),
+    this.ticker = const Value.absent(),
+    this.companyName = const Value.absent(),
+    this.shares = const Value.absent(),
     this.editedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -2678,6 +2802,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
     Expression<DateTime>? date,
     Expression<int>? amount,
     Expression<String>? memo,
+    Expression<String>? ticker,
+    Expression<String>? companyName,
+    Expression<double>? shares,
     Expression<String>? editedBy,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -2689,6 +2816,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
       if (date != null) 'date': date,
       if (amount != null) 'amount': amount,
       if (memo != null) 'memo': memo,
+      if (ticker != null) 'ticker': ticker,
+      if (companyName != null) 'company_name': companyName,
+      if (shares != null) 'shares': shares,
       if (editedBy != null) 'edited_by': editedBy,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -2702,6 +2832,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
     Value<DateTime>? date,
     Value<int>? amount,
     Value<String?>? memo,
+    Value<String?>? ticker,
+    Value<String?>? companyName,
+    Value<double?>? shares,
     Value<String>? editedBy,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -2713,6 +2846,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
       date: date ?? this.date,
       amount: amount ?? this.amount,
       memo: memo ?? this.memo,
+      ticker: ticker ?? this.ticker,
+      companyName: companyName ?? this.companyName,
+      shares: shares ?? this.shares,
       editedBy: editedBy ?? this.editedBy,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -2738,6 +2874,15 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
+    if (ticker.present) {
+      map['ticker'] = Variable<String>(ticker.value);
+    }
+    if (companyName.present) {
+      map['company_name'] = Variable<String>(companyName.value);
+    }
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
+    }
     if (editedBy.present) {
       map['edited_by'] = Variable<String>(editedBy.value);
     }
@@ -2761,6 +2906,9 @@ class StockTransfersCompanion extends UpdateCompanion<StockTransfer> {
           ..write('date: $date, ')
           ..write('amount: $amount, ')
           ..write('memo: $memo, ')
+          ..write('ticker: $ticker, ')
+          ..write('companyName: $companyName, ')
+          ..write('shares: $shares, ')
           ..write('editedBy: $editedBy, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6102,6 +6250,9 @@ typedef $$StockTransfersTableCreateCompanionBuilder =
       required DateTime date,
       required int amount,
       Value<String?> memo,
+      Value<String?> ticker,
+      Value<String?> companyName,
+      Value<double?> shares,
       Value<String> editedBy,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6114,6 +6265,9 @@ typedef $$StockTransfersTableUpdateCompanionBuilder =
       Value<DateTime> date,
       Value<int> amount,
       Value<String?> memo,
+      Value<String?> ticker,
+      Value<String?> companyName,
+      Value<double?> shares,
       Value<String> editedBy,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6151,6 +6305,21 @@ class $$StockTransfersTableFilterComposer
 
   ColumnFilters<String> get memo => $composableBuilder(
     column: $table.memo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ticker => $composableBuilder(
+    column: $table.ticker,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get shares => $composableBuilder(
+    column: $table.shares,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6204,6 +6373,21 @@ class $$StockTransfersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get ticker => $composableBuilder(
+    column: $table.ticker,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get shares => $composableBuilder(
+    column: $table.shares,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get editedBy => $composableBuilder(
     column: $table.editedBy,
     builder: (column) => ColumnOrderings(column),
@@ -6243,6 +6427,17 @@ class $$StockTransfersTableAnnotationComposer
 
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get ticker =>
+      $composableBuilder(column: $table.ticker, builder: (column) => column);
+
+  GeneratedColumn<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
 
   GeneratedColumn<String> get editedBy =>
       $composableBuilder(column: $table.editedBy, builder: (column) => column);
@@ -6292,6 +6487,9 @@ class $$StockTransfersTableTableManager
                 Value<DateTime> date = const Value.absent(),
                 Value<int> amount = const Value.absent(),
                 Value<String?> memo = const Value.absent(),
+                Value<String?> ticker = const Value.absent(),
+                Value<String?> companyName = const Value.absent(),
+                Value<double?> shares = const Value.absent(),
                 Value<String> editedBy = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6302,6 +6500,9 @@ class $$StockTransfersTableTableManager
                 date: date,
                 amount: amount,
                 memo: memo,
+                ticker: ticker,
+                companyName: companyName,
+                shares: shares,
                 editedBy: editedBy,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -6314,6 +6515,9 @@ class $$StockTransfersTableTableManager
                 required DateTime date,
                 required int amount,
                 Value<String?> memo = const Value.absent(),
+                Value<String?> ticker = const Value.absent(),
+                Value<String?> companyName = const Value.absent(),
+                Value<double?> shares = const Value.absent(),
                 Value<String> editedBy = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6324,6 +6528,9 @@ class $$StockTransfersTableTableManager
                 date: date,
                 amount: amount,
                 memo: memo,
+                ticker: ticker,
+                companyName: companyName,
+                shares: shares,
                 editedBy: editedBy,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

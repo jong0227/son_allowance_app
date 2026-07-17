@@ -638,7 +638,10 @@ class OverviewScreen extends ConsumerWidget {
           for (final r in visible)
             Card(
               child: ListTile(
-                leading: Icon(r.type == 'bonus' ? Icons.emoji_events_outlined : Icons.card_giftcard,
+                leading: Icon(
+                    r.type == 'bonus'
+                        ? Icons.emoji_events_outlined
+                        : (r.type == 'stock' ? Icons.request_quote : Icons.card_giftcard),
                     color: palette.special.fg),
                 title: Text(_requestLabel(r)),
                 subtitle: const Text('부모님 확인 대기 중'),
@@ -666,7 +669,10 @@ class OverviewScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
               child: Row(
                 children: [
-                  Icon(r.type == 'bonus' ? Icons.emoji_events : Icons.card_giftcard,
+                  Icon(
+                      r.type == 'bonus'
+                          ? Icons.emoji_events
+                          : (r.type == 'stock' ? Icons.request_quote : Icons.card_giftcard),
                       color: palette.special.fg),
                   const SizedBox(width: 12),
                   Expanded(
@@ -676,7 +682,12 @@ class OverviewScreen extends ConsumerWidget {
                         Text(_requestLabel(r),
                             style: TextStyle(
                                 fontWeight: FontWeight.w700, color: palette.special.fg)),
-                        Text(r.type == 'bonus' ? '승인하면 보너스가 지급돼요' : '승인하면 저축 목표로 등록돼요',
+                        Text(
+                            r.type == 'bonus'
+                                ? '승인하면 보너스가 지급돼요'
+                                : (r.type == 'stock'
+                                    ? '주식이체 탭에서 구매 결과를 입력해요'
+                                    : '승인하면 저축 목표로 등록돼요'),
                             style:
                                 TextStyle(fontSize: 12, color: palette.special.fg.withValues(alpha: 0.85))),
                       ],
@@ -687,11 +698,19 @@ class OverviewScreen extends ConsumerWidget {
                         r, ref.read(settingsProvider).deviceOwner ?? ''),
                     child: const Text('거절'),
                   ),
-                  FilledButton(
-                    onPressed: () => ref.read(databaseProvider).approveRequest(
-                        r, ref.read(settingsProvider).deviceOwner ?? ''),
-                    child: const Text('승인'),
-                  ),
+                  // 주식 요청은 구매 수량/금액 입력이 필요해 주식이체 탭으로 보낸다.
+                  if (r.type == 'stock')
+                    FilledButton(
+                      onPressed: () =>
+                          ref.read(mainTabIndexProvider.notifier).state = 2,
+                      child: const Text('구매하러'),
+                    )
+                  else
+                    FilledButton(
+                      onPressed: () => ref.read(databaseProvider).approveRequest(
+                          r, ref.read(settingsProvider).deviceOwner ?? ''),
+                      child: const Text('승인'),
+                    ),
                 ],
               ),
             ),
@@ -702,6 +721,7 @@ class OverviewScreen extends ConsumerWidget {
 
   String _requestLabel(Request r) {
     if (r.type == 'bonus') return '절약 보너스 ${formatWon(r.amount)} 지급';
+    if (r.type == 'stock') return '주식: ${r.title ?? ''} ${formatWon(r.amount)}어치';
     final price = r.amount > 0 ? ' (${formatWon(r.amount)})' : '';
     return '위시리스트: ${r.title ?? ''}$price';
   }

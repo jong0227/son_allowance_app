@@ -45,8 +45,11 @@ Set-Location "C:\dev\son_allowance_app"
 - 서비스: `lib/services/` — export_import(스마트 병합, 방어적 파싱), notification, backup
 - 공용 위젯: `lib/widgets/` — ui_kit(TagChip/StatTile/SectionHeader), child_avatar, responsive_scaffold
 
-## DB 스키마 (현재 v7)
+## DB 스키마 (현재 v8)
 테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals, AllowanceRates, Requests.
+- v8: StockTransfers에 ticker/companyName/shares 추가(자녀 주식 매수 요청 반영용).
+- 종목 검색: `lib/services/stock_search_service.dart` — 야후 파이낸스 키리스 검색(API키 불필요). 영어명·티커만 가능(한글 미지원)해서 자주 찾는 한국·미국 기업 한글명→영어 별칭表로 보완. 로고는 FMP 이미지 best-effort + 티커 배지 폴백. 검색 UI: `lib/widgets/stock_search.dart`. INTERNET 권한 필요(main manifest에 추가됨).
+- 주식 요청: Request type='stock'(title=회사명, memo=티커, amount=요청 원). 부모가 `fulfillStockRequest`로 실제 매수 금액/수량 입력 → StockTransfer 생성 + 요청 approved. 홈 요청함에선 승인 대신 주식이체 탭으로 유도.
 - 스키마 변경 시: 테이블/컬럼 수정 → `schemaVersion` 증가 → `migration`의 onUpgrade에 addColumn/createTable 추가 → **build_runner 재실행**.
 - 시스템 예약 카테고리: `정기용돈`, `절약보너스`, `이자`, `이월잔액` (`AppDatabase.isSystemCategory`로 판별, 받은사람별 통계에서 제외). 사용자 편집 카테고리와 분리.
 - Requests: 자녀→부모 요청(type='bonus'|'wishlist', status pending/approved/rejected). 승인 시 보너스 수입/저축 목표 자동 생성. 동기화 직렬화에 포함됨.

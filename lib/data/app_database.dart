@@ -72,13 +72,18 @@ class TransactionEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// 주식계좌 이체 이력 (수동 기록형)
+/// 주식계좌 이체 이력 (수동 기록형).
+/// amount = 이 종목 매수에 들어간 금액(원). 종목 정보(ticker/회사명/수량)는 선택.
 class StockTransfers extends Table {
   TextColumn get id => text()();
   TextColumn get childId => text()();
   DateTimeColumn get date => dateTime()();
   IntColumn get amount => integer()();
   TextColumn get memo => text().nullable()();
+  // 매수한 종목 정보(자녀 요청 기반 매수 시 채워짐)
+  TextColumn get ticker => text().nullable()();
+  TextColumn get companyName => text().nullable()();
+  RealColumn get shares => real().nullable()();
   TextColumn get editedBy => text().withDefault(const Constant(''))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -171,7 +176,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -200,6 +205,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             await m.createTable(requests);
+          }
+          if (from < 8) {
+            await m.addColumn(stockTransfers, stockTransfers.ticker);
+            await m.addColumn(stockTransfers, stockTransfers.companyName);
+            await m.addColumn(stockTransfers, stockTransfers.shares);
           }
         },
       );
@@ -862,6 +872,55 @@ class AppDatabase extends _$AppDatabase {
       amount: Value(targetAmount),
       createdBy: Value(createdBy),
       createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  /// 자녀가 "○○ 주식 얼마치 사주세요" 요청.
+  /// title=회사명, memo=티커(symbol), amount=요청 금액(원).
+  Future<void> requestStock(
+      Child child, String companyName, String ticker, int amount, String createdBy) async {
+    final now = DateTime.now();
+    await upsertRequest(RequestsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      type: 'stock',
+      title: Value(companyName),
+      memo: Value(ticker),
+      amount: Value(amount),
+      createdBy: Value(createdBy),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  /// 부모가 주식 요청을 실제 매수하고 결과를 입력해 승인.
+  /// 주식계좌 이체(매수) 내역을 종목 정보와 함께 남기고 요청을 approved 처리한다.
+  Future<void> fulfillStockRequest(
+    Request r, {
+    required int actualAmount,
+    double? shares,
+    String? memo,
+    required String resolvedBy,
+  }) async {
+    final now = DateTime.now();
+    await upsertStockTransfer(StockTransfersCompanion.insert(
+      id: const Uuid().v4(),
+      childId: r.childId,
+      date: now,
+      amount: actualAmount,
+      memo: Value(memo),
+      ticker: Value(r.memo),
+      companyName: Value(r.title),
+      shares: Value(shares),
+      editedBy: Value(resolvedBy),
+      updatedAt: Value(now),
+    ));
+    await (update(requests)..where((t) => t.id.equals(r.id))).write(RequestsCompanion(
+      status: const Value('approved'),
+      resolvedBy: Value(resolvedBy),
+      resolvedAt: Value(now),
+      editedBy: Value(resolvedBy),
       updatedAt: Value(now),
     ));
   }
