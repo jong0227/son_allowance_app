@@ -65,6 +65,18 @@ final allowanceRatesProvider =
   return ref.watch(databaseProvider).watchAllowanceRates(childId);
 });
 
+/// 자녀가 보낸 모든 요청(대기/승인/거절 포함).
+final requestsProvider =
+    StreamProvider.family<List<Request>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchRequests(childId);
+});
+
+/// 대기 중 요청만 (부모 홈 "요청함").
+final pendingRequestsProvider =
+    StreamProvider.family<List<Request>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchPendingRequests(childId);
+});
+
 /// 이번 주기 이자 지급 여부 (childId, period=0주간/1월간)
 final interestGivenProvider =
     FutureProvider.family<bool, ({String childId, int period})>((ref, args) async {

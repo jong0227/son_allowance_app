@@ -33,6 +33,12 @@ class FamilySyncService {
   Stream<SyncStatus> get statusStream => _statusController.stream;
   DateTime? lastSyncedAt;
 
+  /// 부모 암호(해시)를 가족 문서에 실어 다른 기기에도 전파하기 위한 연결고리.
+  /// - readPasscode: 이 기기가 아는 부모 암호를 (hash, salt)로 반환(없으면 null).
+  /// - onRemotePasscode: 원격 문서에서 받은 부모 암호를 이 기기에 반영.
+  (String hash, String salt)? Function()? readPasscode;
+  Future<void> Function(String hash, String salt)? onRemotePasscode;
+
   FamilySyncService(this.db);
 
   String? get familyCode => _familyCode;
@@ -111,6 +117,9 @@ class FamilySyncService {
     _pushDebounce = Timer(const Duration(milliseconds: 1200), () => _pushNow());
   }
 
+  /// 부모 암호를 방금 설정/변경했을 때 등, 데이터 외 변경을 즉시 전파하기 위한 공개 훅.
+  Future<void> pushNow() => _pushNow(force: true);
+
   Future<void> _pushNow({bool force = false}) async {
     final code = _familyCode;
     if (code == null) return;
@@ -118,15 +127,19 @@ class FamilySyncService {
       _statusController.add(SyncStatus.syncing);
       final data = await _io.serializeAll(db, _editedBy);
       final signature = _signatureOf(data);
+      final pass = readPasscode?.call();
       if (!force && signature == _lastSignature) {
         _statusController.add(SyncStatus.idle);
         return;
       }
       await _firestore.collection('families').doc(code).set({
         'data': data,
+        // 부모 암호(해시)를 아는 기기만 실어 보낸다. 모르면 필드를 건드리지 않아
+        // (merge) 기존 암호를 지우지 않는다.
+        if (pass != null) 'parentPasscode': {'hash': pass.$1, 'salt': pass.$2},
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': _editedBy,
-      });
+      }, SetOptions(merge: true));
       _lastSignature = signature;
       lastSyncedAt = DateTime.now();
       _statusController.add(SyncStatus.idle);
@@ -137,6 +150,11 @@ class FamilySyncService {
 
   Future<void> _applyRemote(Map<String, dynamic>? doc) async {
     if (doc == null) return;
+    // 부모 암호는 데이터 변경과 무관하게 항상 먼저 반영(데이터 신호가 같아도 놓치지 않도록).
+    final pass = doc['parentPasscode'];
+    if (pass is Map && pass['hash'] is String && pass['salt'] is String) {
+      await onRemotePasscode?.call(pass['hash'] as String, pass['salt'] as String);
+    }
     final raw = doc['data'];
     if (raw is! Map) return;
     final map = Map<String, dynamic>.from(raw);

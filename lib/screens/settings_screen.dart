@@ -62,27 +62,32 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _showEditChildDialog(context, ref),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
+                if (!settings.isChild)
+                  IconButton(
+                    onPressed: () => _showEditChildDialog(context, ref),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
               ],
             ),
           ),
         ),
 
-        const SectionHeader('시작 잔액'),
-        Card(
-          child: ListTile(
-            leading: Icon(initialBalance != null ? Icons.savings : Icons.savings_outlined),
-            title: Text(initialBalance != null ? formatWon(initialBalance!.amount) : '설정 안 됨'),
-            subtitle: Text(initialBalance != null
-                ? '${formatDate(initialBalance!.date)} 기준 · 앱 쓰기 전부터 모은 용돈'
-                : '이 앱을 쓰기 전부터 모아둔 용돈이 있다면 한 번만 입력해주세요'),
-            trailing: Icon(initialBalance != null ? Icons.edit_outlined : Icons.add_circle_outline),
-            onTap: () => _showInitialBalanceDialog(context, ref, initialBalance),
+        if (!settings.isChild) ...[
+          const SectionHeader('시작 잔액'),
+          Card(
+            child: ListTile(
+              leading: Icon(initialBalance != null ? Icons.savings : Icons.savings_outlined),
+              title:
+                  Text(initialBalance != null ? formatWon(initialBalance!.amount) : '설정 안 됨'),
+              subtitle: Text(initialBalance != null
+                  ? '${formatDate(initialBalance!.date)} 기준 · 앱 쓰기 전부터 모은 용돈'
+                  : '이 앱을 쓰기 전부터 모아둔 용돈이 있다면 한 번만 입력해주세요'),
+              trailing:
+                  Icon(initialBalance != null ? Icons.edit_outlined : Icons.add_circle_outline),
+              onTap: () => _showInitialBalanceDialog(context, ref, initialBalance),
+            ),
           ),
-        ),
+        ],
 
         const SectionHeader('카테고리 관리'),
         Card(
@@ -119,59 +124,60 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
 
-        const SectionHeader('절약 보너스 규칙'),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('절약 보너스 사용'),
-                subtitle: const Text('정해진 요일까지 목표 금액 이상 남기면 보너스 지급'),
-                value: child.bonusEnabled,
-                onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                      id: Value(child.id),
-                      bonusEnabled: Value(v),
-                      updatedAt: Value(DateTime.now()),
-                    )),
-              ),
-              if (child.bonusEnabled)
-                ListTile(
-                  leading: const Icon(Icons.emoji_events_outlined),
-                  title: Text(
-                      '매주 ${weekdayName(child.bonusDayOfWeek)}요일까지 ${formatWon(child.bonusThreshold)} 유지 시'),
-                  subtitle: Text('${formatWon(child.bonusAmount)} 추가 지급'),
-                  trailing: const Icon(Icons.edit_outlined),
-                  onTap: () => _showBonusDialog(context, ref),
+        if (!settings.isChild) ...[
+          const SectionHeader('절약 보너스 규칙'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('절약 보너스 사용'),
+                  subtitle: const Text('정해진 요일까지 목표 금액 이상 남기면 보너스 지급'),
+                  value: child.bonusEnabled,
+                  onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
+                        id: Value(child.id),
+                        bonusEnabled: Value(v),
+                        updatedAt: Value(DateTime.now()),
+                      )),
                 ),
-            ],
+                if (child.bonusEnabled)
+                  ListTile(
+                    leading: const Icon(Icons.emoji_events_outlined),
+                    title: Text(
+                        '매주 ${weekdayName(child.bonusDayOfWeek)}요일까지 ${formatWon(child.bonusThreshold)} 유지 시'),
+                    subtitle: Text('${formatWon(child.bonusAmount)} 추가 지급'),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => _showBonusDialog(context, ref),
+                  ),
+              ],
+            ),
           ),
-        ),
-
-        const SectionHeader('저축 이자 규칙'),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('저축 이자 사용'),
-                subtitle: const Text('잔액에 주기적으로 이자를 붙여 저축을 장려해요'),
-                value: child.interestEnabled,
-                onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                      id: Value(child.id),
-                      interestEnabled: Value(v),
-                      updatedAt: Value(DateTime.now()),
-                    )),
-              ),
-              if (child.interestEnabled)
-                ListTile(
-                  leading: const Icon(Icons.percent),
-                  title: Text(
-                      '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${child.interestPercent}% 이자'),
-                  subtitle: const Text('홈에서 원버튼으로 지급'),
-                  trailing: const Icon(Icons.edit_outlined),
-                  onTap: () => _showInterestDialog(context, ref),
+          const SectionHeader('저축 이자 규칙'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('저축 이자 사용'),
+                  subtitle: const Text('잔액에 주기적으로 이자를 붙여 저축을 장려해요'),
+                  value: child.interestEnabled,
+                  onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
+                        id: Value(child.id),
+                        interestEnabled: Value(v),
+                        updatedAt: Value(DateTime.now()),
+                      )),
                 ),
-            ],
+                if (child.interestEnabled)
+                  ListTile(
+                    leading: const Icon(Icons.percent),
+                    title: Text(
+                        '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${child.interestPercent}% 이자'),
+                    subtitle: const Text('홈에서 원버튼으로 지급'),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => _showInterestDialog(context, ref),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
 
         const SectionHeader('실시간 자동 동기화'),
         Card(
@@ -310,25 +316,132 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
 
+        if (!settings.isChild) ...[
+          const SectionHeader('부모 암호'),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.shield_outlined),
+              title: Text(settings.hasParentPasscode ? '부모 암호 변경' : '부모 암호 설정'),
+              subtitle: Text(settings.hasParentPasscode
+                  ? '아이 폰에서 부모 모드로 못 들어가게 막아요'
+                  : '설정하면 아이가 부모 모드로 전환할 수 없어요 (권장)'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showSetParentPasscodeDialog(context, ref),
+            ),
+          ),
+        ],
+
         const SectionHeader('현재 기기 사용자'),
         Card(
           child: ListTile(
             title: Text(settings.deviceOwner ?? '미설정'),
-            subtitle: const Text('내역 기록 시 "누가 입력했는지" 표시에 사용돼요.'),
+            subtitle: Text(settings.isChild
+                ? '자녀 모드예요. 부모 모드로 바꾸려면 부모 암호가 필요해요.'
+                : '내역 기록 시 "누가 입력했는지" 표시에 사용돼요.'),
             trailing: DropdownButton<String>(
               value: settings.deviceOwner,
               underline: const SizedBox.shrink(),
               items: const [
                 DropdownMenuItem(value: '아빠', child: Text('아빠')),
                 DropdownMenuItem(value: '엄마', child: Text('엄마')),
+                DropdownMenuItem(value: '아들', child: Text('아들')),
               ],
-              onChanged: (v) {
-                if (v != null) ref.read(settingsProvider.notifier).setDeviceOwner(v);
-              },
+              onChanged: (v) => _handleRoleChange(context, ref, settings, v),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// 역할 전환. 자녀→부모(아빠/엄마)로 갈 때만 부모 암호를 요구한다.
+  /// 암호가 설정돼 있지 않으면(초기) 부모가 아직 안 정한 것이므로 통과시키되 안내한다.
+  Future<void> _handleRoleChange(
+      BuildContext context, WidgetRef ref, AppSettings settings, String? v) async {
+    if (v == null || v == settings.deviceOwner) return;
+    final toParent = v == '아빠' || v == '엄마';
+    if (toParent && settings.isChild && settings.hasParentPasscode) {
+      final ok = await _promptParentPasscode(context, ref);
+      if (!ok) return;
+    }
+    await ref.read(settingsProvider.notifier).setDeviceOwner(v);
+  }
+
+  /// 부모 암호 입력을 받아 검증. 맞으면 true.
+  Future<bool> _promptParentPasscode(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('부모 암호 입력'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          maxLength: 6,
+          decoration: const InputDecoration(labelText: '부모 암호'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          FilledButton(
+            onPressed: () {
+              final ok = ref.read(settingsProvider.notifier).verifyParentPasscode(controller.text);
+              Navigator.pop(context, ok);
+              if (!ok && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('암호가 맞지 않아요.')));
+              }
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _showSetParentPasscodeDialog(BuildContext context, WidgetRef ref) {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('부모 암호 설정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('아이 폰에서 부모 모드로 전환하려면 이 암호가 필요해요. '
+                '가족 동기화로 다른 부모 폰에도 자동 적용됩니다.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pinController,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              maxLength: 6,
+              decoration: const InputDecoration(labelText: '4~6자리 숫자'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              if (pinController.text.length < 4) return;
+              await ref.read(settingsProvider.notifier).setParentPasscode(pinController.text);
+              // 즉시 가족 문서로 전파(다른 폰/아이 폰에 반영)
+              final sync = ref.read(familySyncServiceProvider);
+              if (sync.isActive) await sync.pushNow();
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('부모 암호를 설정했어요.')));
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
     );
   }
 

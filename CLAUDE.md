@@ -45,10 +45,11 @@ Set-Location "C:\dev\son_allowance_app"
 - 서비스: `lib/services/` — export_import(스마트 병합, 방어적 파싱), notification, backup
 - 공용 위젯: `lib/widgets/` — ui_kit(TagChip/StatTile/SectionHeader), child_avatar, responsive_scaffold
 
-## DB 스키마 (현재 v6)
-테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals, AllowanceRates.
+## DB 스키마 (현재 v7)
+테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals, AllowanceRates, Requests.
 - 스키마 변경 시: 테이블/컬럼 수정 → `schemaVersion` 증가 → `migration`의 onUpgrade에 addColumn/createTable 추가 → **build_runner 재실행**.
-- 시스템 예약 카테고리: `정기용돈`, `절약보너스`, `이자` (사용자 편집 카테고리와 분리).
+- 시스템 예약 카테고리: `정기용돈`, `절약보너스`, `이자`, `이월잔액` (`AppDatabase.isSystemCategory`로 판별, 받은사람별 통계에서 제외). 사용자 편집 카테고리와 분리.
+- Requests: 자녀→부모 요청(type='bonus'|'wishlist', status pending/approved/rejected). 승인 시 보너스 수입/저축 목표 자동 생성. 동기화 직렬화에 포함됨.
 
 ## 주요 기능
 - 정기 용돈 (v1.4 개편): 마지막 지급일 이후 매주 지급일마다 일정 백필 → 못 준 주는 "밀린 용돈"으로 표시(홈 요약 + 내역 탭). 개별/일괄 지급, "건너뛰기"(영구 제외, 소프트 삭제) 가능. 밀린 지급 시 내역 메모에 원래 예정일 기록. 같은 날짜 중복 일정은 자동 정리(동기화 안전). 지급요일 변경 시 미래 예정만 이동, 밀린 건 유지. 백필 최대 12건. 로직 테스트: `test/schedule_logic_test.dart`. 지급/취소 가능(연결된 정기용돈 내역 삭제 = 지급 취소).
@@ -60,6 +61,8 @@ Set-Location "C:\dev\son_allowance_app"
 - Export/Import: 전체 데이터 JSON + 사람이 읽는 요약 txt. id+updatedAt 기준 스마트 병합. 방어적 파싱(구버전 백업도 호환). avatarPath는 기기 로컬이라 동기화 제외.
 - **실시간 자동 동기화 (Firebase)**: `lib/services/sync_service.dart`. Firestore 프로젝트 `kids-allowance-48c8e`, 문서 하나(`families/{6자리코드}`)에 `serializeAll()` 결과를 통째로 저장하는 방식(테이블별 서브컬렉션 아님). 익명 로그인(firebase_auth) + `db.tableUpdates()` 구독으로 로컬 변경 시 자동 업로드(디바운스 1.2s), Firestore `snapshots()` 구독으로 원격 변경 자동 병합. 기존 Export/Import의 id+updatedAt 병합 로직(`ExportImportService.previewImportData/applyImport`)을 그대로 재사용. 신호값(정렬된 JSON 문자열) 비교로 자기 자신이 올린 변경의 반향을 걸러냄. Firestore 보안 규칙: `request.auth != null`만 요구(가족 코드가 사실상의 비밀번호 역할). google-services.json은 공개 저장소에 커밋됨(Firebase 클라이언트 설정은 비밀 아님, 실제 보안은 Rules가 담당 — Google 공식 가이드).
 - 앱 잠금(PIN/생체), 다크모드, 폴드/플립 반응형.
+- **자녀 모드(deviceOwner='아들')**: 온보딩에서 아들 선택 시 가족 코드로 join. 지급/승인/규칙편집/이체추가/시작잔액 UI 숨김(`AppSettings.isChild`). 본인 지출 기록·잔액/통계 조회·보너스 요청·위시리스트 요청 가능. 부모 홈에 "요청함"(승인/거절), 자녀 홈에 "내 요청".
+- **부모 암호(parentPasscode)**: 자녀가 부모 모드로 전환하는 걸 막는 4~6자리 암호. 해시(hash+salt)만 보관하고 가족 Firestore 문서 top-level `parentPasscode` 필드로 전파(child도 해시만 받아 검증만 가능, 원문은 모름). 설정 > 부모 암호에서 설정, 즉시 `sync.pushNow()`로 전파. 미설정 상태면 전환 허용(초기).
 
 ## 주의사항 / 함정
 - OneDrive 폴더에서 빌드 금지(파일 잠금 에러). 이 프로젝트는 이미 `C:\dev`로 이동함.

@@ -26,13 +26,15 @@ class OverviewScreen extends ConsumerWidget {
     final goalsAsync = ref.watch(goalsProvider(child.id));
     final palette = appPalette(context);
     final balanceNow = summaryAsync.valueOrNull?['balance'] ?? 0;
+    final isChild = ref.watch(settingsProvider).isChild;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(summaryProvider(child.id)),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          _buildBackupReminder(context, ref),
+          if (!isChild) _buildBackupReminder(context, ref),
+          _buildRequestsSection(context, ref, isChild),
           summaryAsync.when(
             loading: () => const _LoadingBox(height: 150),
             error: (e, _) => Text('오류: $e'),
@@ -93,8 +95,8 @@ class OverviewScreen extends ConsumerWidget {
                   ],
                   const SizedBox(height: 8),
                   _SavingsRateCard(income: income, expense: expense, savings: savings, rate: rate),
-                  _buildBonus(context, ref, balance),
-                  _buildInterest(context, ref, balance),
+                  _buildBonus(context, ref, balance, isChild),
+                  if (!isChild) _buildInterest(context, ref, balance),
                 ],
               );
             },
@@ -161,11 +163,13 @@ class OverviewScreen extends ConsumerWidget {
                             style: const TextStyle(fontWeight: FontWeight.w700)),
                         subtitle: Text(
                             '${formatDate(s.scheduledDate)} · ${s.isPaid ? '지급 완료' : '지급 예정'}'),
-                        trailing: s.isPaid
-                            ? TextButton(
-                                onPressed: () => _undoPay(ref, s), child: const Text('취소'))
-                            : FilledButton(
-                                onPressed: () => _payNow(ref, s), child: const Text('지급')),
+                        trailing: isChild
+                            ? null
+                            : (s.isPaid
+                                ? TextButton(
+                                    onPressed: () => _undoPay(ref, s), child: const Text('취소'))
+                                : FilledButton(
+                                    onPressed: () => _payNow(ref, s), child: const Text('지급'))),
                       ),
                     ),
                 ],
@@ -178,18 +182,24 @@ class OverviewScreen extends ConsumerWidget {
             data: (txs) => _WeeklyBudgetCard(
                 txs: txs, weeklyBudget: child.weeklyAllowanceDefault),
           ),
-          SectionHeader('저축 목표',
+          SectionHeader(isChild ? '갖고 싶은 것 (위시리스트)' : '저축 목표',
               trailing: IconButton(
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.add_circle_outline),
-                onPressed: () => _showGoalDialog(context, ref),
+                tooltip: isChild ? '부모님께 요청' : '목표 추가',
+                onPressed: () => isChild
+                    ? _showWishlistRequestDialog(context, ref)
+                    : _showGoalDialog(context, ref),
               )),
           goalsAsync.when(
             loading: () => const _LoadingBox(height: 64),
             error: (e, _) => Text('오류: $e'),
             data: (goals) {
               if (goals.isEmpty) {
-                return const _MutedCard(text: '갖고 싶은 것을 목표로 등록해보세요. (+ 버튼)');
+                return _MutedCard(
+                    text: isChild
+                        ? '갖고 싶은 게 있으면 + 버튼으로 부모님께 요청해보세요.'
+                        : '갖고 싶은 것을 목표로 등록해보세요. (+ 버튼)');
               }
               return Column(
                 children: [
@@ -197,7 +207,7 @@ class OverviewScreen extends ConsumerWidget {
                     _GoalCard(
                       goal: g,
                       balance: balanceNow,
-                      onEdit: () => _showGoalDialog(context, ref, existing: g),
+                      onEdit: isChild ? null : () => _showGoalDialog(context, ref, existing: g),
                     ),
                 ],
               );
@@ -439,13 +449,19 @@ class OverviewScreen extends ConsumerWidget {
   /// - 기준일 당일 이후 + 목표 달성: 축하 + 원버튼 지급
   /// - 기준일 이전: 목표 유지 안내 + 진행바
   /// - 기준일 지남 + 미달: 이번 주 미달 안내
-  Widget _buildBonus(BuildContext context, WidgetRef ref, int balance) {
+  Widget _buildBonus(BuildContext context, WidgetRef ref, int balance, bool isChild) {
     if (!child.bonusEnabled) return const SizedBox.shrink();
     final palette = appPalette(context);
     final scheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
     final dayName = weekdayName(child.bonusDayOfWeek);
     final given = ref.watch(bonusGivenThisWeekProvider(child.id)).valueOrNull ?? false;
+    // 자녀 모드: 이미 보낸 대기 중 보너스 요청이 있으면 버튼 대신 "요청함" 표시
+    final pendingBonusReq = ref
+            .watch(requestsProvider(child.id))
+            .valueOrNull
+            ?.any((r) => r.type == 'bonus' && r.status == 'pending') ??
+        false;
     final progress =
         child.bonusThreshold == 0 ? 1.0 : (balance / child.bonusThreshold).clamp(0.0, 1.0);
     final dayReached = now.weekday >= child.bonusDayOfWeek;
@@ -482,10 +498,20 @@ class OverviewScreen extends ConsumerWidget {
       icon = Icons.emoji_events;
       title = '절약 목표 달성! 🎉';
       sub = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 이상 유지했어요.';
-      trailing = FilledButton(
-        onPressed: () => _giveBonus(ref),
-        child: Text('보너스 ${formatWon(child.bonusAmount)}'),
-      );
+      if (isChild) {
+        // 자녀: 직접 지급 대신 부모에게 요청
+        trailing = pendingBonusReq
+            ? const Chip(label: Text('요청함'))
+            : FilledButton(
+                onPressed: () => _requestBonus(context, ref),
+                child: const Text('보너스 요청'),
+              );
+      } else {
+        trailing = FilledButton(
+          onPressed: () => _giveBonus(ref),
+          child: Text('보너스 ${formatWon(child.bonusAmount)}'),
+        );
+      }
     } else if (!dayReached) {
       bg = palette.allowance.bg;
       fg = palette.allowance.fg;
@@ -541,6 +567,143 @@ class OverviewScreen extends ConsumerWidget {
   Future<void> _giveBonus(WidgetRef ref) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
     await ref.read(databaseProvider).giveSavingsBonus(child, owner);
+  }
+
+  // ---------- 자녀 요청 ----------
+  Future<void> _requestBonus(BuildContext context, WidgetRef ref) async {
+    final ok = await ref.read(databaseProvider).requestBonus(child, '아들');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok ? '부모님께 보너스를 요청했어요.' : '이미 요청한 보너스가 있어요.')));
+    }
+  }
+
+  void _showWishlistRequestDialog(BuildContext context, WidgetRef ref) {
+    final titleController = TextEditingController();
+    final amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('갖고 싶은 것 요청'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: '갖고 싶은 것', hintText: '예: 레고 세트'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: '가격(원)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              final title = titleController.text.trim();
+              final amount = int.tryParse(amountController.text) ?? 0;
+              if (title.isEmpty) return;
+              await ref.read(databaseProvider).requestWishlist(child, title, amount, '아들');
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('부모님께 요청했어요.')));
+              }
+            },
+            child: const Text('요청'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 요청 섹션.
+  /// - 부모: 대기 중 요청을 승인/거절.
+  /// - 자녀: 내가 보낸 요청의 상태를 확인(대기 중이면 취소 가능).
+  Widget _buildRequestsSection(BuildContext context, WidgetRef ref, bool isChild) {
+    final palette = appPalette(context);
+    if (isChild) {
+      final reqs = ref.watch(requestsProvider(child.id)).valueOrNull ?? const [];
+      final visible = reqs.where((r) => r.status == 'pending').toList();
+      if (visible.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionHeader('내 요청'),
+          for (final r in visible)
+            Card(
+              child: ListTile(
+                leading: Icon(r.type == 'bonus' ? Icons.emoji_events_outlined : Icons.card_giftcard,
+                    color: palette.special.fg),
+                title: Text(_requestLabel(r)),
+                subtitle: const Text('부모님 확인 대기 중'),
+                trailing: TextButton(
+                  onPressed: () =>
+                      ref.read(databaseProvider).cancelRequest(r.id, '아들'),
+                  child: const Text('취소'),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    // 부모
+    final pending = ref.watch(pendingRequestsProvider(child.id)).valueOrNull ?? const [];
+    if (pending.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader('${child.name}의 요청 ${pending.length}건'),
+        for (final r in pending)
+          Card(
+            color: palette.special.bg,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+              child: Row(
+                children: [
+                  Icon(r.type == 'bonus' ? Icons.emoji_events : Icons.card_giftcard,
+                      color: palette.special.fg),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_requestLabel(r),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, color: palette.special.fg)),
+                        Text(r.type == 'bonus' ? '승인하면 보너스가 지급돼요' : '승인하면 저축 목표로 등록돼요',
+                            style:
+                                TextStyle(fontSize: 12, color: palette.special.fg.withValues(alpha: 0.85))),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => ref.read(databaseProvider).rejectRequest(
+                        r, ref.read(settingsProvider).deviceOwner ?? ''),
+                    child: const Text('거절'),
+                  ),
+                  FilledButton(
+                    onPressed: () => ref.read(databaseProvider).approveRequest(
+                        r, ref.read(settingsProvider).deviceOwner ?? ''),
+                    child: const Text('승인'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _requestLabel(Request r) {
+    if (r.type == 'bonus') return '절약 보너스 ${formatWon(r.amount)} 지급';
+    final price = r.amount > 0 ? ' (${formatWon(r.amount)})' : '';
+    return '위시리스트: ${r.title ?? ''}$price';
   }
 
   /// 저축 이자 카드 (원버튼 지급). 규칙이 켜져 있을 때만 표시.
@@ -1008,8 +1171,8 @@ class _WeeklyBudgetCard extends StatelessWidget {
 class _GoalCard extends StatelessWidget {
   final Goal goal;
   final int balance;
-  final VoidCallback onEdit;
-  const _GoalCard({required this.goal, required this.balance, required this.onEdit});
+  final VoidCallback? onEdit;
+  const _GoalCard({required this.goal, required this.balance, this.onEdit});
 
   @override
   Widget build(BuildContext context) {

@@ -81,12 +81,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final period = ref.watch(_periodProvider);
     final query = ref.watch(_queryProvider).trim();
     final palette = appPalette(context);
+    final isChild = ref.watch(settingsProvider).isChild;
 
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         children: [
-          // 밀린 용돈(지난 미지급) + 지급할 용돈(예정)
+          // 밀린 용돈(지난 미지급) + 지급할 용돈(예정) — 지급은 부모만 하므로 자녀 모드에선 숨김
+          if (isChild)
+            const SizedBox.shrink()
+          else
           schedulesAsync.maybeWhen(
             orElse: () => const SizedBox.shrink(),
             data: (schedules) {
@@ -244,9 +248,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddSheet,
+        // 자녀 모드: 본인 지출만 기록. 특별 수입(받은 용돈)은 부모가 입력.
+        onPressed: isChild ? _showExpenseSheet : _showAddSheet,
         icon: const Icon(Icons.add),
-        label: const Text('추가'),
+        label: Text(isChild ? '지출 기록' : '추가'),
       ),
     );
   }

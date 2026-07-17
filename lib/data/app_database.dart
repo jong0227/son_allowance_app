@@ -130,6 +130,30 @@ class AllowanceRates extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 자녀가 부모에게 보내는 요청. 자녀 모드에서 생성하고, 부모 모드에서 승인/거절한다.
+/// - type='bonus': 절약 보너스 지급 요청 (amount = 보너스 금액)
+/// - type='wishlist': 위시리스트(저축 목표) 등록 요청 (title=품목, amount=목표금액)
+/// 승인 시 각각 보너스 수입 내역 / 저축 목표가 자동 생성된다.
+class Requests extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get type => text()(); // 'bonus' | 'wishlist'
+  TextColumn get title => text().nullable()();
+  IntColumn get amount => integer().withDefault(const Constant(0))();
+  TextColumn get memo => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending|approved|rejected
+  TextColumn get createdBy => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get resolvedBy => text().nullable()();
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+  TextColumn get editedBy => text().withDefault(const Constant(''))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Children,
@@ -139,6 +163,7 @@ class AllowanceRates extends Table {
     ChangeLogs,
     Goals,
     AllowanceRates,
+    Requests,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -146,7 +171,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -172,6 +197,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(children, children.interestEnabled);
             await m.addColumn(children, children.interestPercent);
             await m.addColumn(children, children.interestPeriod);
+          }
+          if (from < 7) {
+            await m.createTable(requests);
           }
         },
       );
@@ -701,6 +729,119 @@ class AppDatabase extends _$AppDatabase {
       ));
 
   Future<List<Goal>> allGoalsRaw() => select(goals).get();
+
+  // ---------------- 자녀 요청 (보너스/위시리스트) ----------------
+  Stream<List<Request>> watchRequests(String childId) => (select(requests)
+        ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+      .watch();
+
+  /// 대기 중(pending) 요청만. 부모 홈 화면의 "요청함"에 표시.
+  Stream<List<Request>> watchPendingRequests(String childId) => (select(requests)
+        ..where((t) =>
+            t.childId.equals(childId) &
+            t.deletedAt.isNull() &
+            t.status.equals('pending'))
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+      .watch();
+
+  Future<void> upsertRequest(RequestsCompanion r) =>
+      into(requests).insertOnConflictUpdate(r);
+
+  Future<List<Request>> allRequestsRaw() => select(requests).get();
+
+  /// 자녀가 보너스 지급을 요청. 이미 대기 중인 보너스 요청이 있으면 중복 생성하지 않는다.
+  Future<bool> requestBonus(Child child, String createdBy) async {
+    final pending = await (select(requests)
+          ..where((t) =>
+              t.childId.equals(child.id) &
+              t.deletedAt.isNull() &
+              t.type.equals('bonus') &
+              t.status.equals('pending')))
+        .get();
+    if (pending.isNotEmpty) return false;
+    final now = DateTime.now();
+    await upsertRequest(RequestsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      type: 'bonus',
+      amount: Value(child.bonusAmount),
+      memo: const Value('절약 보너스 지급 요청'),
+      createdBy: Value(createdBy),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    return true;
+  }
+
+  /// 자녀가 위시리스트(저축 목표) 등록을 요청.
+  Future<void> requestWishlist(
+      Child child, String title, int targetAmount, String createdBy) async {
+    final now = DateTime.now();
+    await upsertRequest(RequestsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      type: 'wishlist',
+      title: Value(title),
+      amount: Value(targetAmount),
+      createdBy: Value(createdBy),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  /// 부모가 요청을 승인. 승인하면 자동으로 반영된다:
+  /// - bonus: 절약보너스 수입 내역 생성
+  /// - wishlist: 저축 목표 생성
+  Future<void> approveRequest(Request r, String resolvedBy) async {
+    final now = DateTime.now();
+    if (r.type == 'bonus') {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: r.childId,
+        date: now,
+        flow: 'income',
+        category: kSavingsBonus,
+        amount: r.amount,
+        memo: const Value('자녀 요청 승인 보너스'),
+        editedBy: Value(resolvedBy),
+        updatedAt: Value(now),
+      ));
+    } else if (r.type == 'wishlist') {
+      await upsertGoal(GoalsCompanion.insert(
+        id: const Uuid().v4(),
+        childId: r.childId,
+        title: r.title ?? '위시리스트',
+        targetAmount: r.amount,
+        editedBy: Value(resolvedBy),
+        updatedAt: Value(now),
+      ));
+    }
+    await (update(requests)..where((t) => t.id.equals(r.id))).write(RequestsCompanion(
+      status: const Value('approved'),
+      resolvedBy: Value(resolvedBy),
+      resolvedAt: Value(now),
+      editedBy: Value(resolvedBy),
+      updatedAt: Value(now),
+    ));
+  }
+
+  Future<void> rejectRequest(Request r, String resolvedBy) =>
+      (update(requests)..where((t) => t.id.equals(r.id))).write(RequestsCompanion(
+        status: const Value('rejected'),
+        resolvedBy: Value(resolvedBy),
+        resolvedAt: Value(DateTime.now()),
+        editedBy: Value(resolvedBy),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+  /// 자녀가 아직 처리되지 않은 자기 요청을 취소(소프트 삭제).
+  Future<void> cancelRequest(String id, String editedBy) =>
+      (update(requests)..where((t) => t.id.equals(id))).write(RequestsCompanion(
+        deletedAt: Value(DateTime.now()),
+        editedBy: Value(editedBy),
+        updatedAt: Value(DateTime.now()),
+      ));
 
   // ---------------- 용돈 변경 이력 ----------------
   Stream<List<AllowanceRate>> watchAllowanceRates(String childId) => (select(allowanceRates)

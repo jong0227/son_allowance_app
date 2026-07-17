@@ -15,6 +15,7 @@ class StockTransferScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transfersAsync = ref.watch(stockTransfersProvider(child.id));
     final summaryAsync = ref.watch(summaryProvider(child.id));
+    final isChild = ref.watch(settingsProvider).isChild;
 
     return Scaffold(
       body: ListView(
@@ -66,11 +67,14 @@ class StockTransferScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddTransferDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('이체 기록 추가'),
-      ),
+      // 주식계좌 이체 기록은 부모만 추가할 수 있다(자녀 모드에선 이력만 조회).
+      floatingActionButton: isChild
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showAddTransferDialog(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('이체 기록 추가'),
+            ),
     );
   }
 

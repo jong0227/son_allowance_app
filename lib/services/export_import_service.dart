@@ -40,6 +40,7 @@ class ExportImportService {
     final transfers = await db.allStockTransfersRaw();
     final goals = await db.allGoalsRaw();
     final rates = await db.allAllowanceRatesRaw();
+    final reqs = await db.allRequestsRaw();
 
     return {
       'version': dataFormatVersion,
@@ -51,6 +52,7 @@ class ExportImportService {
       'stockTransfers': transfers.map(_transferToJson).toList(),
       'goals': goals.map(_goalToJson).toList(),
       'allowanceRates': rates.map(_rateToJson).toList(),
+      'requests': reqs.map(_requestToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -166,6 +168,8 @@ class ExportImportService {
     await diff('goals', db.allGoalsRaw, (Goal g) => g.id, (Goal g) => g.updatedAt);
     await diff('allowanceRates', db.allAllowanceRatesRaw, (AllowanceRate r) => r.id,
         (AllowanceRate r) => r.updatedAt);
+    await diff('requests', db.allRequestsRaw, (Request r) => r.id,
+        (Request r) => r.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -214,6 +218,8 @@ class ExportImportService {
         (row) => db.upsertGoal(_goalFromJson(row)));
     await merge('allowanceRates', db.allAllowanceRatesRaw, (AllowanceRate r) => r.id,
         (r) => r.updatedAt, (row) => db.upsertAllowanceRate(_rateFromJson(row)));
+    await merge('requests', db.allRequestsRaw, (Request r) => r.id, (r) => r.updatedAt,
+        (row) => db.upsertRequest(_requestFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -410,6 +416,43 @@ class ExportImportService {
       childId: _str(j['childId']),
       amount: _int(j['amount']),
       changedAt: Value(_dtOr(j['changedAt'], now)),
+      editedBy: Value(_str(j['editedBy'])),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _requestToJson(Request r) => {
+        'id': r.id,
+        'childId': r.childId,
+        'type': r.type,
+        'title': r.title,
+        'amount': r.amount,
+        'memo': r.memo,
+        'status': r.status,
+        'createdBy': r.createdBy,
+        'createdAt': r.createdAt.toIso8601String(),
+        'resolvedBy': r.resolvedBy,
+        'resolvedAt': r.resolvedAt?.toIso8601String(),
+        'editedBy': r.editedBy,
+        'updatedAt': r.updatedAt.toIso8601String(),
+        'deletedAt': r.deletedAt?.toIso8601String(),
+      };
+
+  RequestsCompanion _requestFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return RequestsCompanion.insert(
+      id: _str(j['id']),
+      childId: _str(j['childId']),
+      type: _str(j['type'], 'bonus'),
+      title: Value(_strn(j['title'])),
+      amount: Value(_int(j['amount'])),
+      memo: Value(_strn(j['memo'])),
+      status: Value(_str(j['status'], 'pending')),
+      createdBy: Value(_str(j['createdBy'])),
+      createdAt: Value(_dtOr(j['createdAt'], now)),
+      resolvedBy: Value(_strn(j['resolvedBy'])),
+      resolvedAt: Value(_dt(j['resolvedAt'])),
       editedBy: Value(_str(j['editedBy'])),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
