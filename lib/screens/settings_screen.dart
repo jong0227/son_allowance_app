@@ -16,6 +16,7 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/ui_kit.dart';
+import 'allowance_history_screen.dart';
 
 const _exportImportService = ExportImportService();
 
@@ -242,13 +243,28 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
 
-        const SectionHeader('용돈 변경 이력'),
+        const SectionHeader('용돈 이력'),
         Card(
-          child: ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text('기본 용돈 변경 이력 보기'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showRateHistory(context, ref),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.event_available),
+                title: const Text('정기 용돈 지급 이력'),
+                subtitle: const Text('지급일별 지급/미지급 + 기간별 합계'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => AllowanceHistoryScreen(child: child),
+                )),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.trending_up),
+                title: const Text('기본 용돈 변경 이력'),
+                subtitle: const Text('기본 용돈 금액을 언제 얼마로 바꿨는지'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showRateHistory(context, ref),
+              ),
+            ],
           ),
         ),
 

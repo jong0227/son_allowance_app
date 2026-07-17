@@ -760,7 +760,18 @@ class AppDatabase extends _$AppDatabase {
     };
   }
 
-  /// 받은 사람별 특별 수입 합계 (정기용돈/보너스 등 준 사람 없는 수입은 제외)
+  /// 시스템 예약 카테고리(정기용돈/절약보너스/이자/이월잔액)인지 여부.
+  /// 이들은 "특별수입"이 아니므로 받은사람별 통계에서 제외한다.
+  static bool isSystemCategory(String category) =>
+      category == kRegularAllowance ||
+      category == kSavingsBonus ||
+      category == kInterest ||
+      category == kInitialBalance;
+
+  /// 받은 사람별 특별 수입 합계.
+  /// 정기용돈/절약보너스/이자/이월잔액 같은 시스템 수입은 특별수입이 아니므로 제외한다.
+  /// (예전엔 giver 값 유무로만 걸렀는데, 정기용돈 내역을 편집하면 giver가
+  ///  실수로 붙어 통계에 잡히던 문제가 있어 카테고리로도 명시적으로 거른다.)
   Future<Map<String, int>> incomeByGiver(String childId) async {
     final txs = await (select(transactionEntries)
           ..where((t) =>
@@ -768,6 +779,7 @@ class AppDatabase extends _$AppDatabase {
         .get();
     final map = <String, int>{};
     for (final t in txs) {
+      if (isSystemCategory(t.category)) continue;
       final g = t.giver;
       if (g == null || g.isEmpty) continue;
       map[g] = (map[g] ?? 0) + t.amount;

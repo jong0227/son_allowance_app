@@ -395,10 +395,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final base = isIncome ? settings.incomeCategories : settings.expenseCategories;
     // 현재 카테고리(정기용돈/절약보너스 등 목록에 없는 것 포함)를 선택지에 넣어준다.
     final cats = base.contains(t.category) ? base : [t.category, ...base];
+    // 정기용돈/보너스/이자/이월잔액 같은 시스템 수입은 "받은 사람"이 없다.
+    // 여기에 giver를 붙이면 특별수입 통계에 잘못 잡히므로 giver 선택을 아예 숨긴다.
+    final showGiver = isIncome && !AppDatabase.isSystemCategory(t.category);
     _showEntrySheet(
       flow: t.flow,
       categories: cats,
-      givers: isIncome ? [...settings.givers, '기타'] : null,
+      givers: showGiver ? [...settings.givers, '기타'] : null,
       existing: t,
     );
   }
