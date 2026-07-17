@@ -105,37 +105,70 @@ class OverviewScreen extends ConsumerWidget {
             error: (e, _) => Text('오류: $e'),
             data: (schedules) {
               final now = DateTime.now();
-              final within = schedules
-                  .where((s) => s.scheduledDate.difference(now).inDays.abs() <= 7)
-                  .toList();
-              final unpaid = within.where((s) => !s.isPaid).toList()
+              final today = DateTime(now.year, now.month, now.day);
+              bool isPastDay(DateTime d) =>
+                  DateTime(d.year, d.month, d.day).isBefore(today);
+              // 밀린 용돈(지난 미지급) 요약 — 내역 탭에서 지급/건너뛰기 처리
+              final overdueList =
+                  schedules.where((s) => !s.isPaid && isPastDay(s.scheduledDate)).toList();
+              final overdueSum =
+                  overdueList.fold<int>(0, (a, b) => a + b.amount);
+              // 이번 주 카드: 오늘 이후 첫 미지급 예정, 없으면 최근 지급 완료
+              final upcoming = schedules
+                  .where((s) => !s.isPaid && !isPastDay(s.scheduledDate))
+                  .toList()
                 ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-              final paid = within.where((s) => s.isPaid).toList()
+              final paid = schedules
+                  .where((s) =>
+                      s.isPaid && s.scheduledDate.difference(now).inDays.abs() <= 7)
+                  .toList()
                 ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-              final s = unpaid.isNotEmpty
-                  ? unpaid.first
+              final s = upcoming.isNotEmpty
+                  ? upcoming.first
                   : (paid.isNotEmpty ? paid.first : null);
-              if (s == null) {
-                return const _MutedCard(text: '지급 요일이 되면 자동으로 일정이 만들어져요.');
-              }
-              final overdue = !s.isPaid && s.scheduledDate.isBefore(now);
-              final pair =
-                  s.isPaid ? palette.income : (overdue ? palette.expense : palette.allowance);
-              return Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  leading: CircleAvatar(
-                    backgroundColor: pair.bg,
-                    child: Icon(s.isPaid ? Icons.check_rounded : Icons.schedule, color: pair.fg),
-                  ),
-                  title: Text(formatWon(s.amount),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(
-                      '${formatDate(s.scheduledDate)} · ${s.isPaid ? '지급 완료' : (overdue ? '미지급' : '지급 예정')}'),
-                  trailing: s.isPaid
-                      ? TextButton(onPressed: () => _undoPay(ref, s), child: const Text('취소'))
-                      : FilledButton(onPressed: () => _payNow(ref, s), child: const Text('지급')),
-                ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (overdueList.isNotEmpty)
+                    Card(
+                      child: ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        leading: CircleAvatar(
+                          backgroundColor: palette.expense.bg,
+                          child: Icon(Icons.history, color: palette.expense.fg),
+                        ),
+                        title: Text(
+                            '밀린 용돈 ${overdueList.length}건 · ${formatWon(overdueSum)}',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: const Text('내역 탭에서 지급하거나 건너뛸 수 있어요'),
+                      ),
+                    ),
+                  if (s == null)
+                    const _MutedCard(text: '지급 요일이 되면 자동으로 일정이 만들어져요.')
+                  else
+                    Card(
+                      child: ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              s.isPaid ? palette.income.bg : palette.allowance.bg,
+                          child: Icon(s.isPaid ? Icons.check_rounded : Icons.schedule,
+                              color: s.isPaid ? palette.income.fg : palette.allowance.fg),
+                        ),
+                        title: Text(formatWon(s.amount),
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(
+                            '${formatDate(s.scheduledDate)} · ${s.isPaid ? '지급 완료' : '지급 예정'}'),
+                        trailing: s.isPaid
+                            ? TextButton(
+                                onPressed: () => _undoPay(ref, s), child: const Text('취소'))
+                            : FilledButton(
+                                onPressed: () => _payNow(ref, s), child: const Text('지급')),
+                      ),
+                    ),
+                ],
               );
             },
           ),

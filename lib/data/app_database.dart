@@ -254,8 +254,11 @@ class AppDatabase extends _$AppDatabase {
   /// 용돈 "지급" 처리. 부분 컬럼만 갱신하므로 upsert가 아니라 update로 처리한다.
   /// (upsert에 일부 컬럼만 넘기면 NOT NULL 제약으로 실패 → 예전에 지급 버튼이 무반응이던 버그)
   /// 지급과 동시에 연결된 수입 내역을 자동 생성하고, 다음 주 예정 일정을 만든다.
+  /// 밀린 주(예정일이 오늘 이전)를 늦게 지급하면 내역 메모에 원래 예정일을 남긴다.
   Future<void> markSchedulePaid(AllowanceSchedule s, String editedBy, Child child) async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final sched = DateTime(s.scheduledDate.year, s.scheduledDate.month, s.scheduledDate.day);
     await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
       AllowanceSchedulesCompanion(
         isPaid: const Value(true),
@@ -267,6 +270,7 @@ class AppDatabase extends _$AppDatabase {
     // 이중 입력 방지: 연결된 거래가 없을 때만 생성
     final existing = await findTransactionByScheduleId(s.id);
     if (existing == null) {
+      final late = sched.isBefore(today);
       await upsertTransaction(TransactionEntriesCompanion.insert(
         id: const Uuid().v4(),
         childId: s.childId,
@@ -274,6 +278,7 @@ class AppDatabase extends _$AppDatabase {
         flow: 'income',
         category: '정기용돈',
         amount: s.amount,
+        memo: late ? Value('${sched.month}/${sched.day} 밀린 용돈') : const Value.absent(),
         linkedScheduleId: Value(s.id),
         editedBy: Value(editedBy),
         updatedAt: Value(now),
@@ -283,63 +288,138 @@ class AppDatabase extends _$AppDatabase {
     await ensureUpcomingSchedule(child, editedBy);
   }
 
-  /// 항상 "미지급 예정 일정 1개"만 유지하는 규칙.
-  /// - 미지급 예정 일정이 없으면 지급요일 기준 다음 지급일로 새로 만든다.
-  /// - 이미 있으면, 지급요일이 바뀐 경우 그 일정의 날짜만 새 지급요일에 맞춰 갱신한다(중복 생성 안 함).
-  /// - 실수로 미지급 예정이 여러 개면 가장 이른 것만 남기고 정리한다.
-  /// 덕분에 "월요일 지급 → 지급요일을 화요일로 변경"해도 이중 지급 없이
-  /// 다음 예정 용돈만 화요일로 옮겨진다.
-  Future<void> ensureUpcomingSchedule(Child child, String editedBy) async {
-    final all = await (select(allowanceSchedules)
-          ..where((t) => t.childId.equals(child.id) & t.deletedAt.isNull()))
-        .get();
+  /// 밀린 용돈 "건너뛰기": 그 주는 안 주기로 하고 목록에서 제거(소프트 삭제).
+  /// 소프트 삭제된 일정은 백필 시 다시 생성되지 않으므로 영구히 건너뛴 것으로 남는다.
+  Future<void> skipSchedule(AllowanceSchedule s, String editedBy) async {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-    bool sameDay(DateTime a, DateTime b) =>
-        a.year == b.year && a.month == b.month && a.day == b.day;
-
-    // 마지막 지급 완료일 이후 다음 지급일을 계산 (없으면 오늘 기준).
-    DateTime? lastPaid;
-    for (final s in all.where((s) => s.isPaid)) {
-      final d = dateOnly(s.scheduledDate);
-      if (lastPaid == null || d.isAfter(lastPaid)) lastPaid = d;
-    }
-    var target = lastPaid == null
-        ? _nextOccurrence(child.payDayOfWeek, today)
-        : _nextOccurrence(child.payDayOfWeek, lastPaid.add(const Duration(days: 1)));
-    if (target.isBefore(today)) target = _nextOccurrence(child.payDayOfWeek, today);
-
-    final unpaid = all.where((s) => !s.isPaid).toList()
-      ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    if (unpaid.isEmpty) {
-      await upsertSchedule(AllowanceSchedulesCompanion.insert(
-        id: const Uuid().v4(),
-        childId: child.id,
-        scheduledDate: target,
-        amount: child.weeklyAllowanceDefault,
+    await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
+      AllowanceSchedulesCompanion(
+        deletedAt: Value(now),
         editedBy: Value(editedBy),
         updatedAt: Value(now),
-      ));
-    } else {
-      final keep = unpaid.first;
-      if (!sameDay(keep.scheduledDate, target)) {
-        await (update(allowanceSchedules)..where((t) => t.id.equals(keep.id))).write(
+      ),
+    );
+  }
+
+  /// 정기 용돈 일정 유지 규칙 (v1.4 개편: "밀린 용돈" 지원).
+  /// 예전에는 미지급 일정을 1개만 유지하며 날짜가 지나면 다음 지급일로 밀어버려서
+  /// 못 준 주가 기록 없이 사라졌다. 이제는:
+  /// 1. 같은 날짜에 일정이 2개 이상이면 하나만 남긴다 (부부 동기화로 양쪽 기기가
+  ///    각자 자동 생성한 중복 정리. 지급된 것 우선 보존, 이중 수입 내역도 정리).
+  /// 2. 지급요일이 바뀌면 "오늘 이후" 미지급 일정만 새 요일로 옮긴다.
+  ///    지난 미지급(밀린 용돈)은 역사적 사실이므로 그대로 둔다.
+  /// 3. 마지막 지급 완료일 이후 ~ 다음 지급일까지 매주 지급일마다 일정을 백필한다.
+  ///    → 못 준 주는 "밀린 용돈"으로 화면에 남고, 나중에 지급하거나 건너뛸 수 있다.
+  ///    건너뛴(소프트 삭제) 날짜는 다시 만들지 않는다. 백필은 최근 12건까지만.
+  Future<void> ensureUpcomingSchedule(Child child, String editedBy) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+    // 소프트 삭제 포함 전체 (건너뛴 날짜에 재생성하지 않기 위해 필요)
+    final allRows = await (select(allowanceSchedules)
+          ..where((t) => t.childId.equals(child.id)))
+        .get();
+    var alive = allRows.where((s) => s.deletedAt == null).toList();
+
+    // ---- 1) 같은 날짜 중복 정리 (동기화 산물) ----
+    final byDay = <DateTime, List<AllowanceSchedule>>{};
+    for (final s in alive) {
+      byDay.putIfAbsent(dateOnly(s.scheduledDate), () => []).add(s);
+    }
+    final removedIds = <String>{};
+    for (final entry in byDay.entries) {
+      if (entry.value.length <= 1) continue;
+      // 지급된 것 우선, 그다음 id 순으로 대표 1개만 남긴다
+      final list = entry.value
+        ..sort((a, b) {
+          if (a.isPaid != b.isPaid) return a.isPaid ? -1 : 1;
+          return a.id.compareTo(b.id);
+        });
+      final keep = list.first;
+      for (final dup in list.skip(1)) {
+        removedIds.add(dup.id);
+        await (update(allowanceSchedules)..where((t) => t.id.equals(dup.id))).write(
+          AllowanceSchedulesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+        // 둘 다 지급됐던 중복이면 수입 내역도 이중 계상되므로 중복분 내역을 정리
+        if (keep.isPaid && dup.isPaid) {
+          final linked = await findTransactionByScheduleId(dup.id);
+          if (linked != null) await softDeleteTransaction(linked.id, editedBy);
+        }
+      }
+    }
+    alive = alive.where((s) => !removedIds.contains(s.id)).toList();
+
+    final nextUpcoming = _nextOccurrence(child.payDayOfWeek, today);
+
+    // ---- 2) 지급요일 변경: 오늘 이후 미지급 일정만 새 요일로 이동 ----
+    final hasAtNext = alive.any((s) => dateOnly(s.scheduledDate) == nextUpcoming);
+    for (final s in alive.where((s) =>
+        !s.isPaid &&
+        !dateOnly(s.scheduledDate).isBefore(today) &&
+        s.scheduledDate.weekday != child.payDayOfWeek)) {
+      if (hasAtNext) {
+        // 새 지급일에 이미 일정이 있으면 중복 방지 위해 이 일정은 제거
+        await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
+          AllowanceSchedulesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+      } else {
+        await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
           AllowanceSchedulesCompanion(
-            scheduledDate: Value(target),
+            scheduledDate: Value(nextUpcoming),
             editedBy: Value(editedBy),
             updatedAt: Value(now),
           ),
         );
       }
-      // 미지급 예정이 2개 이상이면 나머지는 소프트 삭제
-      for (final extra in unpaid.skip(1)) {
-        await (update(allowanceSchedules)..where((t) => t.id.equals(extra.id))).write(
-          AllowanceSchedulesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
-        );
-      }
+    }
+    // 이동 반영 후 최신 상태로 다시 조회
+    final refreshed = await (select(allowanceSchedules)
+          ..where((t) => t.childId.equals(child.id)))
+        .get();
+
+    // ---- 3) 백필: 마지막 지급 완료일 다음부터 다음 지급일까지 ----
+    DateTime? lastPaid;
+    for (final s in refreshed.where((s) => s.isPaid && s.deletedAt == null)) {
+      final d = dateOnly(s.scheduledDate);
+      if (lastPaid == null || d.isAfter(lastPaid)) lastPaid = d;
+    }
+    // 건너뛴(삭제된) 것 포함, 이미 일정이 있는 "주"에는 만들지 않는다.
+    // 지급요일이 바뀌었어도 ±3일 안에 일정이 있으면 같은 주기의 용돈으로 간주
+    // (지급일 간격이 7일이라 ±3일 창은 이웃 후보와 겹치지 않는다).
+    final existingDates = refreshed.map((s) => dateOnly(s.scheduledDate)).toList();
+    bool weekOccupied(DateTime d) =>
+        existingDates.any((e) => (e.difference(d).inDays).abs() <= 3);
+
+    // 지급일 당일(또는 미리) 지급한 직후에도 "다음 주 예정"이 바로 생기도록,
+    // 마지막 지급이 다음 지급일 이상이면 그 다음 주까지 내다본다.
+    var horizon = nextUpcoming;
+    if (lastPaid != null && !lastPaid.isBefore(nextUpcoming)) {
+      horizon = _nextOccurrence(child.payDayOfWeek, lastPaid.add(const Duration(days: 1)));
+    }
+    var candidates = <DateTime>[];
+    var d = lastPaid == null
+        ? nextUpcoming
+        : _nextOccurrence(child.payDayOfWeek, lastPaid.add(const Duration(days: 1)));
+    while (!d.isAfter(horizon)) {
+      candidates.add(d);
+      d = _nextOccurrence(child.payDayOfWeek, d.add(const Duration(days: 1)));
+    }
+    // 오래 방치했을 때 수십 개가 쏟아지지 않게 최근 12건으로 제한
+    if (candidates.length > 12) {
+      candidates = candidates.sublist(candidates.length - 12);
+    }
+    for (final date in candidates) {
+      if (weekOccupied(date)) continue;
+      await upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        scheduledDate: date,
+        amount: child.weeklyAllowanceDefault,
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
     }
   }
 

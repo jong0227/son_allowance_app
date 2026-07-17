@@ -86,20 +86,53 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         children: [
-          // 지급할 용돈 (미지급 일정만)
+          // 밀린 용돈(지난 미지급) + 지급할 용돈(예정)
           schedulesAsync.maybeWhen(
             orElse: () => const SizedBox.shrink(),
             data: (schedules) {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              bool isOverdue(AllowanceSchedule s) => DateTime(s.scheduledDate.year,
+                      s.scheduledDate.month, s.scheduledDate.day)
+                  .isBefore(today);
               final pending = schedules.where((s) => !s.isPaid).toList()
                 ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+              final overdue = pending.where(isOverdue).toList();
+              final upcoming = pending.where((s) => !isOverdue(s)).toList();
               if (pending.isEmpty) return const SizedBox.shrink();
+              final overdueSum = overdue.fold<int>(0, (a, b) => a + b.amount);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SectionHeader('지급할 용돈'),
-                  for (final s in pending)
-                    _PendingScheduleCard(
-                        s: s, onPay: () => _payNow(s), onEditAmount: () => _editAmount(s)),
+                  if (overdue.isNotEmpty) ...[
+                    SectionHeader(
+                      '밀린 용돈 ${overdue.length}건 · ${formatWon(overdueSum)}',
+                      trailing: overdue.length >= 2
+                          ? TextButton(
+                              onPressed: () => _payAllOverdue(overdue),
+                              child: const Text('모두 지급'),
+                            )
+                          : null,
+                    ),
+                    for (final s in overdue)
+                      _PendingScheduleCard(
+                        s: s,
+                        overdue: true,
+                        onPay: () => _payNow(s),
+                        onEditAmount: () => _editAmount(s),
+                        onSkip: () => _confirmSkip(s),
+                      ),
+                  ],
+                  if (upcoming.isNotEmpty) ...[
+                    const SectionHeader('지급할 용돈'),
+                    for (final s in upcoming)
+                      _PendingScheduleCard(
+                        s: s,
+                        overdue: false,
+                        onPay: () => _payNow(s),
+                        onEditAmount: () => _editAmount(s),
+                      ),
+                  ],
                 ],
               );
             },
@@ -222,6 +255,52 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   Future<void> _payNow(AllowanceSchedule s) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
     await ref.read(databaseProvider).markSchedulePaid(s, owner, widget.child);
+  }
+
+  // 밀린 용돈 한꺼번에 지급
+  Future<void> _payAllOverdue(List<AllowanceSchedule> overdue) async {
+    final sum = overdue.fold<int>(0, (a, b) => a + b.amount);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('밀린 용돈 모두 지급'),
+        content: Text('${overdue.length}건, 총 ${formatWon(sum)}을 지급 처리할까요?\n'
+            '각 주의 내역이 오늘 날짜로 기록됩니다.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true), child: const Text('모두 지급')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final db = ref.read(databaseProvider);
+    final owner = ref.read(settingsProvider).deviceOwner ?? '';
+    for (final s in overdue) {
+      await db.markSchedulePaid(s, owner, widget.child);
+    }
+  }
+
+  // 밀린 용돈 건너뛰기 (그 주는 안 준 것으로 확정)
+  Future<void> _confirmSkip(AllowanceSchedule s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('이 주 용돈 건너뛰기'),
+        content: Text('${formatDate(s.scheduledDate)} 용돈 ${formatWon(s.amount)}을 '
+            '주지 않은 것으로 확정하고 목록에서 지웁니다.\n나중에 다시 생기지 않아요.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true), child: const Text('건너뛰기')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final owner = ref.read(settingsProvider).deviceOwner ?? '';
+    await ref.read(databaseProvider).skipSchedule(s, owner);
   }
 
   // 특정 주의 용돈 금액만 수정 (기본 금액과 별개)
@@ -570,24 +649,48 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
 class _PendingScheduleCard extends StatelessWidget {
   final AllowanceSchedule s;
+  final bool overdue;
   final VoidCallback onPay;
   final VoidCallback onEditAmount;
+  final VoidCallback? onSkip;
   const _PendingScheduleCard(
-      {required this.s, required this.onPay, required this.onEditAmount});
+      {required this.s,
+      required this.overdue,
+      required this.onPay,
+      required this.onEditAmount,
+      this.onSkip});
 
   @override
   Widget build(BuildContext context) {
     final palette = appPalette(context);
-    final overdue = s.scheduledDate.isBefore(DateTime.now());
     final pair = overdue ? palette.expense : palette.allowance;
     return Card(
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
         leading: CircleAvatar(
-            backgroundColor: pair.bg, child: Icon(Icons.schedule, color: pair.fg)),
+            backgroundColor: pair.bg,
+            child: Icon(overdue ? Icons.history : Icons.schedule, color: pair.fg)),
         title: Text(formatWon(s.amount), style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text('${formatDate(s.scheduledDate)} · ${overdue ? '미지급' : '지급 예정'} · 길게 눌러 금액 수정'),
-        trailing: FilledButton(onPressed: onPay, child: const Text('지급')),
+        subtitle:
+            Text('${formatDate(s.scheduledDate)} · ${overdue ? '밀린 용돈' : '지급 예정'}'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(onPressed: onPay, child: const Text('지급')),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              onSelected: (v) {
+                if (v == 'edit') onEditAmount();
+                if (v == 'skip') onSkip?.call();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('금액 수정')),
+                if (onSkip != null)
+                  const PopupMenuItem(value: 'skip', child: Text('건너뛰기 (안 준 것으로)')),
+              ],
+            ),
+          ],
+        ),
         onLongPress: onEditAmount,
       ),
     );

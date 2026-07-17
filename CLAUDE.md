@@ -9,7 +9,7 @@
 - 완료: 전체 기능 구현, 파스텔 UI, 저축이자/보너스/목표/연간통계/내역검색, 동기화 버그(기기별 중복 프로필 통합) 수정.
 - 아빠 폰(Fold7, adb id `R3CY70FYR4J`)엔 v1.3 설치 예정이었으나 **기기 미연결로 대기 중**. 연결되면 `adb -s R3CY70FYR4J install -r <apk>`로 업데이트(데이터 유지).
 - 아내 폰 배포용: 바탕화면에 `AllowanceManager_v1.3.apk` / `AllowanceManager_v1.3.zip`(카톡용) 준비됨.
-- **GitHub 업로드 미완료**: 로컬 git 커밋만 있고(아래) 원격 저장소 없음. 사용자가 `gh auth login`(기기 인증) 완료하면 `gh repo create son_allowance_app --private --source=. --push`로 올리면 됨. (gh 경로: `C:\Program Files\GitHub CLI\gh.exe`)
+- **GitHub 연결 완료**: 공개 저장소 https://github.com/jong0227/son_allowance_app (계정 jong0227, gh CLI 인증됨). `git push`로 업로드.
 - 릴리스 서명 비밀번호는 로컬 `android/key.properties`에 있음(git 미포함). 다른 PC로 옮기면 keystore(`C:\dev\son_allowance.jks`)와 key.properties를 수동 복사해야 릴리스 빌드 가능.
 
 ## 개발 환경 (이 PC 기준, 모두 OneDrive 밖 로컬 경로)
@@ -51,7 +51,7 @@ Set-Location "C:\dev\son_allowance_app"
 - 시스템 예약 카테고리: `정기용돈`, `절약보너스`, `이자` (사용자 편집 카테고리와 분리).
 
 ## 주요 기능
-- 정기 용돈: 지급요일 기준 "미지급 예정 1개"만 자동 유지(요일 바꾸면 그 일정 날짜만 이동, 이중지급 방지). 지급/취소 가능(연결된 정기용돈 내역 삭제 = 지급 취소).
+- 정기 용돈 (v1.4 개편): 마지막 지급일 이후 매주 지급일마다 일정 백필 → 못 준 주는 "밀린 용돈"으로 표시(홈 요약 + 내역 탭). 개별/일괄 지급, "건너뛰기"(영구 제외, 소프트 삭제) 가능. 밀린 지급 시 내역 메모에 원래 예정일 기록. 같은 날짜 중복 일정은 자동 정리(동기화 안전). 지급요일 변경 시 미래 예정만 이동, 밀린 건 유지. 백필 최대 12건. 로직 테스트: `test/schedule_logic_test.dart`. 지급/취소 가능(연결된 정기용돈 내역 삭제 = 지급 취소).
 - 특별 수입(설날/생일 등) + "받은 사람" 기록. 지출 내역.
 - 주식계좌 이체(수동 기록형) + 누적 이력.
 - 통계: 저축비율, 카테고리별 지출, 받은사람별, 월별, **연간 요약**.
