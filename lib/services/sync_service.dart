@@ -62,6 +62,7 @@ class FamilySyncService {
       if (!snap.exists) break;
     }
     _familyCode = code;
+    await db.reconcileToSingleChild(editedBy);
     await _pushNow(force: true);
     _startListening();
     return code;
@@ -78,6 +79,10 @@ class FamilySyncService {
     _editedBy = editedBy;
     _familyCode = upper;
     await _applyRemote(snap.data());
+    // 이 기기가 온보딩 때 만든 "내 아이" 프로필과, 방금 받아온 상대방의 프로필이
+    // 서로 다른 id로 공존하게 된다. 데이터가 없는 쪽(보통 방금 참여한 이 기기)을
+    // 정리해 하나로 합치지 않으면 화면이 빈 프로필을 계속 보여준다.
+    await db.reconcileToSingleChild(editedBy);
     await _pushNow(force: true);
     _startListening();
   }
@@ -141,6 +146,9 @@ class FamilySyncService {
       _statusController.add(SyncStatus.syncing);
       final preview = await _io.previewImportData(map, db);
       await _io.applyImport(preview, db);
+      // 매 원격 병합마다 중복 프로필 정리를 재확인한다(온보딩을 다시 하거나
+      // 여러 기기가 거의 동시에 참여하는 경우에도 계속 하나로 수렴하도록).
+      await db.reconcileToSingleChild(_editedBy);
       _lastSignature = signature;
       lastSyncedAt = DateTime.now();
       _statusController.add(SyncStatus.idle);
