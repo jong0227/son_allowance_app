@@ -147,29 +147,50 @@ class _PaymentRow extends StatelessWidget {
     if (s.isPaid) {
       pair = palette.income;
       icon = Icons.check_circle;
-      status = s.paidDate != null ? '지급 완료 · ${formatDateShort(s.paidDate!)} 지급' : '지급 완료';
+      // 실제 지급한 날짜(예정일과 다르면 늦게 준 것)
+      status = s.paidDate != null ? '실제 지급: ${formatDateShort(s.paidDate!)}' : '지급 완료';
     } else if (isFutureUnpaid) {
       pair = palette.allowance;
       icon = Icons.schedule;
-      status = '지급 예정';
+      status = '아직 지급 안 함 (예정)';
     } else {
       pair = palette.expense;
       icon = Icons.cancel_outlined;
-      status = '미지급';
+      status = '미지급 (지난 지급일)';
     }
+    final scheme = Theme.of(context).colorScheme;
 
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        leading: CircleAvatar(backgroundColor: pair.bg, child: Icon(icon, color: pair.fg)),
-        title: Text('${formatDate(s.scheduledDate)} 예정',
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(status),
-        trailing: Text(formatWon(s.amount),
-            style: TextStyle(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-                color: s.isPaid ? pair.fg : Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            CircleAvatar(radius: 18, backgroundColor: pair.bg, child: Icon(icon, color: pair.fg)),
+            const SizedBox(width: 12),
+            // 예정일(정규 지급 날짜) + 실제 지급일
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${formatDate(s.scheduledDate)} (${weekdayName(s.scheduledDate.weekday)})',
+                      style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2)),
+                  const SizedBox(height: 2),
+                  Text(status,
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: s.isPaid ? pair.fg : scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            // 용돈 금액
+            Text(formatWon(s.amount),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    fontSize: 15,
+                    color: s.isPaid ? pair.fg : scheme.onSurfaceVariant)),
+          ],
+        ),
       ),
     );
   }
