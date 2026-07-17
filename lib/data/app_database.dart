@@ -180,6 +180,17 @@ class AppDatabase extends _$AppDatabase {
   static const kRegularAllowance = '정기용돈';
   static const kSavingsBonus = '절약보너스';
   static const kInterest = '이자';
+  static const kInitialBalance = '이월잔액';
+
+  // ---------------- 시작 잔액(앱 사용 전부터 모은 용돈) ----------------
+  /// 자녀당 1건만 존재하는 특수 수입 항목. 설정 화면에서만 생성/수정하며,
+  /// 있으면 편집, 없으면 새로 만드는 방식이라 upsert 대신 조회 후 분기한다.
+  Future<TransactionEntry?> findInitialBalance(String childId) => (select(transactionEntries)
+        ..where((t) =>
+            t.childId.equals(childId) &
+            t.category.equals(kInitialBalance) &
+            t.deletedAt.isNull()))
+      .getSingleOrNull();
 
   // ---------------- Children ----------------
   Stream<List<Child>> watchChildren() =>

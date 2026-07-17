@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
@@ -25,6 +26,16 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final txsAsync = ref.watch(transactionsProvider(child.id));
+    TransactionEntry? initialBalance;
+    txsAsync.whenData((txs) {
+      for (final t in txs) {
+        if (t.category == AppDatabase.kInitialBalance) {
+          initialBalance = t;
+          break;
+        }
+      }
+    });
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -56,6 +67,19 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+        ),
+
+        const SectionHeader('시작 잔액'),
+        Card(
+          child: ListTile(
+            leading: Icon(initialBalance != null ? Icons.savings : Icons.savings_outlined),
+            title: Text(initialBalance != null ? formatWon(initialBalance!.amount) : '설정 안 됨'),
+            subtitle: Text(initialBalance != null
+                ? '${formatDate(initialBalance!.date)} 기준 · 앱 쓰기 전부터 모은 용돈'
+                : '이 앱을 쓰기 전부터 모아둔 용돈이 있다면 한 번만 입력해주세요'),
+            trailing: Icon(initialBalance != null ? Icons.edit_outlined : Icons.add_circle_outline),
+            onTap: () => _showInitialBalanceDialog(context, ref, initialBalance),
           ),
         ),
 
@@ -289,6 +313,114 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  // 앱 사용 전부터 모아둔 용돈을 한 번만 입력/수정하는 다이얼로그.
+  // 저장 시 category='이월잔액'인 특별 수입 내역 1건으로 기록되어 잔액 계산에 자동 합산된다.
+  void _showInitialBalanceDialog(
+      BuildContext context, WidgetRef ref, TransactionEntry? existing) {
+    final amountController =
+        TextEditingController(text: existing != null ? '${existing.amount}' : '');
+    DateTime date = existing?.date ?? DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(existing != null ? '시작 잔액 수정' : '시작 잔액 입력'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('이 앱을 쓰기 전부터 모아둔 용돈이 있다면 입력해주세요. '
+                    '잔액에 자동으로 합산되고, 나중에 언제든 수정할 수 있어요.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: '금액(원)'),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: date,
+                      firstDate: DateTime(2015),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setState(() => date = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16),
+                        const SizedBox(width: 10),
+                        Text(formatDate(date)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (existing != null)
+              TextButton(
+                onPressed: () async {
+                  final db = ref.read(databaseProvider);
+                  final owner = ref.read(settingsProvider).deviceOwner ?? '';
+                  await db.deleteTransaction(existing, owner, child);
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: Text('삭제', style: TextStyle(color: appPalette(context).expense.fg)),
+              ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            FilledButton(
+              onPressed: () async {
+                final amount = int.tryParse(amountController.text);
+                if (amount == null || amount <= 0) return;
+                final db = ref.read(databaseProvider);
+                final owner = ref.read(settingsProvider).deviceOwner ?? '';
+                if (existing != null) {
+                  await db.updateTransactionFields(
+                    existing.id,
+                    date: date,
+                    amount: amount,
+                    category: AppDatabase.kInitialBalance,
+                    memo: existing.memo,
+                    giver: null,
+                    editedBy: owner,
+                  );
+                } else {
+                  await db.upsertTransaction(TransactionEntriesCompanion.insert(
+                    id: const Uuid().v4(),
+                    childId: child.id,
+                    date: date,
+                    flow: 'income',
+                    category: AppDatabase.kInitialBalance,
+                    amount: amount,
+                    memo: const Value('앱 사용 전부터 모은 용돈'),
+                    editedBy: Value(owner),
+                    updatedAt: Value(DateTime.now()),
+                  ));
+                }
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('저장'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
