@@ -81,6 +81,25 @@ void main() {
     expect(dates.contains(today.subtract(const Duration(days: 7))), false);
   });
 
+  test('미래 예정은 다음 지급일 1개만 유지하고, 그 이후 미래 일정은 정리된다', () async {
+    final child = await createChild(); // payday = 오늘 요일 → nextUpcoming = 오늘
+    // 다다음주(오늘+14)에 잉여 미래 미지급 일정을 심어둔다
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'too-far-future',
+      childId: child.id,
+      scheduledDate: today.add(const Duration(days: 14)),
+      amount: 3000,
+    ));
+    await db.ensureUpcomingSchedule(child, 'test');
+
+    final futureUnpaid = (await alive())
+        .where((s) => !s.isPaid && !s.scheduledDate.isBefore(today))
+        .toList();
+    // 미래 예정은 오늘(nextUpcoming) 1개만
+    expect(futureUnpaid.length, 1);
+    expect(futureUnpaid.first.scheduledDate, today);
+  });
+
   test('같은 날짜 중복 일정(동기화 산물)은 하나만 남는다', () async {
     final child = await createChild();
     for (final id in ['dup-a', 'dup-b']) {

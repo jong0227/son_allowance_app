@@ -7,9 +7,11 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 
-enum _Range { all, thisYear, thisMonth, last3Months }
+enum _Range { all, thisYear, thisMonth, last3Months, custom }
 
 final _rangeProvider = StateProvider.autoDispose<_Range>((ref) => _Range.all);
+// 직접 선택한 기간(시작~끝). _Range.custom일 때만 사용.
+final _customRangeProvider = StateProvider.autoDispose<DateTimeRange?>((ref) => null);
 
 /// 정기 용돈 지급 이력 화면.
 /// - "받은 정기용돈"은 실제 정기용돈 수입 내역(거래) 기준이라, 일정 기록이 없던
@@ -19,7 +21,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
   final Child child;
   const AllowanceHistoryScreen({super.key, required this.child});
 
-  bool _inRange(DateTime d, _Range r) {
+  bool _inRange(DateTime d, _Range r, DateTimeRange? custom) {
     final now = DateTime.now();
     switch (r) {
       case _Range.all:
@@ -31,6 +33,28 @@ class AllowanceHistoryScreen extends ConsumerWidget {
       case _Range.last3Months:
         final from = DateTime(now.year, now.month - 2, 1);
         return !d.isBefore(from);
+      case _Range.custom:
+        if (custom == null) return true;
+        final day = DateTime(d.year, d.month, d.day);
+        final start = DateTime(custom.start.year, custom.start.month, custom.start.day);
+        final end = DateTime(custom.end.year, custom.end.month, custom.end.day);
+        return !day.isBefore(start) && !day.isAfter(end);
+    }
+  }
+
+  String _periodLabel(_Range r, DateTimeRange? custom) {
+    switch (r) {
+      case _Range.all:
+        return '전체 기간 받은 정기용돈';
+      case _Range.thisYear:
+        return '올해 받은 정기용돈';
+      case _Range.thisMonth:
+        return '이번 달 받은 정기용돈';
+      case _Range.last3Months:
+        return '최근 3개월 받은 정기용돈';
+      case _Range.custom:
+        if (custom == null) return '선택 기간 받은 정기용돈';
+        return '${formatDate(custom.start)} ~ ${formatDate(custom.end)} 받은 정기용돈';
     }
   }
 
@@ -39,6 +63,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
     final schedulesAsync = ref.watch(schedulesProvider(child.id));
     final txsAsync = ref.watch(transactionsProvider(child.id));
     final range = ref.watch(_rangeProvider);
+    final customRange = ref.watch(_customRangeProvider);
     final isChild = ref.watch(settingsProvider).isChild;
     final palette = appPalette(context);
 
@@ -58,7 +83,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
           // 실제 받은 정기용돈 = 정기용돈 카테고리 수입 내역 (일정 유무와 무관하게 전부)
           final received = txs
               .where((t) => t.flow == 'income' && t.category == AppDatabase.kRegularAllowance)
-              .where((t) => _inRange(t.date, range))
+              .where((t) => _inRange(t.date, range, customRange))
               .toList()
             ..sort((a, b) => b.date.compareTo(a.date));
           final totalReceived = received.fold<int>(0, (a, b) => a + b.amount);
@@ -89,6 +114,31 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                           onSelected: (_) => ref.read(_rangeProvider.notifier).state = e.$1,
                         ),
                       ),
+                    // 직접 기간 선택
+                    ChoiceChip(
+                      avatar: const Icon(Icons.date_range, size: 18),
+                      label: Text(range == _Range.custom && customRange != null
+                          ? '${formatDateShort(customRange.start)} ~ ${formatDateShort(customRange.end)}'
+                          : '직접 선택'),
+                      selected: range == _Range.custom,
+                      onSelected: (_) async {
+                        final now = DateTime.now();
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2015),
+                          lastDate: DateTime(now.year + 1, 12, 31),
+                          initialDateRange: customRange ??
+                              DateTimeRange(
+                                  start: DateTime(now.year, 1, 1), end: now),
+                          helpText: '기간 선택',
+                          saveText: '적용',
+                        );
+                        if (picked != null) {
+                          ref.read(_customRangeProvider.notifier).state = picked;
+                          ref.read(_rangeProvider.notifier).state = _Range.custom;
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -101,7 +151,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('이 기간 받은 정기용돈',
+                      Text(_periodLabel(range, customRange),
                           style: TextStyle(
                               fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.8))),
                       const SizedBox(height: 4),

@@ -457,6 +457,18 @@ class AppDatabase extends _$AppDatabase {
 
     final nextUpcoming = _nextOccurrence(child.payDayOfWeek, today);
 
+    // ---- 1.5) 너무 먼 미래(다음 지급일 이후)의 미지급 일정 정리 ----
+    // 규칙상 미래 예정은 nextUpcoming 1개까지만 유지. 예전 로직이 만든
+    // 다다음주 등 잉여 미래 일정을 제거해 표시 기준을 명확히 한다.
+    for (final s in alive.where(
+        (s) => !s.isPaid && dateOnly(s.scheduledDate).isAfter(nextUpcoming))) {
+      removedIds.add(s.id);
+      await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
+        AllowanceSchedulesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+      );
+    }
+    alive = alive.where((s) => !removedIds.contains(s.id)).toList();
+
     // ---- 2) 지급요일 변경: 오늘 이후 미지급 일정만 새 요일로 이동 ----
     final hasAtNext = alive.any((s) => dateOnly(s.scheduledDate) == nextUpcoming);
     for (final s in alive.where((s) =>
@@ -496,12 +508,11 @@ class AppDatabase extends _$AppDatabase {
     bool weekOccupied(DateTime d) =>
         existingDates.any((e) => (e.difference(d).inDays).abs() <= 3);
 
-    // 지급일 당일(또는 미리) 지급한 직후에도 "다음 주 예정"이 바로 생기도록,
-    // 마지막 지급이 다음 지급일 이상이면 그 다음 주까지 내다본다.
-    var horizon = nextUpcoming;
-    if (lastPaid != null && !lastPaid.isBefore(nextUpcoming)) {
-      horizon = _nextOccurrence(child.payDayOfWeek, lastPaid.add(const Duration(days: 1)));
-    }
+    // 규칙(명확화): 미래 예정 일정은 "오늘 이후 첫 지급일(nextUpcoming)" 딱 1개까지만
+    // 만든다. 다다음주 등 그 이상 미래는 만들지 않는다(예: 이번 주를 미리 지급해도
+    // 다음 주 예정을 미리 만들지 않음 — 지급일이 지나면 자연히 생성됨).
+    // 과거(밀린) 지급일은 마지막 지급일 다음부터 오늘까지 전부 채운다.
+    final horizon = nextUpcoming;
     var candidates = <DateTime>[];
     var d = lastPaid == null
         ? nextUpcoming
