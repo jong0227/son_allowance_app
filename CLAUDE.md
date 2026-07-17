@@ -4,13 +4,21 @@
 완전 로컬 저장(서버 없음) + 파일 Export/Import 스마트 병합으로 부부간 동기화.
 대상 기기: 갤럭시 Z 폴드7 / 플립5 (안드로이드 전용).
 
+## 📍 현재 진행 상황 / 다음 할 일 (이어받기용)
+현재 버전: **release v1.3** (앱 표시명 "Allowance Manager").
+- 완료: 전체 기능 구현, 파스텔 UI, 저축이자/보너스/목표/연간통계/내역검색, 동기화 버그(기기별 중복 프로필 통합) 수정.
+- 아빠 폰(Fold7, adb id `R3CY70FYR4J`)엔 v1.3 설치 예정이었으나 **기기 미연결로 대기 중**. 연결되면 `adb -s R3CY70FYR4J install -r <apk>`로 업데이트(데이터 유지).
+- 아내 폰 배포용: 바탕화면에 `AllowanceManager_v1.3.apk` / `AllowanceManager_v1.3.zip`(카톡용) 준비됨.
+- **GitHub 업로드 미완료**: 로컬 git 커밋만 있고(아래) 원격 저장소 없음. 사용자가 `gh auth login`(기기 인증) 완료하면 `gh repo create son_allowance_app --private --source=. --push`로 올리면 됨. (gh 경로: `C:\Program Files\GitHub CLI\gh.exe`)
+- 릴리스 서명 비밀번호는 로컬 `android/key.properties`에 있음(git 미포함). 다른 PC로 옮기면 keystore(`C:\dev\son_allowance.jks`)와 key.properties를 수동 복사해야 릴리스 빌드 가능.
+
 ## 개발 환경 (이 PC 기준, 모두 OneDrive 밖 로컬 경로)
 - 프로젝트: `C:\dev\son_allowance_app` (⚠️ OneDrive 안에 두지 말 것 — build/ 임시파일이 동기화 충돌을 일으킴)
 - Flutter SDK: `C:\dev\flutter`
 - Android SDK: `C:\dev\android-sdk`
 - JDK 17: `C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot`
-- 릴리스 서명 keystore: `C:\dev\son_allowance.jks` (alias `son_allowance`, 비번 `allowance2026`)
-  - `android/key.properties`가 이 keystore를 참조 (git에는 커밋 안 함 = .gitignore)
+- 릴리스 서명 keystore: `C:\dev\son_allowance.jks` (alias `son_allowance`, 비밀번호는 `android/key.properties`에 있음)
+  - `android/key.properties`가 이 keystore를 참조 (비밀번호 포함, git에는 커밋 안 함 = .gitignore)
 
 ### 명령 실행 시 환경변수 (PowerShell)
 ```powershell
