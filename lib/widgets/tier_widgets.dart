@@ -21,8 +21,8 @@ class _TierEasterEggIconState extends State<TierEasterEggIcon> {
 
   void _onTap() {
     final now = DateTime.now();
-    // 1.2초 안에 연속으로 눌러야 카운트 유지
-    if (now.difference(_last) > const Duration(milliseconds: 1200)) _count = 0;
+    // 이전 탭 후 2초 안에 다음 탭이면 카운트 유지(천천히 눌러도 됨). 넘으면 리셋.
+    if (now.difference(_last) > const Duration(seconds: 2)) _count = 0;
     _last = now;
     _count++;
     if (_count >= 3) HapticFeedback.selectionClick();
