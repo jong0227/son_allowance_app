@@ -41,6 +41,7 @@ class ExportImportService {
     final goals = await db.allGoalsRaw();
     final rates = await db.allAllowanceRatesRaw();
     final reqs = await db.allRequestsRaw();
+    final tierList = await db.allTiersRaw();
 
     return {
       'version': dataFormatVersion,
@@ -53,6 +54,7 @@ class ExportImportService {
       'goals': goals.map(_goalToJson).toList(),
       'allowanceRates': rates.map(_rateToJson).toList(),
       'requests': reqs.map(_requestToJson).toList(),
+      'tiers': tierList.map(_tierToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -170,6 +172,7 @@ class ExportImportService {
         (AllowanceRate r) => r.updatedAt);
     await diff('requests', db.allRequestsRaw, (Request r) => r.id,
         (Request r) => r.updatedAt);
+    await diff('tiers', db.allTiersRaw, (Tier t) => t.id, (Tier t) => t.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -220,6 +223,8 @@ class ExportImportService {
         (r) => r.updatedAt, (row) => db.upsertAllowanceRate(_rateFromJson(row)));
     await merge('requests', db.allRequestsRaw, (Request r) => r.id, (r) => r.updatedAt,
         (row) => db.upsertRequest(_requestFromJson(row)));
+    await merge('tiers', db.allTiersRaw, (Tier t) => t.id, (t) => t.updatedAt,
+        (row) => db.upsertTier(_tierFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -447,6 +452,33 @@ class ExportImportService {
         'updatedAt': r.updatedAt.toIso8601String(),
         'deletedAt': r.deletedAt?.toIso8601String(),
       };
+
+  Map<String, dynamic> _tierToJson(Tier t) => {
+        'id': t.id,
+        'kind': t.kind,
+        'sortOrder': t.sortOrder,
+        'threshold': t.threshold,
+        'title': t.title,
+        'icon': t.icon,
+        'reward': t.reward,
+        'updatedAt': t.updatedAt.toIso8601String(),
+        'deletedAt': t.deletedAt?.toIso8601String(),
+      };
+
+  TiersCompanion _tierFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return TiersCompanion.insert(
+      id: _str(j['id']),
+      kind: _str(j['kind'], 'savings'),
+      sortOrder: _int(j['sortOrder']),
+      threshold: _int(j['threshold']),
+      title: _str(j['title'], '티어'),
+      icon: _str(j['icon'], '⭐'),
+      reward: Value(_strn(j['reward'])),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
 
   RequestsCompanion _requestFromJson(Map<String, dynamic> j) {
     final now = DateTime.now();

@@ -24,6 +24,8 @@ class AppSettings {
   // 부모 모드 진입을 막는 암호(자녀가 부모 모드로 전환하지 못하게). 해시로만 보관.
   final String? parentPasscodeHash;
   final String? parentPasscodeSalt;
+  // 마지막으로 축하 배너를 보여준 누적 티어 순서(레벨업 배너 중복 방지). 기본 1(흙).
+  final int lastCelebratedTierOrder;
 
   /// 이 기기가 자녀(아들) 모드인지. 지급/승인/규칙편집 UI가 숨겨진다.
   bool get isChild => deviceOwner == '아들';
@@ -46,6 +48,7 @@ class AppSettings {
     this.familyCode,
     this.parentPasscodeHash,
     this.parentPasscodeSalt,
+    this.lastCelebratedTierOrder = 1,
     this.expenseCategories = defaultExpenseCategories,
     this.incomeCategories = defaultIncomeCategories,
     this.givers = defaultGivers,
@@ -68,6 +71,7 @@ class AppSettings {
     String? familyCode,
     String? parentPasscodeHash,
     String? parentPasscodeSalt,
+    int? lastCelebratedTierOrder,
     List<String>? expenseCategories,
     List<String>? incomeCategories,
     List<String>? givers,
@@ -85,6 +89,7 @@ class AppSettings {
       familyCode: familyCode ?? this.familyCode,
       parentPasscodeHash: parentPasscodeHash ?? this.parentPasscodeHash,
       parentPasscodeSalt: parentPasscodeSalt ?? this.parentPasscodeSalt,
+      lastCelebratedTierOrder: lastCelebratedTierOrder ?? this.lastCelebratedTierOrder,
       expenseCategories: expenseCategories ?? this.expenseCategories,
       incomeCategories: incomeCategories ?? this.incomeCategories,
       givers: givers ?? this.givers,
@@ -143,6 +148,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       familyCode: prefs.getString('familyCode'),
       parentPasscodeHash: prefs.getString('parentPasscodeHash'),
       parentPasscodeSalt: prefs.getString('parentPasscodeSalt'),
+      lastCelebratedTierOrder: prefs.getInt('lastCelebratedTierOrder') ?? 1,
       expenseCategories:
           listOr('expenseCategories', AppSettings.defaultExpenseCategories),
       incomeCategories: listOr('incomeCategories', AppSettings.defaultIncomeCategories),
@@ -298,6 +304,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> clearFamilyCode() async {
     await prefs.remove('familyCode');
     state = state.withoutFamilyCode();
+  }
+
+  Future<void> setLastCelebratedTierOrder(int order) async {
+    await prefs.setInt('lastCelebratedTierOrder', order);
+    state = state.copyWith(lastCelebratedTierOrder: order);
   }
 
   String _randomSalt() {

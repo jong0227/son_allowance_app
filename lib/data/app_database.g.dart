@@ -5174,6 +5174,557 @@ class RequestsCompanion extends UpdateCompanion<Request> {
   }
 }
 
+class $TiersTable extends Tiers with TableInfo<$TiersTable, Tier> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TiersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thresholdMeta = const VerificationMeta(
+    'threshold',
+  );
+  @override
+  late final GeneratedColumn<int> threshold = GeneratedColumn<int>(
+    'threshold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+    'icon',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardMeta = const VerificationMeta('reward');
+  @override
+  late final GeneratedColumn<String> reward = GeneratedColumn<String>(
+    'reward',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    sortOrder,
+    threshold,
+    title,
+    icon,
+    reward,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tiers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Tier> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sortOrderMeta);
+    }
+    if (data.containsKey('threshold')) {
+      context.handle(
+        _thresholdMeta,
+        threshold.isAcceptableOrUnknown(data['threshold']!, _thresholdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_thresholdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+        _iconMeta,
+        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconMeta);
+    }
+    if (data.containsKey('reward')) {
+      context.handle(
+        _rewardMeta,
+        reward.isAcceptableOrUnknown(data['reward']!, _rewardMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Tier map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Tier(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      threshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}threshold'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      icon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon'],
+      )!,
+      reward: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reward'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $TiersTable createAlias(String alias) {
+    return $TiersTable(attachedDatabase, alias);
+  }
+}
+
+class Tier extends DataClass implements Insertable<Tier> {
+  final String id;
+  final String kind;
+  final int sortOrder;
+  final int threshold;
+  final String title;
+  final String icon;
+  final String? reward;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const Tier({
+    required this.id,
+    required this.kind,
+    required this.sortOrder,
+    required this.threshold,
+    required this.title,
+    required this.icon,
+    this.reward,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['kind'] = Variable<String>(kind);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['threshold'] = Variable<int>(threshold);
+    map['title'] = Variable<String>(title);
+    map['icon'] = Variable<String>(icon);
+    if (!nullToAbsent || reward != null) {
+      map['reward'] = Variable<String>(reward);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  TiersCompanion toCompanion(bool nullToAbsent) {
+    return TiersCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      sortOrder: Value(sortOrder),
+      threshold: Value(threshold),
+      title: Value(title),
+      icon: Value(icon),
+      reward: reward == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reward),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory Tier.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Tier(
+      id: serializer.fromJson<String>(json['id']),
+      kind: serializer.fromJson<String>(json['kind']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      threshold: serializer.fromJson<int>(json['threshold']),
+      title: serializer.fromJson<String>(json['title']),
+      icon: serializer.fromJson<String>(json['icon']),
+      reward: serializer.fromJson<String?>(json['reward']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kind': serializer.toJson<String>(kind),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'threshold': serializer.toJson<int>(threshold),
+      'title': serializer.toJson<String>(title),
+      'icon': serializer.toJson<String>(icon),
+      'reward': serializer.toJson<String?>(reward),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  Tier copyWith({
+    String? id,
+    String? kind,
+    int? sortOrder,
+    int? threshold,
+    String? title,
+    String? icon,
+    Value<String?> reward = const Value.absent(),
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => Tier(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    sortOrder: sortOrder ?? this.sortOrder,
+    threshold: threshold ?? this.threshold,
+    title: title ?? this.title,
+    icon: icon ?? this.icon,
+    reward: reward.present ? reward.value : this.reward,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  Tier copyWithCompanion(TiersCompanion data) {
+    return Tier(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      threshold: data.threshold.present ? data.threshold.value : this.threshold,
+      title: data.title.present ? data.title.value : this.title,
+      icon: data.icon.present ? data.icon.value : this.icon,
+      reward: data.reward.present ? data.reward.value : this.reward,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Tier(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('threshold: $threshold, ')
+          ..write('title: $title, ')
+          ..write('icon: $icon, ')
+          ..write('reward: $reward, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    sortOrder,
+    threshold,
+    title,
+    icon,
+    reward,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Tier &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.sortOrder == this.sortOrder &&
+          other.threshold == this.threshold &&
+          other.title == this.title &&
+          other.icon == this.icon &&
+          other.reward == this.reward &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class TiersCompanion extends UpdateCompanion<Tier> {
+  final Value<String> id;
+  final Value<String> kind;
+  final Value<int> sortOrder;
+  final Value<int> threshold;
+  final Value<String> title;
+  final Value<String> icon;
+  final Value<String?> reward;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const TiersCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.threshold = const Value.absent(),
+    this.title = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TiersCompanion.insert({
+    required String id,
+    required String kind,
+    required int sortOrder,
+    required int threshold,
+    required String title,
+    required String icon,
+    this.reward = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       kind = Value(kind),
+       sortOrder = Value(sortOrder),
+       threshold = Value(threshold),
+       title = Value(title),
+       icon = Value(icon);
+  static Insertable<Tier> custom({
+    Expression<String>? id,
+    Expression<String>? kind,
+    Expression<int>? sortOrder,
+    Expression<int>? threshold,
+    Expression<String>? title,
+    Expression<String>? icon,
+    Expression<String>? reward,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (threshold != null) 'threshold': threshold,
+      if (title != null) 'title': title,
+      if (icon != null) 'icon': icon,
+      if (reward != null) 'reward': reward,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TiersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? kind,
+    Value<int>? sortOrder,
+    Value<int>? threshold,
+    Value<String>? title,
+    Value<String>? icon,
+    Value<String?>? reward,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return TiersCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      sortOrder: sortOrder ?? this.sortOrder,
+      threshold: threshold ?? this.threshold,
+      title: title ?? this.title,
+      icon: icon ?? this.icon,
+      reward: reward ?? this.reward,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (threshold.present) {
+      map['threshold'] = Variable<int>(threshold.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
+    if (reward.present) {
+      map['reward'] = Variable<String>(reward.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TiersCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('threshold: $threshold, ')
+          ..write('title: $title, ')
+          ..write('icon: $icon, ')
+          ..write('reward: $reward, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5187,6 +5738,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoalsTable goals = $GoalsTable(this);
   late final $AllowanceRatesTable allowanceRates = $AllowanceRatesTable(this);
   late final $RequestsTable requests = $RequestsTable(this);
+  late final $TiersTable tiers = $TiersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5200,6 +5752,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     goals,
     allowanceRates,
     requests,
+    tiers,
   ];
 }
 
@@ -7725,6 +8278,275 @@ typedef $$RequestsTableProcessedTableManager =
       Request,
       PrefetchHooks Function()
     >;
+typedef $$TiersTableCreateCompanionBuilder =
+    TiersCompanion Function({
+      required String id,
+      required String kind,
+      required int sortOrder,
+      required int threshold,
+      required String title,
+      required String icon,
+      Value<String?> reward,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$TiersTableUpdateCompanionBuilder =
+    TiersCompanion Function({
+      Value<String> id,
+      Value<String> kind,
+      Value<int> sortOrder,
+      Value<int> threshold,
+      Value<String> title,
+      Value<String> icon,
+      Value<String?> reward,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$TiersTableFilterComposer extends Composer<_$AppDatabase, $TiersTable> {
+  $$TiersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get threshold => $composableBuilder(
+    column: $table.threshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TiersTableOrderingComposer
+    extends Composer<_$AppDatabase, $TiersTable> {
+  $$TiersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get threshold => $composableBuilder(
+    column: $table.threshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TiersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TiersTable> {
+  $$TiersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get threshold =>
+      $composableBuilder(column: $table.threshold, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get reward =>
+      $composableBuilder(column: $table.reward, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$TiersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TiersTable,
+          Tier,
+          $$TiersTableFilterComposer,
+          $$TiersTableOrderingComposer,
+          $$TiersTableAnnotationComposer,
+          $$TiersTableCreateCompanionBuilder,
+          $$TiersTableUpdateCompanionBuilder,
+          (Tier, BaseReferences<_$AppDatabase, $TiersTable, Tier>),
+          Tier,
+          PrefetchHooks Function()
+        > {
+  $$TiersTableTableManager(_$AppDatabase db, $TiersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TiersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TiersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TiersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> threshold = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> icon = const Value.absent(),
+                Value<String?> reward = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TiersCompanion(
+                id: id,
+                kind: kind,
+                sortOrder: sortOrder,
+                threshold: threshold,
+                title: title,
+                icon: icon,
+                reward: reward,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String kind,
+                required int sortOrder,
+                required int threshold,
+                required String title,
+                required String icon,
+                Value<String?> reward = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TiersCompanion.insert(
+                id: id,
+                kind: kind,
+                sortOrder: sortOrder,
+                threshold: threshold,
+                title: title,
+                icon: icon,
+                reward: reward,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TiersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TiersTable,
+      Tier,
+      $$TiersTableFilterComposer,
+      $$TiersTableOrderingComposer,
+      $$TiersTableAnnotationComposer,
+      $$TiersTableCreateCompanionBuilder,
+      $$TiersTableUpdateCompanionBuilder,
+      (Tier, BaseReferences<_$AppDatabase, $TiersTable, Tier>),
+      Tier,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7745,4 +8567,6 @@ class $AppDatabaseManager {
       $$AllowanceRatesTableTableManager(_db, _db.allowanceRates);
   $$RequestsTableTableManager get requests =>
       $$RequestsTableTableManager(_db, _db.requests);
+  $$TiersTableTableManager get tiers =>
+      $$TiersTableTableManager(_db, _db.tiers);
 }

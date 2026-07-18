@@ -19,6 +19,7 @@ import '../utils/formatters.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/ui_kit.dart';
 import 'allowance_history_screen.dart';
+import 'tier_settings_screen.dart';
 
 const _exportImportService = ExportImportService();
 
@@ -319,6 +320,23 @@ class SettingsScreen extends ConsumerWidget {
         ),
 
         if (!settings.isChild) ...[
+          const SectionHeader('티어 / 칭호'),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.workspace_premium_outlined),
+              title: const Text('티어 / 칭호 설정'),
+              subtitle: const Text('칭호·도달 금액·아이콘·보상 수정 (동기화됨)'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const TierSettingsScreen(),
+                ));
+                // 수정 후 즉시 가족 문서로 전파
+                final sync = ref.read(familySyncServiceProvider);
+                if (sync.isActive) await sync.pushNow();
+              },
+            ),
+          ),
           const SectionHeader('부모 암호'),
           Card(
             child: ListTile(

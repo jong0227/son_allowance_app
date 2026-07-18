@@ -160,6 +160,24 @@ class Requests extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 저축 티어(등급) 설정. kind='savings'(누적 저축액 기준, threshold=원) 또는
+/// kind='weekly'(주간 저축률 기준, threshold=퍼센트 하한). 부모가 수정하고
+/// 가족 동기화로 공유된다. 기본값은 앱 첫 실행 시 시드된다.
+class Tiers extends Table {
+  TextColumn get id => text()();
+  TextColumn get kind => text()(); // 'savings' | 'weekly'
+  IntColumn get sortOrder => integer()();
+  IntColumn get threshold => integer()(); // savings: 원, weekly: %
+  TextColumn get title => text()();
+  TextColumn get icon => text()(); // 이모지
+  TextColumn get reward => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Children,
@@ -170,6 +188,7 @@ class Requests extends Table {
     Goals,
     AllowanceRates,
     Requests,
+    Tiers,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -177,7 +196,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -214,6 +233,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 9) {
             await m.addColumn(allowanceRates, allowanceRates.note);
+          }
+          if (from < 10) {
+            await m.createTable(tiers);
           }
         },
       );
@@ -988,6 +1010,75 @@ class AppDatabase extends _$AppDatabase {
         editedBy: Value(editedBy),
         updatedAt: Value(DateTime.now()),
       ));
+
+  // ---------------- 저축 티어(등급) ----------------
+  Stream<List<Tier>> watchTiers(String kind) => (select(tiers)
+        ..where((t) => t.kind.equals(kind) & t.deletedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+      .watch();
+
+  Future<List<Tier>> allTiersRaw() => select(tiers).get();
+
+  Future<void> upsertTier(TiersCompanion t) => into(tiers).insertOnConflictUpdate(t);
+
+  /// 티어 내용 수정(부모). 수정 시각을 now로 갱신해 동기화 시 우선 반영되게 한다.
+  Future<void> updateTierFields(String id,
+          {required int threshold, required String title, required String icon, String? reward}) =>
+      (update(tiers)..where((t) => t.id.equals(id))).write(TiersCompanion(
+        threshold: Value(threshold),
+        title: Value(title),
+        icon: Value(icon),
+        reward: Value(reward),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+  /// 티어가 하나도 없으면 기본값을 시드한다(앱 첫 실행/신규 기기).
+  /// 시드는 고정 과거 시각(updatedAt)을 써서, 부모가 나중에 수정하면(now) 그 값이
+  /// 항상 동기화 우선권을 갖도록 한다. 고정 id라 여러 기기가 시드해도 충돌 없음.
+  Future<void> seedTiersIfEmpty() async {
+    final existing = await (select(tiers)..limit(1)).get();
+    if (existing.isNotEmpty) return;
+    final seedTime = DateTime(2020, 1, 1);
+    for (final t in _defaultTiers) {
+      await into(tiers).insertOnConflictUpdate(TiersCompanion.insert(
+        id: t.$1,
+        kind: t.$2,
+        sortOrder: t.$3,
+        threshold: t.$4,
+        title: t.$5,
+        icon: t.$6,
+        reward: Value(t.$7),
+        updatedAt: Value(seedTime),
+      ));
+    }
+  }
+
+  /// (id, kind, order, threshold, title, icon, reward)
+  static const List<(String, String, int, int, String, String, String?)> _defaultTiers = [
+    // 누적 저축액 티어 (마인크래프트 테마)
+    ('sav_01', 'savings', 1, 0, '흙', '🟫', null),
+    ('sav_02', 'savings', 2, 5000, '나무', '🪵', '좋아하는 간식 1개'),
+    ('sav_03', 'savings', 3, 10000, '조약돌', '🪨', '마인크래프트 30분 추가'),
+    ('sav_04', 'savings', 4, 20000, '석탄', '⬛', '문구점 3천원 쇼핑'),
+    ('sav_05', 'savings', 5, 30000, '구리', '🟧', '아이스크림'),
+    ('sav_06', 'savings', 6, 40000, '철', '⚙️', '만화책 1권'),
+    ('sav_07', 'savings', 7, 50000, '금', '🟨', '치킨 or 피자'),
+    ('sav_08', 'savings', 8, 70000, '레드스톤', '🔴', '마크 아이템/스킨'),
+    ('sav_09', 'savings', 9, 100000, '청금석', '🔵', '키즈카페'),
+    ('sav_10', 'savings', 10, 150000, '에메랄드', '💚', '장난감(2만원 내)'),
+    ('sav_11', 'savings', 11, 200000, '다이아몬드', '💎', '레고 세트'),
+    ('sav_12', 'savings', 12, 300000, '네더라이트', '🖤', '놀이공원 하루'),
+    ('sav_13', 'savings', 13, 500000, '엔더 드래곤', '🐉', '게임 타이틀'),
+    ('sav_14', 'savings', 14, 1000000, '비컨', '🔆', '가족여행 선택권'),
+    ('sav_15', 'savings', 15, 3000000, '네더의 별', '🌟', '원하는 전자기기'),
+    ('sav_16', 'savings', 16, 5000000, '엔드 크리스탈', '🔮', '부모님과 자유 협의'),
+    // 주간 저축률 티어 (threshold=퍼센트 하한)
+    ('wk_01', 'weekly', 1, 0, '일반 저축가', '🐜', null),
+    ('wk_02', 'weekly', 2, 40, '새싹 저축가', '🌱', null),
+    ('wk_03', 'weekly', 3, 60, '저축 요정', '⭐', null),
+    ('wk_04', 'weekly', 4, 80, '부자 후보자', '💪', null),
+    ('wk_05', 'weekly', 5, 100, '완벽 저축왕', '👑', null),
+  ];
 
   // ---------------- 용돈 변경 이력 ----------------
   Stream<List<AllowanceRate>> watchAllowanceRates(String childId) => (select(allowanceRates)

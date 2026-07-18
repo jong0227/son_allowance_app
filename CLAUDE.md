@@ -45,8 +45,9 @@ Set-Location "C:\dev\son_allowance_app"
 - 서비스: `lib/services/` — export_import(스마트 병합, 방어적 파싱), notification, backup
 - 공용 위젯: `lib/widgets/` — ui_kit(TagChip/StatTile/SectionHeader), child_avatar, responsive_scaffold
 
-## DB 스키마 (현재 v9)
-테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals, AllowanceRates, Requests.
+## DB 스키마 (현재 v10)
+테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals, AllowanceRates, Requests, Tiers.
+- v10: Tiers 테이블(저축 티어). kind='savings'(threshold=원)/'weekly'(threshold=%). `seedTiersIfEmpty`가 앱 시작 시 기본값 시드(마인크래프트 테마 16단계 + 주간 5단계). 시드는 고정 과거 updatedAt(2020)이라 부모 수정(now)이 항상 동기화 우선. 부모가 `TierSettingsScreen`에서 칭호/금액/아이콘/보상 수정 → sync.pushNow로 전파. 티어 계산 `tierFor`(lib/providers/tier_provider.dart). 표시: main_shell 앱바 배지 + 홈 TierProgressCard(?→티어표) + 주간 저축률 칩(_WeeklyBudgetCard) + 레벨업 배너(settings.lastCelebratedTierOrder로 중복 방지). 총저축 = computeSummary totalSavings(현금+주식).
 - v8: StockTransfers에 ticker/companyName/shares 추가(자녀 주식 매수 요청 반영용).
 - v9: AllowanceRates에 note(변경 사유) 추가.
 - ⚠️ 자녀 부분 컬럼 갱신은 반드시 `updateChildPartial(id, changes)` 사용. `upsertChild`는 INSERT 경로에서 name(NOT NULL) 없으면 실패 → 보너스/이자 규칙 편집이 조용히 안 되던 버그 원인이었음.

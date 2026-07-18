@@ -6,8 +6,10 @@ import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/tier_provider.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
 import 'main_shell.dart';
 
@@ -37,6 +39,8 @@ class OverviewScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          _buildLevelUpBanner(context, ref),
+          _buildTierCard(ref),
           if (!isChild) _buildBackupReminder(context, ref),
           _buildRequestsSection(context, ref, isChild),
           summaryAsync.when(
@@ -186,7 +190,9 @@ class OverviewScreen extends ConsumerWidget {
           transactionsAsync.maybeWhen(
             orElse: () => const _LoadingBox(height: 64),
             data: (txs) => _WeeklyBudgetCard(
-                txs: txs, weeklyBudget: child.weeklyAllowanceDefault),
+                txs: txs,
+                weeklyBudget: child.weeklyAllowanceDefault,
+                weeklyTiers: ref.watch(weeklyTiersProvider).valueOrNull ?? const []),
           ),
           SectionHeader(isChild ? '갖고 싶은 것 (위시리스트)' : '저축 목표',
               trailing: IconButton(
@@ -792,6 +798,70 @@ class OverviewScreen extends ConsumerWidget {
     await ref.read(databaseProvider).giveInterest(child, owner);
   }
 
+  /// 누적 저축 티어 카드(진행바 + 티어표 버튼).
+  Widget _buildTierCard(WidgetRef ref) {
+    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    final tiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
+    if (tiers.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TierProgressCard(tiers: tiers, savings: savings),
+    );
+  }
+
+  /// 새 티어 도달 시 축하 배너. 마지막으로 축하한 순서보다 높아졌을 때만 1회 표시.
+  Widget _buildLevelUpBanner(BuildContext context, WidgetRef ref) {
+    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    final tiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
+    if (tiers.isEmpty) return const SizedBox.shrink();
+    final pos = tierFor(tiers, savings);
+    final cur = pos.current;
+    final lastCelebrated = ref.watch(settingsProvider).lastCelebratedTierOrder;
+    // 기본 티어(흙, order 1)는 축하하지 않는다.
+    if (cur == null || cur.sortOrder <= 1 || cur.sortOrder <= lastCelebrated) {
+      return const SizedBox.shrink();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: [scheme.tertiaryContainer, scheme.primaryContainer]),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Text(cur.icon, style: const TextStyle(fontSize: 34)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('🎉 "${cur.title}" 티어 달성!',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          color: scheme.onPrimaryContainer)),
+                  if (cur.reward != null && cur.reward!.isNotEmpty)
+                    Text('보상: ${cur.reward}',
+                        style: TextStyle(
+                            fontSize: 12.5, color: scheme.onPrimaryContainer.withValues(alpha: 0.9))),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  ref.read(settingsProvider.notifier).setLastCelebratedTierOrder(cur.sortOrder),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Export를 오래 안 했으면 상단에 백업 공유 안내 배너.
   Widget _buildBackupReminder(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
@@ -1143,7 +1213,9 @@ class _LoadingBox extends StatelessWidget {
 class _WeeklyBudgetCard extends StatelessWidget {
   final List<TransactionEntry> txs;
   final int weeklyBudget;
-  const _WeeklyBudgetCard({required this.txs, required this.weeklyBudget});
+  final List<Tier> weeklyTiers;
+  const _WeeklyBudgetCard(
+      {required this.txs, required this.weeklyBudget, this.weeklyTiers = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -1163,6 +1235,10 @@ class _WeeklyBudgetCard extends StatelessWidget {
     final ratio = weeklyBudget == 0 ? 0.0 : (spent / weeklyBudget).clamp(0.0, 1.0);
     final over = remaining < 0;
     final barColor = over ? palette.expense.fg : palette.income.fg;
+    // 이번 주 저축률 = 남은 예산 / 주간 용돈 (0~100%)
+    final savePct =
+        weeklyBudget == 0 ? 0 : ((remaining / weeklyBudget) * 100).clamp(0, 100).round();
+    final weeklyTier = tierFor(weeklyTiers, savePct).current;
 
     return Card(
       child: Padding(
@@ -1175,8 +1251,21 @@ class _WeeklyBudgetCard extends StatelessWidget {
               children: [
                 Text(over ? '이번 주 예산 초과' : '이번 주 남은 예산',
                     style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                Text('용돈 ${formatWon(weeklyBudget)}',
-                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                if (weeklyTier != null && !over)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: scheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text('${weeklyTier.icon} ${weeklyTier.title} · $savePct%',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: scheme.onSecondaryContainer)),
+                  )
+                else
+                  Text('용돈 ${formatWon(weeklyBudget)}',
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
               ],
             ),
             const SizedBox(height: 6),

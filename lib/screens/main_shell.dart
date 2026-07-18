@@ -4,9 +4,11 @@ import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
+import '../providers/tier_provider.dart';
 import '../services/backup_service.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/responsive_scaffold.dart';
+import '../widgets/tier_widgets.dart';
 import 'ledger_screen.dart';
 import 'overview_screen.dart';
 import 'settings_screen.dart';
@@ -30,6 +32,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final db = ref.read(databaseProvider);
       final owner = ref.read(settingsProvider).deviceOwner ?? '';
+      // 티어 기본값이 없으면 시드(첫 실행/신규 기기)
+      await db.seedTiersIfEmpty();
       // 앱 시작 시 중복 프로필 정리 + 데이터 있는 프로필 자동 선택(동기화 후 self-heal)
       final primary = await db.reconcileToSingleChild(owner);
       if (primary != null && primary != widget.child.id) {
@@ -52,6 +56,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final index = ref.watch(mainTabIndexProvider);
     final child = widget.child;
+    // 상단 티어 배지: 총 저축액 기준 현재 티어
+    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    final savingsTiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
+    final tierPos = tierFor(savingsTiers, savings);
 
     return ResponsiveScaffold(
       titleWidget: Row(
@@ -63,6 +71,10 @@ class _MainShellState extends ConsumerState<MainShell> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.4)),
           ),
+          if (tierPos.current != null) ...[
+            const SizedBox(width: 8),
+            TierBadge(tier: tierPos.current!),
+          ],
         ],
       ),
       selectedIndex: index,
