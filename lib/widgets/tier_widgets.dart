@@ -61,12 +61,29 @@ class TierProgressCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cur?.title ?? '흙',
-                          style: TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                              color: scheme.onPrimaryContainer)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Flexible(
+                            child: Text(cur?.title ?? '흙',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                    color: scheme.onPrimaryContainer)),
+                          ),
+                          if (cur != null && tierEnglishName(cur.id) != null) ...[
+                            const SizedBox(width: 6),
+                            Text(tierEnglishName(cur.id)!,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.onPrimaryContainer.withValues(alpha: 0.75))),
+                          ],
+                        ],
+                      ),
                       Text('총 저축 ${formatWon(savings)}',
                           style: TextStyle(
                               fontSize: 12.5,
@@ -143,6 +160,17 @@ void showTierTable(BuildContext context, List<Tier> tiers, int savings) {
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
                               color: t.id == currentId ? scheme.onPrimaryContainer : null)),
+                      if (tierEnglishName(t.id) != null) ...[
+                        const SizedBox(width: 6),
+                        Text(tierEnglishName(t.id)!,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: (t.id == currentId
+                                        ? scheme.onPrimaryContainer
+                                        : scheme.onSurfaceVariant)
+                                    .withValues(alpha: 0.7))),
+                      ],
                       if (t.id == currentId) ...[
                         const SizedBox(width: 6),
                         Icon(Icons.check_circle, size: 16, color: scheme.primary),

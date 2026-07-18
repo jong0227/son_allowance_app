@@ -33,6 +33,29 @@ class TierPosition {
   }
 }
 
+/// 누적 저축 티어의 영어(마인크래프트) 명칭. 기본 시드 id 기준.
+/// 부모가 칭호를 바꿔도 마크 영문명은 그대로 보여준다(없으면 표시 안 함).
+const Map<String, String> _tierEnglish = {
+  'sav_01': 'Dirt',
+  'sav_02': 'Wood',
+  'sav_03': 'Cobblestone',
+  'sav_04': 'Coal',
+  'sav_05': 'Copper',
+  'sav_06': 'Iron',
+  'sav_07': 'Gold',
+  'sav_08': 'Redstone',
+  'sav_09': 'Lapis',
+  'sav_10': 'Emerald',
+  'sav_11': 'Diamond',
+  'sav_12': 'Netherite',
+  'sav_13': 'Ender Dragon',
+  'sav_14': 'Beacon',
+  'sav_15': 'Nether Star',
+  'sav_16': 'End Crystal',
+};
+
+String? tierEnglishName(String id) => _tierEnglish[id];
+
 TierPosition tierFor(List<Tier> tiers, int value) {
   Tier? current;
   Tier? next;
