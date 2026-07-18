@@ -4,6 +4,7 @@ import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/tier_provider.dart';
 import '../utils/formatters.dart';
+import '../widgets/tier_widgets.dart';
 
 /// 부모가 저축 티어(칭호/금액/아이콘/보상)를 수정하는 화면. 수정 내용은 동기화됨.
 class TierSettingsScreen extends ConsumerWidget {
@@ -59,7 +60,11 @@ class TierSettingsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${t.icon} ${t.title} 수정'),
+        title: Row(children: [
+          TierIcon(tier: t, size: 22),
+          const SizedBox(width: 8),
+          Flexible(child: Text('${t.title} 수정', overflow: TextOverflow.ellipsis)),
+        ]),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -71,7 +76,10 @@ class TierSettingsScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               TextField(
                 controller: iconController,
-                decoration: const InputDecoration(labelText: '아이콘(이모지 1개)'),
+                decoration: InputDecoration(
+                    labelText: '아이콘(이모지)',
+                    helperText: isPercent ? null : '블럭 이미지가 있으면 이미지가 먼저 표시돼요',
+                    helperMaxLines: 2),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -123,7 +131,7 @@ class _TierRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: Text(tier.icon, style: const TextStyle(fontSize: 24)),
+        leading: TierIcon(tier: tier, size: 24),
         title: Text(tier.title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(isPercent
             ? '${tier.threshold}% 이상'
