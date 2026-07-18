@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -14,6 +14,7 @@ import '../providers/sync_provider.dart';
 import '../services/export_import_service.dart';
 import '../services/notification_service.dart';
 import '../services/sync_service.dart';
+import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/child_avatar.dart';
@@ -1137,7 +1138,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// 현재 설치된 앱 버전 표시. pubspec의 version(빌드 시 주입)을 그대로 읽는다.
+/// 앱 버전 + 업데이트 확인. GitHub 최신 릴리즈와 비교해 새 버전이 있으면 안내.
 class _AppVersionTile extends StatefulWidget {
   const _AppVersionTile();
   @override
@@ -1146,6 +1147,7 @@ class _AppVersionTile extends StatefulWidget {
 
 class _AppVersionTileState extends State<_AppVersionTile> {
   String _version = '확인 중...';
+  bool _checking = false;
 
   @override
   void initState() {
@@ -1157,21 +1159,85 @@ class _AppVersionTileState extends State<_AppVersionTile> {
     });
   }
 
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('링크를 열 수 없어요.')));
+      }
+    }
+  }
+
+  Future<void> _checkUpdate() async {
+    setState(() => _checking = true);
+    UpdateInfo? info;
+    try {
+      info = await const UpdateService().check();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if (info == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('업데이트 확인 실패 (인터넷 연결을 확인해주세요)')));
+      return;
+    }
+    if (!info.hasUpdate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('최신 버전이에요 (v${info.currentVersion})')));
+      return;
+    }
+    final u = info;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('새 버전 v${u.latestVersion} 있어요!'),
+        content: Text('현재 v${u.currentVersion} → 최신 v${u.latestVersion}\n\n'
+            '아래 "지금 받기"를 누르면 새 버전 파일을 내려받아요. 다운로드한 파일을 열면 설치됩니다.\n'
+            '(플레이스토어 앱이 아니라서 "출처를 알 수 없는 앱 허용"이 필요할 수 있어요)'),
+        actions: [
+          TextButton(
+              onPressed: () => _open(u.releaseUrl), child: const Text('릴리즈 페이지')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('나중에')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _open(u.apkUrl ?? u.releaseUrl);
+            },
+            child: const Text('지금 받기'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Icons.info_outline),
-      title: const Text('앱 버전'),
-      subtitle: Text(_version),
-      trailing: TextButton(
-        onPressed: () => Clipboard.setData(ClipboardData(text: _version)).then((_) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text('버전을 복사했어요.')));
-          }
-        }),
-        child: const Text('복사'),
-      ),
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('앱 버전'),
+          subtitle: Text(_version),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: _checking
+              ? const SizedBox(
+                  width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.system_update),
+          title: const Text('업데이트 확인'),
+          subtitle: const Text('새 버전이 있으면 받을 수 있어요'),
+          onTap: _checking ? null : _checkUpdate,
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.open_in_new),
+          title: const Text('최신 릴리즈 페이지 열기'),
+          subtitle: const Text('GitHub에서 직접 받기'),
+          onTap: () => _open(UpdateService.releasesPage),
+        ),
+      ],
     );
   }
 }
