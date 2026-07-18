@@ -1,7 +1,178 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
 import '../utils/formatters.dart';
+
+/// 이스터에그: 등급 아이콘을 연속 10번 누르면 블럭이 터지는 애니메이션.
+class TierEasterEggIcon extends StatefulWidget {
+  final Tier tier;
+  final double size;
+  const TierEasterEggIcon({super.key, required this.tier, this.size = 26});
+
+  @override
+  State<TierEasterEggIcon> createState() => _TierEasterEggIconState();
+}
+
+class _TierEasterEggIconState extends State<TierEasterEggIcon> {
+  int _count = 0;
+  DateTime _last = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _onTap() {
+    final now = DateTime.now();
+    // 1.2초 안에 연속으로 눌러야 카운트 유지
+    if (now.difference(_last) > const Duration(milliseconds: 1200)) _count = 0;
+    _last = now;
+    _count++;
+    if (_count >= 3) HapticFeedback.selectionClick();
+    if (_count >= 10) {
+      _count = 0;
+      HapticFeedback.heavyImpact();
+      showTierCelebration(context, widget.tier);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _onTap,
+      child: TierIcon(tier: widget.tier, size: widget.size),
+    );
+  }
+}
+
+/// 블럭 터짐 축하 애니메이션(풀스크린 오버레이). 탭하거나 끝나면 닫힘.
+void showTierCelebration(BuildContext context, Tier tier) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'tier-celebrate',
+    barrierColor: Colors.black.withValues(alpha: 0.55),
+    transitionDuration: const Duration(milliseconds: 150),
+    pageBuilder: (_, __, ___) => _TierBurst(tier: tier),
+  );
+}
+
+class _Particle {
+  final double angle;
+  final double speed;
+  final double spin;
+  final double size;
+  _Particle(this.angle, this.speed, this.spin, this.size);
+}
+
+class _TierBurst extends StatefulWidget {
+  final Tier tier;
+  const _TierBurst({required this.tier});
+  @override
+  State<_TierBurst> createState() => _TierBurstState();
+}
+
+class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final List<_Particle> _parts;
+
+  @override
+  void initState() {
+    super.initState();
+    final rnd = Random();
+    _parts = List.generate(18, (_) {
+      final ang = rnd.nextDouble() * 2 * pi;
+      final speed = 130 + rnd.nextDouble() * 190;
+      final spin = rnd.nextDouble() * 4 - 2;
+      final size = 16 + rnd.nextDouble() * 16;
+      return _Particle(ang, speed, spin, size);
+    });
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
+      ..forward();
+    _c.addStatusListener((s) {
+      if (s == AnimationStatus.completed && mounted) Navigator.of(context).maybePop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final en = tierEnglishName(widget.tier.id);
+    return GestureDetector(
+      onTap: () => Navigator.of(context).maybePop(),
+      child: Center(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            final t = _c.value;
+            final pop = Curves.elasticOut.transform((t / 0.45).clamp(0.0, 1.0));
+            final scale = 0.2 + pop * 1.0;
+            final wiggle = sin(t * pi * 8) * 0.14 * (1 - t);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // 튀는 파티클 블럭들
+                      for (final p in _parts)
+                        Transform.translate(
+                          offset: Offset(
+                            cos(p.angle) * p.speed * t,
+                            sin(p.angle) * p.speed * t + 220 * t * t, // 중력
+                          ),
+                          child: Opacity(
+                            opacity: (1 - t).clamp(0.0, 1.0),
+                            child: Transform.rotate(
+                              angle: p.spin * t * pi,
+                              child: TierIcon(tier: widget.tier, size: p.size),
+                            ),
+                          ),
+                        ),
+                      // 가운데 큰 블럭 (팝 + 흔들)
+                      Transform.rotate(
+                        angle: wiggle,
+                        child: Transform.scale(
+                          scale: scale,
+                          child: TierIcon(tier: widget.tier, size: 92),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Opacity(
+                  opacity: pop.clamp(0.0, 1.0),
+                  child: Column(
+                    children: [
+                      Text('${widget.tier.title}!',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5)),
+                      if (en != null)
+                        Text(en,
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
 
 /// 티어 아이콘: assets/tiers 폴더에 해당 png가 있으면 이미지, 없으면 이모지.
 class TierIcon extends StatelessWidget {
@@ -123,7 +294,10 @@ class TierSummaryCard extends StatelessWidget {
             ),
             Row(
               children: [
-                if (cur != null) TierIcon(tier: cur, size: 26) else const Text('🟫'),
+                if (cur != null)
+                  TierEasterEggIcon(tier: cur, size: 26)
+                else
+                  const Text('🟫'),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
