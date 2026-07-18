@@ -11,7 +11,10 @@ import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 import 'main_shell.dart';
 
-/// 홈 + 통계를 합친 대시보드. 잔액/저축비율/이번 주 용돈/지출분석/최근내역을 한눈에.
+/// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
+final _showDetailsProvider = StateProvider<bool>((ref) => false);
+
+/// 홈 + 통계를 합친 대시보드. 기본은 핵심 정보만, "상세 통계"는 접어서 보여준다.
 class OverviewScreen extends ConsumerWidget {
   final Child child;
   const OverviewScreen({super.key, required this.child});
@@ -27,6 +30,7 @@ class OverviewScreen extends ConsumerWidget {
     final palette = appPalette(context);
     final balanceNow = summaryAsync.valueOrNull?['balance'] ?? 0;
     final isChild = ref.watch(settingsProvider).isChild;
+    final showDetails = ref.watch(_showDetailsProvider);
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(summaryProvider(child.id)),
@@ -43,7 +47,9 @@ class OverviewScreen extends ConsumerWidget {
               final income = s['totalIncome'] ?? 0;
               final expense = s['totalExpense'] ?? 0;
               final savings = s['totalSavings'] ?? 0;
-              final rate = income == 0 ? 0.0 : (savings / income * 100).clamp(0, 100).toDouble();
+              // 저축비율 분모는 실제 받은 수입 + 시작 잔액(가진 돈 전체 기준).
+              final base = income + (s['initialBalance'] ?? 0);
+              final rate = base == 0 ? 0.0 : (savings / base * 100).clamp(0, 100).toDouble();
               final threshold = child.autoTransferThreshold;
               final overThreshold = balance >= threshold;
 
@@ -213,6 +219,27 @@ class OverviewScreen extends ConsumerWidget {
               );
             },
           ),
+          const SectionHeader('최근 내역'),
+          transactionsAsync.when(
+            loading: () => const _LoadingBox(height: 80),
+            error: (e, _) => Text('오류: $e'),
+            data: (txs) {
+              final recent = txs.take(5).toList();
+              if (recent.isEmpty) return const _MutedCard(text: '아직 등록된 내역이 없어요.');
+              return Column(children: [for (final t in recent) _TxRow(t: t)]);
+            },
+          ),
+          const SizedBox(height: 12),
+          // 상세 통계는 기본으로 접어두고, 버튼으로 펼친다(홈을 간결하게).
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  ref.read(_showDetailsProvider.notifier).state = !showDetails,
+              icon: Icon(showDetails ? Icons.expand_less : Icons.expand_more),
+              label: Text(showDetails ? '상세 통계 접기' : '상세 통계 보기'),
+            ),
+          ),
+          if (showDetails) ...[
           const SectionHeader('카테고리별 지출'),
           expenseByCategoryAsync.when(
             loading: () => const _LoadingBox(height: 120),
@@ -419,16 +446,7 @@ class OverviewScreen extends ConsumerWidget {
               );
             },
           ),
-          const SectionHeader('최근 내역'),
-          transactionsAsync.when(
-            loading: () => const _LoadingBox(height: 80),
-            error: (e, _) => Text('오류: $e'),
-            data: (txs) {
-              final recent = txs.take(5).toList();
-              if (recent.isEmpty) return const _MutedCard(text: '아직 등록된 내역이 없어요.');
-              return Column(children: [for (final t in recent) _TxRow(t: t)]);
-            },
-          ),
+          ], // showDetails
         ],
       ),
     );

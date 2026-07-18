@@ -88,9 +88,14 @@ class AllowanceHistoryScreen extends ConsumerWidget {
             ..sort((a, b) => b.date.compareTo(a.date));
           final totalReceived = received.fold<int>(0, (a, b) => a + b.amount);
 
-          // 아직 안 준 일정(밀린 + 예정)은 기간 필터와 무관하게 항상 보여 지급 가능하게 함
-          final unpaid = schedules.where((s) => !s.isPaid).toList()
-            ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+          // 아직 안 준 일정(밀린 + 예정). "현재" 처리 대상이므로, 선택 기간이
+          // 오늘을 포함할 때만 표시(과거만 고른 경우엔 이번 주 예정이 끼어 혼란스러움).
+          final rangeIncludesToday = range != _Range.custom ||
+              (customRange != null && !customRange.end.isBefore(today));
+          final unpaid = rangeIncludesToday
+              ? (schedules.where((s) => !s.isPaid).toList()
+                ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate)))
+              : <AllowanceSchedule>[];
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -162,7 +167,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                               letterSpacing: -0.8,
                               color: palette.allowance.fg)),
                       const SizedBox(height: 8),
-                      Text('받은 횟수 ${received.length}회 · 안 준 용돈 ${unpaid.length}건',
+                      Text('받은 횟수 ${received.length}회',
                           style: TextStyle(
                               fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.9))),
                     ],

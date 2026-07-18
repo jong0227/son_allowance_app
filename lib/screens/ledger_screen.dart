@@ -9,6 +9,13 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 
+/// 빠른 금액 칩 라벨용: 1000→"1천", 10000→"1만", 50000→"5만", 100000→"10만"
+String _shortWon(int won) {
+  if (won >= 10000) return '${won ~/ 10000}만';
+  if (won >= 1000) return '${won ~/ 1000}천';
+  return '$won';
+}
+
 enum _Filter { all, income, expense }
 
 enum _Period { all, thisMonth, lastMonth, thisYear }
@@ -608,6 +615,27 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         suffixText: '원',
                         suffixStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    // 빠른 금액 추가 칩. 누를 때마다 현재 금액에 더해진다(만원 두 번 = 2만원).
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final add in const [1000, 10000, 50000, 100000])
+                          ActionChip(
+                            label: Text('+${_shortWon(add)}'),
+                            onPressed: () {
+                              final cur = int.tryParse(amountController.text) ?? 0;
+                              amountController.text = '${cur + add}';
+                            },
+                          ),
+                        ActionChip(
+                          avatar: const Icon(Icons.backspace_outlined, size: 16),
+                          label: const Text('지우기'),
+                          onPressed: () => amountController.text = '',
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 18),
                     _FieldLabel('날짜'),

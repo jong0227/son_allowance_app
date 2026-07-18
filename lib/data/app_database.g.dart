@@ -3923,6 +3923,15 @@ class $AllowanceRatesTable extends AllowanceRates
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _changedAtMeta = const VerificationMeta(
     'changedAt',
   );
@@ -3975,6 +3984,7 @@ class $AllowanceRatesTable extends AllowanceRates
     id,
     childId,
     amount,
+    note,
     changedAt,
     editedBy,
     updatedAt,
@@ -4012,6 +4022,12 @@ class $AllowanceRatesTable extends AllowanceRates
       );
     } else if (isInserting) {
       context.missing(_amountMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
     }
     if (data.containsKey('changed_at')) {
       context.handle(
@@ -4058,6 +4074,10 @@ class $AllowanceRatesTable extends AllowanceRates
         DriftSqlType.int,
         data['${effectivePrefix}amount'],
       )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       changedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}changed_at'],
@@ -4087,6 +4107,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
   final String id;
   final String childId;
   final int amount;
+  final String? note;
   final DateTime changedAt;
   final String editedBy;
   final DateTime updatedAt;
@@ -4095,6 +4116,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
     required this.id,
     required this.childId,
     required this.amount,
+    this.note,
     required this.changedAt,
     required this.editedBy,
     required this.updatedAt,
@@ -4106,6 +4128,9 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
     map['id'] = Variable<String>(id);
     map['child_id'] = Variable<String>(childId);
     map['amount'] = Variable<int>(amount);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     map['changed_at'] = Variable<DateTime>(changedAt);
     map['edited_by'] = Variable<String>(editedBy);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -4120,6 +4145,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
       id: Value(id),
       childId: Value(childId),
       amount: Value(amount),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       changedAt: Value(changedAt),
       editedBy: Value(editedBy),
       updatedAt: Value(updatedAt),
@@ -4138,6 +4164,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
       id: serializer.fromJson<String>(json['id']),
       childId: serializer.fromJson<String>(json['childId']),
       amount: serializer.fromJson<int>(json['amount']),
+      note: serializer.fromJson<String?>(json['note']),
       changedAt: serializer.fromJson<DateTime>(json['changedAt']),
       editedBy: serializer.fromJson<String>(json['editedBy']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4151,6 +4178,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
       'id': serializer.toJson<String>(id),
       'childId': serializer.toJson<String>(childId),
       'amount': serializer.toJson<int>(amount),
+      'note': serializer.toJson<String?>(note),
       'changedAt': serializer.toJson<DateTime>(changedAt),
       'editedBy': serializer.toJson<String>(editedBy),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4162,6 +4190,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
     String? id,
     String? childId,
     int? amount,
+    Value<String?> note = const Value.absent(),
     DateTime? changedAt,
     String? editedBy,
     DateTime? updatedAt,
@@ -4170,6 +4199,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
     id: id ?? this.id,
     childId: childId ?? this.childId,
     amount: amount ?? this.amount,
+    note: note.present ? note.value : this.note,
     changedAt: changedAt ?? this.changedAt,
     editedBy: editedBy ?? this.editedBy,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -4180,6 +4210,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
       id: data.id.present ? data.id.value : this.id,
       childId: data.childId.present ? data.childId.value : this.childId,
       amount: data.amount.present ? data.amount.value : this.amount,
+      note: data.note.present ? data.note.value : this.note,
       changedAt: data.changedAt.present ? data.changedAt.value : this.changedAt,
       editedBy: data.editedBy.present ? data.editedBy.value : this.editedBy,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4193,6 +4224,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
           ..write('id: $id, ')
           ..write('childId: $childId, ')
           ..write('amount: $amount, ')
+          ..write('note: $note, ')
           ..write('changedAt: $changedAt, ')
           ..write('editedBy: $editedBy, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4206,6 +4238,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
     id,
     childId,
     amount,
+    note,
     changedAt,
     editedBy,
     updatedAt,
@@ -4218,6 +4251,7 @@ class AllowanceRate extends DataClass implements Insertable<AllowanceRate> {
           other.id == this.id &&
           other.childId == this.childId &&
           other.amount == this.amount &&
+          other.note == this.note &&
           other.changedAt == this.changedAt &&
           other.editedBy == this.editedBy &&
           other.updatedAt == this.updatedAt &&
@@ -4228,6 +4262,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
   final Value<String> id;
   final Value<String> childId;
   final Value<int> amount;
+  final Value<String?> note;
   final Value<DateTime> changedAt;
   final Value<String> editedBy;
   final Value<DateTime> updatedAt;
@@ -4237,6 +4272,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
     this.id = const Value.absent(),
     this.childId = const Value.absent(),
     this.amount = const Value.absent(),
+    this.note = const Value.absent(),
     this.changedAt = const Value.absent(),
     this.editedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4247,6 +4283,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
     required String id,
     required String childId,
     required int amount,
+    this.note = const Value.absent(),
     this.changedAt = const Value.absent(),
     this.editedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4259,6 +4296,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
     Expression<String>? id,
     Expression<String>? childId,
     Expression<int>? amount,
+    Expression<String>? note,
     Expression<DateTime>? changedAt,
     Expression<String>? editedBy,
     Expression<DateTime>? updatedAt,
@@ -4269,6 +4307,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
       if (id != null) 'id': id,
       if (childId != null) 'child_id': childId,
       if (amount != null) 'amount': amount,
+      if (note != null) 'note': note,
       if (changedAt != null) 'changed_at': changedAt,
       if (editedBy != null) 'edited_by': editedBy,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4281,6 +4320,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
     Value<String>? id,
     Value<String>? childId,
     Value<int>? amount,
+    Value<String?>? note,
     Value<DateTime>? changedAt,
     Value<String>? editedBy,
     Value<DateTime>? updatedAt,
@@ -4291,6 +4331,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
       id: id ?? this.id,
       childId: childId ?? this.childId,
       amount: amount ?? this.amount,
+      note: note ?? this.note,
       changedAt: changedAt ?? this.changedAt,
       editedBy: editedBy ?? this.editedBy,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4310,6 +4351,9 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
     }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
     }
     if (changedAt.present) {
       map['changed_at'] = Variable<DateTime>(changedAt.value);
@@ -4335,6 +4379,7 @@ class AllowanceRatesCompanion extends UpdateCompanion<AllowanceRate> {
           ..write('id: $id, ')
           ..write('childId: $childId, ')
           ..write('amount: $amount, ')
+          ..write('note: $note, ')
           ..write('changedAt: $changedAt, ')
           ..write('editedBy: $editedBy, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7057,6 +7102,7 @@ typedef $$AllowanceRatesTableCreateCompanionBuilder =
       required String id,
       required String childId,
       required int amount,
+      Value<String?> note,
       Value<DateTime> changedAt,
       Value<String> editedBy,
       Value<DateTime> updatedAt,
@@ -7068,6 +7114,7 @@ typedef $$AllowanceRatesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> childId,
       Value<int> amount,
+      Value<String?> note,
       Value<DateTime> changedAt,
       Value<String> editedBy,
       Value<DateTime> updatedAt,
@@ -7096,6 +7143,11 @@ class $$AllowanceRatesTableFilterComposer
 
   ColumnFilters<int> get amount => $composableBuilder(
     column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7144,6 +7196,11 @@ class $$AllowanceRatesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get changedAt => $composableBuilder(
     column: $table.changedAt,
     builder: (column) => ColumnOrderings(column),
@@ -7182,6 +7239,9 @@ class $$AllowanceRatesTableAnnotationComposer
 
   GeneratedColumn<int> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get changedAt =>
       $composableBuilder(column: $table.changedAt, builder: (column) => column);
@@ -7232,6 +7292,7 @@ class $$AllowanceRatesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> childId = const Value.absent(),
                 Value<int> amount = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> changedAt = const Value.absent(),
                 Value<String> editedBy = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7241,6 +7302,7 @@ class $$AllowanceRatesTableTableManager
                 id: id,
                 childId: childId,
                 amount: amount,
+                note: note,
                 changedAt: changedAt,
                 editedBy: editedBy,
                 updatedAt: updatedAt,
@@ -7252,6 +7314,7 @@ class $$AllowanceRatesTableTableManager
                 required String id,
                 required String childId,
                 required int amount,
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> changedAt = const Value.absent(),
                 Value<String> editedBy = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7261,6 +7324,7 @@ class $$AllowanceRatesTableTableManager
                 id: id,
                 childId: childId,
                 amount: amount,
+                note: note,
                 changedAt: changedAt,
                 editedBy: editedBy,
                 updatedAt: updatedAt,

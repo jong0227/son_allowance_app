@@ -26,6 +26,15 @@ class StockQuote {
   bool get isKorea => symbol.endsWith('.KS') || symbol.endsWith('.KQ');
 }
 
+/// 종목 현재가 조회 결과.
+class StockPrice {
+  final double native; // 원래 통화 기준 가격
+  final String currency; // 'KRW', 'USD' 등
+  final double krw; // 원화 환산 가격(1주당 원). USD 등은 환율 반영.
+
+  const StockPrice({required this.native, required this.currency, required this.krw});
+}
+
 /// 야후 파이낸스의 공개 검색 엔드포인트를 사용한 종목 자동완성.
 /// - API 키 불필요(공개 저장소 안전), 한글·영어·티커 모두 검색 가능.
 /// - 비공식 엔드포인트라 드물게 형식이 바뀌거나 제한될 수 있어, 실패해도
@@ -101,5 +110,60 @@ class StockSearchService {
       result.add(StockQuote(symbol: symbol, name: name, exchange: exch, type: type));
     }
     return result;
+  }
+
+  /// 종목의 현재가(원화 환산 포함). 실패하면 null.
+  Future<StockPrice?> quotePrice(String symbol) async {
+    try {
+      final meta = await _chartMeta(symbol);
+      if (meta == null) return null;
+      final price = (meta['regularMarketPrice'] as num?)?.toDouble();
+      if (price == null) return null;
+      final currency = (meta['currency'] ?? 'KRW').toString();
+      double krw = price;
+      if (currency != 'KRW') {
+        final fx = await _fxToKrw(currency);
+        if (fx == null) return null;
+        krw = price * fx;
+      }
+      return StockPrice(native: price, currency: currency, krw: krw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _chartMeta(String symbol) async {
+    final uri = Uri.parse(
+        'https://query1.finance.yahoo.com/v8/finance/chart/${Uri.encodeComponent(symbol)}?range=1d&interval=1d');
+    final res = await http.get(uri, headers: const {
+      'User-Agent':
+          'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+    });
+    if (res.statusCode != 200) return null;
+    final body = jsonDecode(utf8.decode(res.bodyBytes));
+    final result = body?['chart']?['result'];
+    if (result is! List || result.isEmpty) return null;
+    final meta = result.first['meta'];
+    return meta is Map ? Map<String, dynamic>.from(meta) : null;
+  }
+
+  static final Map<String, double> _fxCache = {};
+  static DateTime? _fxAt;
+
+  /// 통화→원 환율. USD 등. 세션 내 10분 캐시.
+  Future<double?> _fxToKrw(String currency) async {
+    if (currency == 'KRW') return 1;
+    if (_fxCache.containsKey(currency) &&
+        _fxAt != null &&
+        DateTime.now().difference(_fxAt!) < const Duration(minutes: 10)) {
+      return _fxCache[currency];
+    }
+    final meta = await _chartMeta('${currency}KRW=X');
+    final fx = (meta?['regularMarketPrice'] as num?)?.toDouble();
+    if (fx != null) {
+      _fxCache[currency] = fx;
+      _fxAt = DateTime.now();
+    }
+    return fx;
   }
 }

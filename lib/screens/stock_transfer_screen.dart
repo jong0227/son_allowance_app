@@ -143,114 +143,216 @@ class StockTransferScreen extends ConsumerWidget {
   String _trimShares(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
-  // ---------- 자녀: 주식 사달라고 요청 ----------
+  // ---------- 자녀: 주식 사달라고 요청 (현재가 기반) ----------
   Future<void> _showRequestStockDialog(BuildContext context, WidgetRef ref) async {
     final quote = await showStockSearch(context);
     if (quote == null || !context.mounted) return;
+    final price = await _fetchPriceWithLoading(context, quote.symbol);
+    if (!context.mounted) return;
+
     final amountController = TextEditingController();
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${quote.name} 요청'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${quote.symbol}${quote.exchange.isNotEmpty ? ' · ${quote.exchange}' : ''}',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: '얼마치 사달라고 할까요? (원)'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final amount = int.tryParse(amountController.text) ?? 0;
+          final krw = price?.krw;
+          final approxShares = (krw != null && krw > 0) ? amount / krw : null;
+          return AlertDialog(
+            title: Text('${quote.name} 요청'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${quote.symbol}${quote.exchange.isNotEmpty ? ' · ${quote.exchange}' : ''}',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 8),
+                  _priceLine(context, price),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(labelText: '얼마치 사달라고 할까요? (원)'),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final add in const [10000, 50000, 100000])
+                        ActionChip(
+                          label: Text('+${add ~/ 10000}만'),
+                          onPressed: () {
+                            final cur = int.tryParse(amountController.text) ?? 0;
+                            amountController.text = '${cur + add}';
+                            setState(() {});
+                          },
+                        ),
+                    ],
+                  ),
+                  if (approxShares != null && amount > 0) ...[
+                    const SizedBox(height: 10),
+                    Text('이 금액이면 약 ${approxShares.toStringAsFixed(approxShares >= 10 ? 0 : 2)}주',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ],
+              ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          FilledButton(
-            onPressed: () async {
-              final amount = int.tryParse(amountController.text);
-              if (amount == null || amount <= 0) return;
-              await ref
-                  .read(databaseProvider)
-                  .requestStock(child, quote.name, quote.symbol, amount, '아들');
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('부모님께 요청했어요.')));
-              }
-            },
-            child: const Text('요청'),
-          ),
-        ],
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+              FilledButton(
+                onPressed: () async {
+                  if (amount <= 0) return;
+                  await ref
+                      .read(databaseProvider)
+                      .requestStock(child, quote.name, quote.symbol, amount, '아들');
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('부모님께 요청했어요.')));
+                  }
+                },
+                child: const Text('요청'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  // ---------- 부모: 구매 결과 입력 후 승인 ----------
+  // ---------- 부모: 구매 결과 입력 후 승인 (현재가 기반) ----------
   Future<void> _showFulfillDialog(BuildContext context, WidgetRef ref, Request r) async {
+    final ticker = r.memo ?? '';
+    final price = ticker.isEmpty ? null : await _fetchPriceWithLoading(context, ticker);
+    if (!context.mounted) return;
+
     final amountController = TextEditingController(text: '${r.amount}');
     final sharesController = TextEditingController();
     final memoController = TextEditingController();
+    final krw = price?.krw;
+    final maxShares = (krw != null && krw > 0) ? (r.amount / krw).floor() : null;
+
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${r.title ?? '주식'} 구매 입력'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('요청: ${formatWon(r.amount)}어치 · ${r.memo ?? ''}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '실제 매수 금액(원)'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: sharesController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: '매수 수량(주) · 선택'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: memoController,
-                decoration: const InputDecoration(labelText: '메모(선택) · 예: 1주당 70,000원'),
-              ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('${r.title ?? '주식'} 구매 입력'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('요청: ${formatWon(r.amount)}어치 · $ticker',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                _priceLine(context, price),
+                if (maxShares != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('요청 금액으로 최대 $maxShares주 살 수 있어요',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: sharesController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (v) {
+                    // 수량을 입력하면 현재가로 실제 금액 자동 계산
+                    final sh = double.tryParse(v.trim());
+                    if (sh != null && krw != null) {
+                      amountController.text = '${(sh * krw).round()}';
+                    }
+                    setState(() {});
+                  },
+                  decoration: InputDecoration(
+                      labelText: '매수 수량(주)',
+                      helperText: maxShares != null ? '탭: 최대 $maxShares주 채우기' : null),
+                ),
+                if (maxShares != null && maxShares > 0)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () {
+                        sharesController.text = '$maxShares';
+                        if (krw != null) amountController.text = '${(maxShares * krw).round()}';
+                        setState(() {});
+                      },
+                      child: Text('최대 $maxShares주'),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: '실제 매수 금액(원)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: memoController,
+                  decoration: const InputDecoration(labelText: '메모(선택)'),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            FilledButton(
+              onPressed: () async {
+                final amount = int.tryParse(amountController.text);
+                if (amount == null || amount <= 0) return;
+                final shares = double.tryParse(sharesController.text.trim());
+                final owner = ref.read(settingsProvider).deviceOwner ?? '';
+                await ref.read(databaseProvider).fulfillStockRequest(
+                      r,
+                      actualAmount: amount,
+                      shares: shares,
+                      memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
+                      resolvedBy: owner,
+                    );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('구매 내역을 기록했어요.')));
+                }
+              },
+              child: const Text('구매 완료'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          FilledButton(
-            onPressed: () async {
-              final amount = int.tryParse(amountController.text);
-              if (amount == null || amount <= 0) return;
-              final shares = double.tryParse(sharesController.text.trim());
-              final owner = ref.read(settingsProvider).deviceOwner ?? '';
-              await ref.read(databaseProvider).fulfillStockRequest(
-                    r,
-                    actualAmount: amount,
-                    shares: shares,
-                    memo: memoController.text.trim().isEmpty ? null : memoController.text.trim(),
-                    resolvedBy: owner,
-                  );
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('구매 내역을 기록했어요.')));
-              }
-            },
-            child: const Text('구매 완료'),
-          ),
-        ],
       ),
     );
+  }
+
+  /// 현재가 조회(짧은 로딩 표시). 실패하면 null.
+  Future<StockPrice?> _fetchPriceWithLoading(BuildContext context, String symbol) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    StockPrice? price;
+    try {
+      price = await const StockSearchService().quotePrice(symbol);
+    } catch (_) {}
+    if (context.mounted) Navigator.pop(context); // 로딩 닫기
+    return price;
+  }
+
+  Widget _priceLine(BuildContext context, StockPrice? price) {
+    if (price == null) {
+      return Text('현재가를 불러오지 못했어요(수동 입력 가능)',
+          style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant));
+    }
+    final native = price.currency == 'KRW'
+        ? formatWon(price.native.round())
+        : '${price.native.toStringAsFixed(2)} ${price.currency}';
+    final krwPart =
+        price.currency == 'KRW' ? '' : ' (≈ ${formatWon(price.krw.round())})';
+    return Text('현재가 1주: $native$krwPart',
+        style: const TextStyle(fontWeight: FontWeight.w700));
   }
 
   // ---------- 부모: 수동 이체 기록(종목 선택 가능) ----------

@@ -126,6 +126,7 @@ class AllowanceRates extends Table {
   TextColumn get id => text()();
   TextColumn get childId => text()();
   IntColumn get amount => integer()();
+  TextColumn get note => text().nullable()(); // 변경 사유 코멘트
   DateTimeColumn get changedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get editedBy => text().withDefault(const Constant(''))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -176,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -211,6 +212,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(stockTransfers, stockTransfers.companyName);
             await m.addColumn(stockTransfers, stockTransfers.shares);
           }
+          if (from < 9) {
+            await m.addColumn(allowanceRates, allowanceRates.note);
+          }
         },
       );
 
@@ -235,6 +239,11 @@ class AppDatabase extends _$AppDatabase {
       (select(children)..where((t) => t.deletedAt.isNull())).watch();
 
   Future<void> upsertChild(ChildrenCompanion c) => into(children).insertOnConflictUpdate(c);
+
+  /// 기존 자녀의 일부 컬럼만 갱신. upsert는 INSERT 경로에서 name(NOT NULL) 등이
+  /// 없으면 실패하므로, 부분 갱신은 반드시 update().write()로 처리한다.
+  Future<void> updateChildPartial(String id, ChildrenCompanion changes) =>
+      (update(children)..where((t) => t.id.equals(id))).write(changes);
 
   Future<void> updateChildAvatar(String childId, String path) =>
       (update(children)..where((t) => t.id.equals(childId))).write(ChildrenCompanion(
@@ -745,6 +754,8 @@ class AppDatabase extends _$AppDatabase {
               'transfer': 0,
             });
     for (final t in txs) {
+      // 시작 잔액(이월잔액)은 연간 수입 통계에서 제외
+      if (t.flow == 'income' && t.category == kInitialBalance) continue;
       final y = yearOf(t.date.year);
       if (t.flow == 'expense') {
         y['expense'] = y['expense']! + t.amount;
@@ -984,11 +995,13 @@ class AppDatabase extends _$AppDatabase {
         ..orderBy([(t) => OrderingTerm.desc(t.changedAt)]))
       .watch();
 
-  Future<void> addAllowanceRate(String childId, int amount, String editedBy) =>
+  Future<void> addAllowanceRate(String childId, int amount, String editedBy,
+          {String? note}) =>
       into(allowanceRates).insert(AllowanceRatesCompanion.insert(
         id: const Uuid().v4(),
         childId: childId,
         amount: amount,
+        note: Value(note),
         editedBy: Value(editedBy),
       ));
 
@@ -1008,11 +1021,14 @@ class AppDatabase extends _$AppDatabase {
 
     int totalRegularIncome = 0;
     int totalSpecialIncome = 0;
+    int initialBalance = 0; // 시작 잔액(이월잔액): 잔액엔 포함, "받은 수입" 통계엔 제외
     int totalExpense = 0;
     for (final t in txs) {
       if (t.flow == 'income') {
-        if (t.category == '정기용돈') {
+        if (t.category == kRegularAllowance) {
           totalRegularIncome += t.amount;
+        } else if (t.category == kInitialBalance) {
+          initialBalance += t.amount;
         } else {
           totalSpecialIncome += t.amount;
         }
@@ -1021,13 +1037,16 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     final totalTransfer = transfers.fold<int>(0, (sum, s) => sum + s.amount);
+    // "총 수입"은 실제로 받은 것(정기+특별)만. 시작 잔액은 별도.
     final totalIncome = totalRegularIncome + totalSpecialIncome;
-    final balance = totalIncome - totalExpense - totalTransfer;
+    // 잔액은 시작 잔액까지 포함해서 계산.
+    final balance = totalIncome + initialBalance - totalExpense - totalTransfer;
     final totalSavings = totalTransfer + balance;
 
     return {
       'totalRegularIncome': totalRegularIncome,
       'totalSpecialIncome': totalSpecialIncome,
+      'initialBalance': initialBalance,
       'totalIncome': totalIncome,
       'totalExpense': totalExpense,
       'totalTransfer': totalTransfer,
@@ -1082,6 +1101,8 @@ class AppDatabase extends _$AppDatabase {
         .get();
     final map = <String, Map<String, int>>{};
     for (final t in txs) {
+      // 시작 잔액(이월잔액)은 "받은 수입"이 아니므로 월별 수입 통계에서 제외
+      if (t.flow == 'income' && t.category == kInitialBalance) continue;
       final key =
           '${t.date.year.toString().padLeft(4, '0')}-${t.date.month.toString().padLeft(2, '0')}';
       map.putIfAbsent(key, () => {'income': 0, 'expense': 0});

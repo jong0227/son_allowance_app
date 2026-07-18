@@ -135,8 +135,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('절약 보너스 사용'),
                   subtitle: const Text('정해진 요일까지 목표 금액 이상 남기면 보너스 지급'),
                   value: child.bonusEnabled,
-                  onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                        id: Value(child.id),
+                  onChanged: (v) =>
+                      ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
                         bonusEnabled: Value(v),
                         updatedAt: Value(DateTime.now()),
                       )),
@@ -161,8 +161,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('저축 이자 사용'),
                   subtitle: const Text('잔액에 주기적으로 이자를 붙여 저축을 장려해요'),
                   value: child.interestEnabled,
-                  onChanged: (v) => ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                        id: Value(child.id),
+                  onChanged: (v) =>
+                      ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
                         interestEnabled: Value(v),
                         updatedAt: Value(DateTime.now()),
                       )),
@@ -563,6 +563,7 @@ class SettingsScreen extends ConsumerWidget {
     final amountController = TextEditingController(text: '${child.weeklyAllowanceDefault}');
     final thresholdController = TextEditingController(text: '${child.autoTransferThreshold}');
     final stockLabelController = TextEditingController(text: child.stockAccountLabel ?? '');
+    final reasonController = TextEditingController();
     int payDay = child.payDayOfWeek;
 
     showDialog(
@@ -582,6 +583,12 @@ class SettingsScreen extends ConsumerWidget {
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: '기본 주간 용돈(원)')),
+                const SizedBox(height: 10),
+                // 용돈을 바꾸는 경우에만 사유를 남길 수 있게 안내
+                TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                        labelText: '용돈 변경 사유 (선택)', hintText: '예: 초등학교 입학, 심부름 잘함')),
                 const SizedBox(height: 10),
                 TextField(
                     controller: thresholdController,
@@ -627,9 +634,11 @@ class SettingsScreen extends ConsumerWidget {
                   payDayOfWeek: Value(payDay),
                   updatedAt: Value(DateTime.now()),
                 ));
-                // 기본 용돈이 실제로 바뀌었으면 변경 이력 기록
+                // 기본 용돈이 실제로 바뀌었으면 변경 이력 기록(사유 포함)
                 if (newAmount != child.weeklyAllowanceDefault) {
-                  await db.addAllowanceRate(child.id, newAmount, owner);
+                  final reason = reasonController.text.trim();
+                  await db.addAllowanceRate(child.id, newAmount, owner,
+                      note: reason.isEmpty ? null : reason);
                 }
                 if (context.mounted) Navigator.pop(context);
               },
@@ -685,8 +694,18 @@ class SettingsScreen extends ConsumerWidget {
                               leading: const Icon(Icons.trending_up),
                               title: Text(formatWon(r.amount),
                                   style: const TextStyle(fontWeight: FontWeight.w700)),
-                              subtitle: Text(
-                                  '${formatDate(r.changedAt)}${r.editedBy.isNotEmpty ? ' · ${r.editedBy}' : ''}'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      '${formatDate(r.changedAt)}${r.editedBy.isNotEmpty ? ' · ${r.editedBy}' : ''}'),
+                                  if (r.note != null && r.note!.isNotEmpty)
+                                    Text('사유: ${r.note}',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
                             ),
                         ],
                       );
@@ -739,8 +758,7 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final pct = double.tryParse(percentController.text) ?? child.interestPercent;
-                await ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                      id: Value(child.id),
+                await ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
                       interestPercent: Value(pct),
                       interestPeriod: Value(period),
                       updatedAt: Value(DateTime.now()),
@@ -806,8 +824,7 @@ class SettingsScreen extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
             FilledButton(
               onPressed: () async {
-                await ref.read(databaseProvider).upsertChild(ChildrenCompanion(
-                      id: Value(child.id),
+                await ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
                       bonusDayOfWeek: Value(day),
                       bonusThreshold:
                           Value(int.tryParse(thresholdController.text) ?? child.bonusThreshold),
