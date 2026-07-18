@@ -46,11 +46,12 @@ class _TierEasterEggTapState extends State<TierEasterEggTap> {
   }
 }
 
-/// 블럭 터짐 축하 애니메이션(풀스크린 오버레이). 탭하거나 끝나면 닫힘.
+/// 블럭 터짐 축하 애니메이션(풀스크린 오버레이).
+/// 처음 1초는 실수 탭으로 닫히지 않고, 이후 탭하거나 끝나면 닫힘.
 void showTierCelebration(BuildContext context, Tier tier) {
   showGeneralDialog(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: false, // 실수 탭으로 바로 닫히지 않게
     barrierLabel: 'tier-celebrate',
     barrierColor: Colors.black.withValues(alpha: 0.55),
     transitionDuration: const Duration(milliseconds: 150),
@@ -77,10 +78,14 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
   late final AnimationController _c;
   late final List<_Particle> _parts;
   late final List<_Particle> _sparks;
+  bool _canDismiss = false; // 처음 1초 동안은 실수 탭으로 안 닫히게
 
   @override
   void initState() {
     super.initState();
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _canDismiss = true);
+    });
     final rnd = Random();
     _parts = List.generate(30, (_) {
       final ang = rnd.nextDouble() * 2 * pi;
@@ -116,7 +121,9 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final en = tierEnglishName(widget.tier.id);
     return GestureDetector(
-      onTap: () => Navigator.of(context).maybePop(),
+      onTap: () {
+        if (_canDismiss) Navigator.of(context).maybePop();
+      },
       child: Center(
         child: AnimatedBuilder(
           animation: _c,
