@@ -256,6 +256,76 @@ class AppDatabase extends _$AppDatabase {
             t.deletedAt.isNull()))
       .getSingleOrNull();
 
+  /// 시작일부터 지난 지급일(오늘 이전)까지 받았을 정기용돈 총액을 추정한다.
+  /// 기본용돈 변경 이력(AllowanceRates)을 반영해 각 주의 적용 금액을 계산.
+  /// (변경 이력 이전 구간은 가장 오래된 기록 금액으로 근사)
+  Future<int> estimatePastAllowance(Child child, DateTime startDate) async {
+    final rates = await (select(allowanceRates)
+          ..where((t) => t.childId.equals(child.id) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.changedAt)]))
+        .get();
+    int amountAt(DateTime d) {
+      if (rates.isEmpty) return child.weeklyAllowanceDefault;
+      if (d.isBefore(rates.first.changedAt)) return rates.first.amount;
+      var a = rates.first.amount;
+      for (final r in rates) {
+        if (!r.changedAt.isAfter(d)) a = r.amount;
+      }
+      return a;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    var d = _nextOccurrence(child.payDayOfWeek, start);
+    var total = 0;
+    var guard = 0;
+    // 오늘 이전의 지급일만(이번 주 예정은 일정 시스템이 따로 처리 → 중복 방지)
+    while (d.isBefore(today) && guard < 2000) {
+      total += amountAt(d);
+      d = _nextOccurrence(child.payDayOfWeek, d.add(const Duration(days: 1)));
+      guard++;
+    }
+    return total;
+  }
+
+  /// 과거 용돈을 일괄 반영: 추정 정기용돈(수입) + 그동안 쓴 돈(지출)을 시작일로 기록.
+  /// 기존 "시작 잔액(이월잔액)"이 있으면 중복 방지를 위해 삭제하고 대체한다.
+  Future<void> applyPastAllowance(
+      Child child, DateTime startDate, int spending, String editedBy) async {
+    final total = await estimatePastAllowance(child, startDate);
+    final now = DateTime.now();
+    final d = DateTime(startDate.year, startDate.month, startDate.day);
+    final existingInit = await findInitialBalance(child.id);
+    if (existingInit != null) await softDeleteTransaction(existingInit.id, editedBy);
+    if (total > 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        date: d,
+        flow: 'income',
+        category: kRegularAllowance,
+        amount: total,
+        memo: Value('과거 정기용돈 일괄 (${d.year}.${d.month}.${d.day}부터)'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+    if (spending > 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        date: d,
+        flow: 'expense',
+        category: '기타',
+        amount: spending,
+        memo: const Value('과거 지출 일괄'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+  }
+
   // ---------------- Children ----------------
   Stream<List<Child>> watchChildren() =>
       (select(children)..where((t) => t.deletedAt.isNull())).watch();

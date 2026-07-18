@@ -56,24 +56,42 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final index = ref.watch(mainTabIndexProvider);
     final child = widget.child;
-    // 상단 티어 배지: 총 저축액 기준 현재 티어
+    // 상단 티어 배지: 누적 저축 티어 + 이번 주 저축률 티어
     final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
     final savingsTiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
-    final tierPos = tierFor(savingsTiers, savings);
+    final savingsTier = tierFor(savingsTiers, savings).current;
+
+    final weeklyTiers = ref.watch(weeklyTiersProvider).valueOrNull ?? const [];
+    final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
+    final now = DateTime.now();
+    final weekStart =
+        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    final budget = child.weeklyAllowanceDefault;
+    final spent = txs
+        .where((t) =>
+            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
+        .fold<int>(0, (a, b) => a + b.amount);
+    final savePct = budget == 0 ? 0 : (((budget - spent) / budget) * 100).clamp(0, 100).round();
+    final weeklyTier = tierFor(weeklyTiers, savePct).current;
 
     return ResponsiveScaffold(
       titleWidget: Row(
         children: [
           ChildAvatar(child: child, size: 36),
-          const SizedBox(width: 11),
+          const SizedBox(width: 9),
           Flexible(
             child: Text('${child.name}의 용돈',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.4)),
           ),
-          if (tierPos.current != null) ...[
-            const SizedBox(width: 8),
-            TierBadge(tier: tierPos.current!),
+          if (savingsTier != null) ...[
+            const SizedBox(width: 6),
+            TierEasterEggTap(tier: savingsTier, child: TierBadge(tier: savingsTier)),
+          ],
+          if (weeklyTier != null) ...[
+            const SizedBox(width: 4),
+            TierEasterEggTap(tier: weeklyTier, child: TierBadge(tier: weeklyTier)),
           ],
         ],
       ),

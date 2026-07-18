@@ -7,17 +7,19 @@ import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
 import '../utils/formatters.dart';
 
-/// 이스터에그: 등급 아이콘을 연속 10번 누르면 블럭이 터지는 애니메이션.
-class TierEasterEggIcon extends StatefulWidget {
+/// 이스터에그: 자기 등급(아이콘/칭호 영역)을 연속 7번 누르면 블럭이 터지는 애니메이션.
+/// child를 감싸 그 영역 전체가 탭 대상이 되도록 한다.
+class TierEasterEggTap extends StatefulWidget {
   final Tier tier;
-  final double size;
-  const TierEasterEggIcon({super.key, required this.tier, this.size = 26});
+  final Widget child;
+  const TierEasterEggTap({super.key, required this.tier, required this.child});
 
   @override
-  State<TierEasterEggIcon> createState() => _TierEasterEggIconState();
+  State<TierEasterEggTap> createState() => _TierEasterEggTapState();
 }
 
-class _TierEasterEggIconState extends State<TierEasterEggIcon> {
+class _TierEasterEggTapState extends State<TierEasterEggTap> {
+  static const _need = 7;
   int _count = 0;
   DateTime _last = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -28,9 +30,8 @@ class _TierEasterEggIconState extends State<TierEasterEggIcon> {
     _last = now;
     _count++;
     if (_count >= 3) HapticFeedback.selectionClick();
-    if (_count >= 10) {
+    if (_count >= _need) {
       _count = 0;
-      HapticFeedback.heavyImpact();
       showTierCelebration(context, widget.tier);
     }
   }
@@ -40,7 +41,7 @@ class _TierEasterEggIconState extends State<TierEasterEggIcon> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _onTap,
-      child: TierIcon(tier: widget.tier, size: widget.size),
+      child: widget.child,
     );
   }
 }
@@ -357,35 +358,35 @@ class TierSummaryCard extends StatelessWidget {
                 ),
               ],
             ),
-            Row(
-              children: [
-                if (cur != null)
-                  TierEasterEggIcon(tier: cur, size: 26)
-                else
-                  const Text('🟫'),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(cur?.title ?? '-',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.4,
-                              color: scheme.onPrimaryContainer)),
-                      if (en != null)
-                        Text(en,
+            _wrapEgg(
+              cur,
+              Row(
+                children: [
+                  if (cur != null) TierIcon(tier: cur, size: 26) else const Text('🟫'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(cur?.title ?? '-',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
-                    ],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.4,
+                                color: scheme.onPrimaryContainer)),
+                        if (en != null)
+                          Text(en,
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             ClipRRect(
@@ -411,6 +412,9 @@ class TierSummaryCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _wrapEgg(Tier? tier, Widget child) =>
+      tier == null ? child : TierEasterEggTap(tier: tier, child: child);
 
   String _footer(TierPosition pos) {
     if (isPercent) {

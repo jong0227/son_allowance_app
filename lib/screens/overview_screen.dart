@@ -51,9 +51,10 @@ class OverviewScreen extends ConsumerWidget {
               final income = s['totalIncome'] ?? 0;
               final expense = s['totalExpense'] ?? 0;
               final savings = s['totalSavings'] ?? 0;
-              // 저축비율 분모는 실제 받은 수입 + 시작 잔액(가진 돈 전체 기준).
-              final base = income + (s['initialBalance'] ?? 0);
-              final rate = base == 0 ? 0.0 : (savings / base * 100).clamp(0, 100).toDouble();
+              // 저축률 = 받은 용돈 중 안 쓴 비율 (시작 잔액은 제외해 왜곡 방지).
+              // "용돈을 받아서 그중 얼마를 안 쓰고 모았나"를 뜻함.
+              final rate =
+                  income == 0 ? 0.0 : (((income - expense) / income) * 100).clamp(0, 100).toDouble();
               final threshold = child.autoTransferThreshold;
               final overThreshold = balance >= threshold;
 
