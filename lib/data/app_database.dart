@@ -289,15 +289,20 @@ class AppDatabase extends _$AppDatabase {
     return total;
   }
 
-  /// 과거 용돈을 일괄 반영: 추정 정기용돈(수입) + 그동안 쓴 돈(지출)을 시작일로 기록.
-  /// 기존 "시작 잔액(이월잔액)"이 있으면 중복 방지를 위해 삭제하고 대체한다.
+  /// 시작 설정: 시작 날짜 + "지금까지 모은 돈(savedAmount)"만 넣으면,
+  /// 그 기간 받은 정기용돈(추정)을 수입으로 넣고, 소비는 자동 계산해서 넣는다.
+  ///   소비 = 받은 정기용돈 총액 - 모은 돈
+  /// 결과적으로 이 설정만으로 현재 잔액이 정확히 "모은 돈"이 되도록 맞춘다.
+  /// - 모은 돈이 받은 용돈보다 많으면(선물 등) 그 차액을 "이월잔액" 수입으로 보충.
+  /// 기존 "시작 잔액(이월잔액)"이 있으면 삭제하고 대체한다.
   Future<void> applyPastAllowance(
-      Child child, DateTime startDate, int spending, String editedBy) async {
+      Child child, DateTime startDate, int savedAmount, String editedBy) async {
     final total = await estimatePastAllowance(child, startDate);
     final now = DateTime.now();
     final d = DateTime(startDate.year, startDate.month, startDate.day);
     final existingInit = await findInitialBalance(child.id);
     if (existingInit != null) await softDeleteTransaction(existingInit.id, editedBy);
+
     if (total > 0) {
       await upsertTransaction(TransactionEntriesCompanion.insert(
         id: const Uuid().v4(),
@@ -311,15 +316,29 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(now),
       ));
     }
-    if (spending > 0) {
+
+    final diff = total - savedAmount; // 양수면 소비, 음수면 추가로 모은 돈
+    if (diff > 0) {
       await upsertTransaction(TransactionEntriesCompanion.insert(
         id: const Uuid().v4(),
         childId: child.id,
         date: d,
         flow: 'expense',
         category: '기타',
-        amount: spending,
-        memo: const Value('과거 지출 일괄'),
+        amount: diff,
+        memo: const Value('과거 지출 일괄(자동 계산)'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    } else if (diff < 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        date: d,
+        flow: 'income',
+        category: kInitialBalance,
+        amount: -diff,
+        memo: const Value('과거에 따로 모은 돈'),
         editedBy: Value(editedBy),
         updatedAt: Value(now),
       ));

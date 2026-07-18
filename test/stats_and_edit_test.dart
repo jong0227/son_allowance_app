@@ -84,15 +84,29 @@ void main() {
     final total = await db.estimatePastAllowance(child, start);
     expect(total, 12000, reason: '3000 × 4주');
 
-    // 적용하면 정기용돈 수입이 생기고 시작잔액은 없어야 함
-    await db.applyPastAllowance(child, start, 2000, '아빠');
+    // "지금까지 모은 돈" 10000 입력 → 소비 자동계산(12000-10000=2000), 잔액=10000
+    await db.applyPastAllowance(child, start, 10000, '아빠');
     final txs = (await db.allTransactionsRaw()).where((t) => t.deletedAt == null).toList();
     final income = txs.firstWhere((t) => t.flow == 'income');
     final expense = txs.firstWhere((t) => t.flow == 'expense');
     expect(income.category, '정기용돈');
     expect(income.amount, 12000);
-    expect(expense.amount, 2000);
-    // 저축률 관점: 받은 12000 중 2000 씀 → 잔액 10000
+    expect(expense.amount, 2000, reason: '자동 계산된 소비');
+    expect((await db.computeSummary(child.id))['balance'], 10000);
+  });
+
+  test('모은 돈이 받은 용돈보다 많으면 차액이 이월잔액 수입으로 보충된다', () async {
+    final today = DateTime.now();
+    await db.upsertChild(ChildrenCompanion.insert(
+      id: 'kid1', name: '테스트',
+      weeklyAllowanceDefault: const Value(3000),
+      payDayOfWeek: Value(today.weekday),
+    ));
+    final child = (await db.allChildrenRaw()).first;
+    final start = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 14)); // 2주 → 6000
+    await db.applyPastAllowance(child, start, 10000, '아빠'); // 모은 돈 10000 > 6000
+    // 잔액이 정확히 10000 (6000 정기 + 4000 이월)
     expect((await db.computeSummary(child.id))['balance'], 10000);
   });
 }

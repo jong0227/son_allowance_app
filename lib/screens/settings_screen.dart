@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
@@ -31,16 +30,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
-    final txsAsync = ref.watch(transactionsProvider(child.id));
-    TransactionEntry? initialBalance;
-    txsAsync.whenData((txs) {
-      for (final t in txs) {
-        if (t.category == AppDatabase.kInitialBalance) {
-          initialBalance = t;
-          break;
-        }
-      }
-    });
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -77,35 +66,17 @@ class SettingsScreen extends ConsumerWidget {
         ),
 
         if (!settings.isChild) ...[
-          const SectionHeader('시작 잔액 / 과거 용돈'),
+          const SectionHeader('과거 용돈 설정'),
           Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.calculate_outlined),
-                  title: const Text('과거 용돈 자동 계산 (추천)'),
-                  subtitle: const Text('시작 날짜만 넣으면 그동안 받은 용돈을 변경이력 반영해 계산'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => _PastAllowanceDialog(child: child),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading:
-                      Icon(initialBalance != null ? Icons.savings : Icons.savings_outlined),
-                  title: Text(initialBalance != null
-                      ? '시작 잔액 ${formatWon(initialBalance!.amount)}'
-                      : '시작 잔액 직접 입력'),
-                  subtitle: Text(initialBalance != null
-                      ? '${formatDate(initialBalance!.date)} 기준 · 앱 쓰기 전부터 모은 용돈'
-                      : '계산 대신 모은 금액을 직접 한 번에 입력'),
-                  trailing: Icon(
-                      initialBalance != null ? Icons.edit_outlined : Icons.add_circle_outline),
-                  onTap: () => _showInitialBalanceDialog(context, ref, initialBalance),
-                ),
-              ],
+            child: ListTile(
+              leading: const Icon(Icons.savings_outlined),
+              title: const Text('시작 날짜 + 지금까지 모은 돈'),
+              subtitle: const Text('두 개만 넣으면 그동안 받은 용돈·쓴 돈을 자동 계산해 내역에 넣어요'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => _PastAllowanceDialog(child: child),
+              ),
             ),
           ),
         ],
@@ -488,112 +459,6 @@ class SettingsScreen extends ConsumerWidget {
 
   // 앱 사용 전부터 모아둔 용돈을 한 번만 입력/수정하는 다이얼로그.
   // 저장 시 category='이월잔액'인 특별 수입 내역 1건으로 기록되어 잔액 계산에 자동 합산된다.
-  void _showInitialBalanceDialog(
-      BuildContext context, WidgetRef ref, TransactionEntry? existing) {
-    final amountController =
-        TextEditingController(text: existing != null ? '${existing.amount}' : '');
-    DateTime date = existing?.date ?? DateTime.now();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(existing != null ? '시작 잔액 수정' : '시작 잔액 입력'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('이 앱을 쓰기 전부터 모아둔 용돈이 있다면 입력해주세요. '
-                    '잔액에 자동으로 합산되고, 나중에 언제든 수정할 수 있어요.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  decoration: const InputDecoration(labelText: '금액(원)'),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: date,
-                      firstDate: DateTime(2015),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setState(() => date = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).colorScheme.outline),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 16),
-                        const SizedBox(width: 10),
-                        Text(formatDate(date)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            if (existing != null)
-              TextButton(
-                onPressed: () async {
-                  final db = ref.read(databaseProvider);
-                  final owner = ref.read(settingsProvider).deviceOwner ?? '';
-                  await db.deleteTransaction(existing, owner, child);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: Text('삭제', style: TextStyle(color: appPalette(context).expense.fg)),
-              ),
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-            FilledButton(
-              onPressed: () async {
-                final amount = int.tryParse(amountController.text);
-                if (amount == null || amount <= 0) return;
-                final db = ref.read(databaseProvider);
-                final owner = ref.read(settingsProvider).deviceOwner ?? '';
-                if (existing != null) {
-                  await db.updateTransactionFields(
-                    existing.id,
-                    date: date,
-                    amount: amount,
-                    category: AppDatabase.kInitialBalance,
-                    memo: existing.memo,
-                    giver: null,
-                    editedBy: owner,
-                  );
-                } else {
-                  await db.upsertTransaction(TransactionEntriesCompanion.insert(
-                    id: const Uuid().v4(),
-                    childId: child.id,
-                    date: date,
-                    flow: 'income',
-                    category: AppDatabase.kInitialBalance,
-                    amount: amount,
-                    memo: const Value('앱 사용 전부터 모은 용돈'),
-                    editedBy: Value(owner),
-                    updatedAt: Value(DateTime.now()),
-                  ));
-                }
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('저장'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showEditChildDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController(text: child.name);
     final amountController = TextEditingController(text: '${child.weeklyAllowanceDefault}');
@@ -1165,7 +1030,7 @@ class _PastAllowanceDialog extends ConsumerStatefulWidget {
 
 class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
   DateTime _start = DateTime.now().subtract(const Duration(days: 365));
-  final _spendController = TextEditingController();
+  final _savedController = TextEditingController();
   int? _total; // 계산된 총 정기용돈
 
   @override
@@ -1176,7 +1041,7 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
 
   @override
   void dispose() {
-    _spendController.dispose();
+    _savedController.dispose();
     super.dispose();
   }
 
@@ -1189,17 +1054,18 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final spend = int.tryParse(_spendController.text) ?? 0;
-    final carry = (_total ?? 0) - spend;
+    final saved = int.tryParse(_savedController.text) ?? 0;
+    final total = _total ?? 0;
+    final spent = (total - saved).clamp(0, total); // 자동 계산된 소비
     return AlertDialog(
-      title: const Text('과거 용돈 자동 계산'),
+      title: const Text('과거 용돈 설정'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('용돈을 처음 주기 시작한 날짜를 넣으면, 그날부터 지금까지 받은 '
-                '정기용돈을 기본용돈 변경이력을 반영해 계산해요. 그동안 쓴 돈은 대략 한 번에 입력하세요.'),
+            const Text('① 용돈을 처음 주기 시작한 날짜와 ② 지금까지 모아둔 돈만 넣으면, '
+                '그동안 받은 정기용돈을 자동 계산하고 쓴 돈을 뭉텅이로 내역에 넣어드려요.'),
             const SizedBox(height: 14),
             InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -1225,12 +1091,19 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                   children: [
                     const Icon(Icons.calendar_today, size: 16),
                     const SizedBox(width: 10),
-                    Text('시작 날짜: ${formatDate(_start)}'),
+                    Text('① 시작 날짜: ${formatDate(_start)}'),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
+            TextField(
+              controller: _savedController,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: '② 지금까지 모은 돈 (원)'),
+            ),
+            const SizedBox(height: 14),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -1238,26 +1111,25 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                 color: scheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                _total == null
-                    ? '계산 중...'
-                    : '이 기간 받은 정기용돈 ≈ ${formatWon(_total!)}',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800, color: scheme.onSecondaryContainer),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _total == null
+                        ? '계산 중...'
+                        : '받은 정기용돈 ≈ ${formatWon(total)}',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800, color: scheme.onSecondaryContainer),
+                  ),
+                  const SizedBox(height: 2),
+                  Text('자동 계산된 소비 ≈ ${formatWon(spent)}',
+                      style: TextStyle(
+                          fontSize: 12.5, color: scheme.onSecondaryContainer)),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _spendController,
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: '그동안 쓴 돈 (대략, 원)'),
-            ),
             const SizedBox(height: 8),
-            Text('→ 지금까지 모은 돈 ≈ ${formatWon(carry)}',
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text('적용하면 기존 "시작 잔액"은 대체돼요.',
+            Text('적용하면 기존 시작 잔액은 대체돼요.',
                 style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
           ],
         ),
@@ -1271,7 +1143,7 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                   final owner = ref.read(settingsProvider).deviceOwner ?? '';
                   await ref
                       .read(databaseProvider)
-                      .applyPastAllowance(widget.child, _start, spend, owner);
+                      .applyPastAllowance(widget.child, _start, saved, owner);
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
