@@ -56,6 +56,32 @@ const Map<String, String> _tierEnglish = {
 
 String? tierEnglishName(String id) => _tierEnglish[id];
 
+/// 티어별 이미지 파일명(assets/tiers/*.png). 파일이 있으면 이미지, 없으면 이모지 표시.
+/// 부모가 직접 마인크래프트 블럭 이미지를 이 이름으로 넣으면 자동 적용된다.
+const Map<String, String> _tierAssetName = {
+  'sav_01': 'dirt',
+  'sav_02': 'wood',
+  'sav_03': 'cobblestone',
+  'sav_04': 'coal',
+  'sav_05': 'copper',
+  'sav_06': 'iron',
+  'sav_07': 'gold',
+  'sav_08': 'redstone',
+  'sav_09': 'lapis',
+  'sav_10': 'emerald',
+  'sav_11': 'diamond',
+  'sav_12': 'netherite',
+  'sav_13': 'ender_dragon',
+  'sav_14': 'beacon',
+  'sav_15': 'nether_star',
+  'sav_16': 'end_crystal',
+};
+
+String? tierAssetPath(String id) {
+  final n = _tierAssetName[id];
+  return n == null ? null : 'assets/tiers/$n.png';
+}
+
 TierPosition tierFor(List<Tier> tiers, int value) {
   Tier? current;
   Tier? next;

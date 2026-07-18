@@ -48,3 +48,6 @@ app.*.map.json
 /android/key.properties
 *.jks
 *.keystore
+
+# 티어 아이콘용 마인크래프트 텍스처(개인용) — 공개 저장소에 올리지 않음
+assets/tiers/*.png

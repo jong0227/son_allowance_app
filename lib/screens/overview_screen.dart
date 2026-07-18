@@ -798,14 +798,47 @@ class OverviewScreen extends ConsumerWidget {
     await ref.read(databaseProvider).giveInterest(child, owner);
   }
 
-  /// 누적 저축 티어 카드(진행바 + 티어표 버튼).
+  /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.
   Widget _buildTierCard(WidgetRef ref) {
     final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
-    final tiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
-    if (tiers.isEmpty) return const SizedBox.shrink();
+    final savingsTiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
+    final weeklyTiers = ref.watch(weeklyTiersProvider).valueOrNull ?? const [];
+    if (savingsTiers.isEmpty) return const SizedBox.shrink();
+
+    // 이번 주 저축률 = (주간 용돈 - 이번 주 지출) / 주간 용돈
+    final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
+    final now = DateTime.now();
+    final weekStart =
+        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    final budget = child.weeklyAllowanceDefault;
+    final spent = txs
+        .where((t) =>
+            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
+        .fold<int>(0, (a, b) => a + b.amount);
+    final savePct = budget == 0 ? 0 : (((budget - spent) / budget) * 100).clamp(0, 100).round();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: TierProgressCard(tiers: tiers, savings: savings),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: TierSummaryCard(
+                  label: '부자 등급', tiers: savingsTiers, value: savings),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: TierSummaryCard(
+                  label: '주간 저축률',
+                  tiers: weeklyTiers,
+                  value: savePct,
+                  isPercent: true),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
