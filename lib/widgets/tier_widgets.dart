@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
 import '../utils/formatters.dart';
@@ -73,20 +75,31 @@ class _TierBurst extends StatefulWidget {
 class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   late final List<_Particle> _parts;
+  late final List<_Particle> _sparks;
 
   @override
   void initState() {
     super.initState();
     final rnd = Random();
-    _parts = List.generate(18, (_) {
+    _parts = List.generate(30, (_) {
       final ang = rnd.nextDouble() * 2 * pi;
-      final speed = 130 + rnd.nextDouble() * 190;
-      final spin = rnd.nextDouble() * 4 - 2;
-      final size = 16 + rnd.nextDouble() * 16;
+      final speed = 150 + rnd.nextDouble() * 220;
+      final spin = rnd.nextDouble() * 5 - 2.5;
+      final size = 14 + rnd.nextDouble() * 20;
       return _Particle(ang, speed, spin, size);
     });
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
+    _sparks = List.generate(14, (_) {
+      final ang = rnd.nextDouble() * 2 * pi;
+      final speed = 90 + rnd.nextDouble() * 240;
+      final size = 6 + rnd.nextDouble() * 8;
+      return _Particle(ang, speed, 0, size);
+    });
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))
       ..forward();
+    // 터질 때 진동 몇 번
+    HapticFeedback.heavyImpact();
+    Future.delayed(const Duration(milliseconds: 90), () => HapticFeedback.mediumImpact());
+    Future.delayed(const Duration(milliseconds: 200), () => HapticFeedback.lightImpact());
     _c.addStatusListener((s) {
       if (s == AnimationStatus.completed && mounted) Navigator.of(context).maybePop();
     });
@@ -108,25 +121,65 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
           animation: _c,
           builder: (context, _) {
             final t = _c.value;
-            final pop = Curves.elasticOut.transform((t / 0.45).clamp(0.0, 1.0));
-            final scale = 0.2 + pop * 1.0;
-            final wiggle = sin(t * pi * 8) * 0.14 * (1 - t);
+            final pop = Curves.elasticOut.transform((t / 0.5).clamp(0.0, 1.0));
+            final scale = 0.15 + pop * 1.05;
+            // 팝 이후 은은한 맥동
+            final pulse = 1 + sin(t * pi * 6) * 0.05 * (t > 0.5 ? 1 : 0);
+            final spin = Curves.easeOut.transform(t) * 2 * pi; // 한 바퀴 회전
+            final ringT = Curves.easeOut.transform((t / 0.6).clamp(0.0, 1.0));
+            final flash = (1 - (t / 0.25)).clamp(0.0, 1.0);
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  width: 300,
-                  height: 300,
+                  width: 320,
+                  height: 320,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // 튀는 파티클 블럭들
+                      // 빛 번짐(플래시)
+                      Opacity(
+                        opacity: flash * 0.9,
+                        child: Container(
+                          width: 260,
+                          height: 260,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                                colors: [Colors.white, Colors.transparent]),
+                          ),
+                        ),
+                      ),
+                      // 충격파 링
+                      Opacity(
+                        opacity: (1 - ringT) * 0.7,
+                        child: Container(
+                          width: 60 + ringT * 250,
+                          height: 60 + ringT * 250,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                width: 4 * (1 - ringT) + 1),
+                          ),
+                        ),
+                      ),
+                      // 반짝이 스파크
+                      for (final p in _sparks)
+                        Transform.translate(
+                          offset: Offset(cos(p.angle) * p.speed * t,
+                              sin(p.angle) * p.speed * t),
+                          child: Opacity(
+                            opacity: (1 - t).clamp(0.0, 1.0),
+                            child: Icon(Icons.star,
+                                size: p.size, color: Colors.amberAccent),
+                          ),
+                        ),
+                      // 튀는 블럭 파티클
                       for (final p in _parts)
                         Transform.translate(
-                          offset: Offset(
-                            cos(p.angle) * p.speed * t,
-                            sin(p.angle) * p.speed * t + 220 * t * t, // 중력
-                          ),
+                          offset: Offset(cos(p.angle) * p.speed * t,
+                              sin(p.angle) * p.speed * t + 240 * t * t),
                           child: Opacity(
                             opacity: (1 - t).clamp(0.0, 1.0),
                             child: Transform.rotate(
@@ -135,12 +188,12 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
                             ),
                           ),
                         ),
-                      // 가운데 큰 블럭 (팝 + 흔들)
+                      // 가운데 큰 블럭 (팝 + 회전 + 맥동)
                       Transform.rotate(
-                        angle: wiggle,
+                        angle: spin,
                         child: Transform.scale(
-                          scale: scale,
-                          child: TierIcon(tier: widget.tier, size: 92),
+                          scale: scale * pulse,
+                          child: TierIcon(tier: widget.tier, size: 96),
                         ),
                       ),
                     ],
@@ -150,7 +203,7 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
                   opacity: pop.clamp(0.0, 1.0),
                   child: Column(
                     children: [
-                      Text('${widget.tier.title}!',
+                      Text('🎉 ${widget.tier.title}! 🎉',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 26,
@@ -174,25 +227,37 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
   }
 }
 
-/// 티어 아이콘: assets/tiers 폴더에 해당 png가 있으면 이미지, 없으면 이모지.
-class TierIcon extends StatelessWidget {
+/// 티어 아이콘. 우선순위: 내가 넣은 이미지 → 기본 번들 이미지 → 이모지.
+class TierIcon extends ConsumerWidget {
   final Tier tier;
   final double size;
   const TierIcon({super.key, required this.tier, this.size = 28});
 
   @override
-  Widget build(BuildContext context) {
-    final path = tierAssetPath(tier.id);
-    final emoji = Text(tier.icon, style: TextStyle(fontSize: size));
-    if (path == null) return emoji;
-    return Image.asset(
-      path,
-      width: size * 1.15,
-      height: size * 1.15,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.none, // 픽셀 아트 선명하게
-      errorBuilder: (_, __, ___) => emoji, // 이미지 없으면 이모지로
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final custom = ref.watch(tierIconPathsProvider)[tier.id];
+    final dim = size * 1.15;
+    Widget emoji() => Text(tier.icon, style: TextStyle(fontSize: size));
+    Widget bundled() {
+      final path = tierAssetPath(tier.id);
+      if (path == null) return emoji();
+      return Image.asset(path,
+          width: dim,
+          height: dim,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.none,
+          errorBuilder: (_, __, ___) => emoji());
+    }
+
+    if (custom != null && custom.isNotEmpty) {
+      return Image.file(File(custom),
+          width: dim,
+          height: dim,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.none,
+          errorBuilder: (_, __, ___) => bundled());
+    }
+    return bundled();
   }
 }
 

@@ -1,6 +1,43 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/app_database.dart';
 import 'database_provider.dart';
+import 'settings_provider.dart';
+
+/// 티어별 "내가 넣은 이미지" 파일 경로 맵 (tierId -> 로컬 파일경로).
+/// 기기 로컬(SharedPreferences)에만 저장되고 동기화되지 않는다(아바타와 동일).
+final tierIconPathsProvider =
+    StateNotifierProvider<TierIconPaths, Map<String, String>>((ref) {
+  return TierIconPaths(ref.watch(sharedPreferencesProvider));
+});
+
+class TierIconPaths extends StateNotifier<Map<String, String>> {
+  final SharedPreferences prefs;
+  TierIconPaths(this.prefs) : super(_load(prefs));
+
+  static Map<String, String> _load(SharedPreferences p) {
+    final s = p.getString('tierIconPaths');
+    if (s == null) return {};
+    try {
+      return Map<String, String>.from(jsonDecode(s) as Map);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> setPath(String tierId, String path) async {
+    final m = {...state, tierId: path};
+    await prefs.setString('tierIconPaths', jsonEncode(m));
+    state = m;
+  }
+
+  Future<void> clearPath(String tierId) async {
+    final m = {...state}..remove(tierId);
+    await prefs.setString('tierIconPaths', jsonEncode(m));
+    state = m;
+  }
+}
 
 /// 누적 저축 티어 목록(정렬됨).
 final savingsTiersProvider = StreamProvider<List<Tier>>((ref) {

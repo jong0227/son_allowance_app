@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/tier_provider.dart';
@@ -52,6 +55,31 @@ class TierSettingsScreen extends ConsumerWidget {
     );
   }
 
+  /// 갤러리에서 이미지를 골라 이 티어의 아이콘으로 저장(앱 문서 폴더에 복사).
+  Future<void> _pickIcon(BuildContext context, WidgetRef ref, Tier t) async {
+    try {
+      final x = await ImagePicker()
+          .pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
+      if (x == null) return;
+      final dir = await getApplicationDocumentsDirectory();
+      final iconsDir = Directory('${dir.path}/tier_icons');
+      if (!await iconsDir.exists()) await iconsDir.create(recursive: true);
+      final dest = '${iconsDir.path}/${t.id}_${DateTime.now().millisecondsSinceEpoch}.png';
+      await File(x.path).copy(dest);
+      await ref.read(tierIconPathsProvider.notifier).setPath(t.id, dest);
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('아이콘 이미지를 넣었어요.')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('이미지를 넣지 못했어요: $e')));
+      }
+    }
+  }
+
   void _editTier(BuildContext context, WidgetRef ref, Tier t, bool isPercent) {
     final titleController = TextEditingController(text: t.title);
     final iconController = TextEditingController(text: t.icon);
@@ -69,6 +97,42 @@ class TierSettingsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!isPercent) ...[
+                // 내 이미지로 아이콘 바꾸기 (기기 로컬, 동기화 안 됨)
+                Row(
+                  children: [
+                    TierIcon(tier: t, size: 34),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => _pickIcon(context, ref, t),
+                            icon: const Icon(Icons.image_outlined, size: 18),
+                            label: const Text('내 이미지 넣기'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await ref.read(tierIconPathsProvider.notifier).clearPath(t.id);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('기본 아이콘으로 되돌렸어요.')));
+                              }
+                            },
+                            child: const Text('기본 아이콘으로'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Text('내 이미지는 이 기기에만 저장돼요(동기화 안 됨).',
+                    style: TextStyle(
+                        fontSize: 11.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                const Divider(height: 20),
+              ],
               TextField(
                 controller: titleController,
                 decoration: const InputDecoration(labelText: '칭호'),
