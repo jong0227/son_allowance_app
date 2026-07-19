@@ -495,6 +495,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   void _openEdit(TransactionEntry t) {
     final settings = ref.read(settingsProvider);
     final isIncome = t.flow == 'income';
+    // 자녀 모드: 받은 용돈(정기/특별)과 과거 일괄 내역은 보기만 가능.
+    // 자기 지출만 고칠 수 있게 한다.
+    if (settings.isChild && (isIncome || AppDatabase.isPastSeedTx(t))) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('받은 용돈 내역은 부모님만 수정할 수 있어요.')));
+      return;
+    }
     final base = isIncome ? settings.incomeCategories : settings.expenseCategories;
     // 현재 카테고리(정기용돈/절약보너스 등 목록에 없는 것 포함)를 선택지에 넣어준다.
     final cats = base.contains(t.category) ? base : [t.category, ...base];

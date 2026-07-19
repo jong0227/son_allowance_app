@@ -92,7 +92,50 @@ void main() {
     expect(income.category, '정기용돈');
     expect(income.amount, 12000);
     expect(expense.amount, 2000, reason: '자동 계산된 소비');
+    expect(expense.category, AppDatabase.kPastExpense,
+        reason: '기타가 아니라 전용 카테고리로 들어가야 통계가 안 망가짐');
     expect((await db.computeSummary(child.id))['balance'], 10000);
+  });
+
+  test('과거 일괄 내역은 잔액엔 반영되지만 카테고리/월별 통계에선 빠진다', () async {
+    final today = DateTime.now();
+    await db.upsertChild(ChildrenCompanion.insert(
+      id: 'kid1', name: '테스트',
+      weeklyAllowanceDefault: const Value(3000),
+      payDayOfWeek: Value(today.weekday),
+    ));
+    final child = (await db.allChildrenRaw()).first;
+    final start = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 28));
+    await db.applyPastAllowance(child, start, 10000, '아빠');
+
+    // 실제로 기록한 지출 하나 추가
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 'e1',
+      childId: child.id,
+      date: DateTime.now(),
+      flow: 'expense',
+      category: '간식',
+      amount: 1500,
+    ));
+
+    // 잔액엔 과거 일괄이 그대로 반영
+    expect((await db.computeSummary(child.id))['balance'], 8500);
+
+    // 카테고리 통계엔 과거 지출 일괄이 없어야 한다
+    final byCat = await db.expenseByCategory(child.id);
+    expect(byCat[AppDatabase.kPastExpense], null);
+    expect(byCat['기타'], null, reason: '더 이상 기타로 뭉뚱그리지 않음');
+    expect(byCat['간식'], 1500);
+
+    // 월별 통계에서도 과거 일괄(수입/지출 모두) 제외
+    final monthly = await db.monthlyIncomeExpense(child.id);
+    final allExpense =
+        monthly.values.fold<int>(0, (a, m) => a + (m['expense'] ?? 0));
+    final allIncome =
+        monthly.values.fold<int>(0, (a, m) => a + (m['income'] ?? 0));
+    expect(allExpense, 1500, reason: '과거 지출 일괄 제외');
+    expect(allIncome, 0, reason: '과거 정기용돈 일괄 제외');
   });
 
   test('모은 돈이 받은 용돈보다 많으면 차액이 이월잔액 수입으로 보충된다', () async {

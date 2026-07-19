@@ -40,6 +40,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         await db.reseedTiers();
         await prefs.setInt('tierSeedVersion', AppDatabase.tierSeedVersion);
       }
+      // '기타'로 들어가 있던 과거 지출 일괄을 전용 카테고리로 1회 이관
+      if (!(prefs.getBool('pastExpenseReclassified') ?? false)) {
+        await db.reclassifyPastExpense(owner);
+        await prefs.setBool('pastExpenseReclassified', true);
+      }
       // 앱 시작 시 중복 프로필 정리 + 데이터 있는 프로필 자동 선택(동기화 후 self-heal)
       final primary = await db.reconcileToSingleChild(owner);
       if (primary != null && primary != widget.child.id) {

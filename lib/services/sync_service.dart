@@ -126,6 +126,10 @@ class FamilySyncService {
     try {
       _statusController.add(SyncStatus.syncing);
       final data = await _io.serializeAll(db, _editedBy);
+      // 자녀 기기는 자녀 설정(기본 용돈/지급 요일/보너스·이자 규칙 등)을 올리지 않는다.
+      // 아이 폰의 오래된 값이 부모가 방금 바꾼 설정을 덮어쓰던 문제 방지.
+      // (지출 내역·요청 등 나머지는 그대로 올라간다)
+      if (_editedBy == '아들') data.remove('children');
       final signature = _signatureOf(data);
       final pass = readPasscode?.call();
       if (!force && signature == _lastSignature) {

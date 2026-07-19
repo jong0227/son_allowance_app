@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
+import '../providers/settings_provider.dart';
 import '../screens/avatar_crop_screen.dart';
 
 /// 자녀 프로필 원형 썸네일. 탭하면 갤러리에서 사진을 골라 원형으로 크롭 후 저장한다.
@@ -49,7 +50,10 @@ class ChildAvatar extends ConsumerWidget {
             ),
     );
 
-    if (!editable) return avatar;
+    // 자녀 모드에선 사진을 바꿀 수 없다. 아바타 저장은 children 테이블을 건드리는
+    // 유일한 자녀측 쓰기 경로라, 동기화 시 아이 기기의 오래된 값(기본 용돈/지급 요일 등)이
+    // 부모가 방금 바꾼 설정을 덮어써 버리는 문제가 있었다.
+    if (!editable || ref.watch(settingsProvider).isChild) return avatar;
 
     return GestureDetector(
       onTap: () => _pickAndCrop(context, ref),

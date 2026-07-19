@@ -252,6 +252,9 @@ class AppDatabase extends _$AppDatabase {
   static const kSavingsBonus = '절약보너스';
   static const kInterest = '이자';
   static const kInitialBalance = '이월잔액';
+  /// 앱 사용 전 지출을 한 번에 뭉뚱그린 항목(과거 지출 일괄). 실제 잔액엔 반영되지만
+  /// 카테고리가 없는 뭉치라 카테고리/월별/연간 통계에서는 제외한다.
+  static const kPastExpense = '과거 지출';
 
   // ---------------- 시작 잔액(앱 사용 전부터 모은 용돈) ----------------
   /// 자녀당 1건만 존재하는 특수 수입 항목. 설정 화면에서만 생성/수정하며,
@@ -370,7 +373,7 @@ class AppDatabase extends _$AppDatabase {
         childId: child.id,
         date: d,
         flow: 'expense',
-        category: '기타',
+        category: kPastExpense,
         amount: diff,
         memo: const Value('과거 지출 일괄(자동 계산)'),
         editedBy: Value(editedBy),
@@ -389,6 +392,33 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(now),
       ));
     }
+  }
+
+  /// 예전 버전에서 '기타'로 들어갔던 "과거 지출 일괄"을 전용 카테고리로 옮긴다.
+  /// (기타가 과대 계상되어 카테고리 통계가 무의미해지던 문제 정리)
+  /// 이미 옮겨졌으면 아무것도 하지 않는다.
+  Future<int> reclassifyPastExpense(String editedBy) async {
+    final rows = await (select(transactionEntries)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.flow.equals('expense') &
+              t.category.equals('기타')))
+        .get();
+    var moved = 0;
+    for (final t in rows) {
+      if (!(t.memo ?? '').startsWith('과거 지출 일괄')) continue;
+      await updateTransactionFields(
+        t.id,
+        date: t.date,
+        amount: t.amount,
+        category: kPastExpense,
+        memo: t.memo,
+        giver: t.giver,
+        editedBy: editedBy,
+      );
+      moved++;
+    }
+    return moved;
   }
 
   // ---------------- Children ----------------
@@ -913,6 +943,8 @@ class AppDatabase extends _$AppDatabase {
     for (final t in txs) {
       // 시작 잔액(이월잔액)은 연간 수입 통계에서 제외
       if (t.flow == 'income' && t.category == kInitialBalance) continue;
+      // 과거 일괄 시딩(정기용돈/지출)은 한 날짜에 뭉쳐 추세를 왜곡 → 제외
+      if (isPastSeedTx(t)) continue;
       final y = yearOf(t.date.year);
       if (t.flow == 'expense') {
         y['expense'] = y['expense']! + t.amount;
@@ -1346,6 +1378,21 @@ class AppDatabase extends _$AppDatabase {
       category == kInterest ||
       category == kInitialBalance;
 
+  /// 앱 사용 전 상태를 맞추려고 넣은 "일괄 시딩" 내역인지 여부.
+  /// - 과거 지출 일괄(kPastExpense)
+  /// - 과거 정기용돈 일괄(정기용돈 카테고리 + 특정 메모)
+  /// 이들은 실제 잔액/저축점수엔 반영되지만, 카테고리·월별·연간 "추세" 통계에선
+  /// 한 날짜에 뭉쳐 있어 통계를 왜곡하므로 제외한다.
+  static bool isPastSeedTx(TransactionEntry t) {
+    if (t.flow == 'expense' && t.category == kPastExpense) return true;
+    if (t.flow == 'income' &&
+        t.category == kRegularAllowance &&
+        (t.memo ?? '').startsWith('과거 정기용돈 일괄')) {
+      return true;
+    }
+    return false;
+  }
+
   /// 받은 사람별 특별 수입 합계.
   /// 정기용돈/절약보너스/이자/이월잔액 같은 시스템 수입은 특별수입이 아니므로 제외한다.
   /// (예전엔 giver 값 유무로만 걸렀는데, 정기용돈 내역을 편집하면 giver가
@@ -1372,6 +1419,8 @@ class AppDatabase extends _$AppDatabase {
         .get();
     final map = <String, int>{};
     for (final t in txs) {
+      // 과거 지출 일괄은 카테고리 없는 뭉치라 카테고리 통계에서 제외
+      if (isPastSeedTx(t)) continue;
       map[t.category] = (map[t.category] ?? 0) + t.amount;
     }
     return map;
@@ -1386,6 +1435,8 @@ class AppDatabase extends _$AppDatabase {
     for (final t in txs) {
       // 시작 잔액(이월잔액)은 "받은 수입"이 아니므로 월별 수입 통계에서 제외
       if (t.flow == 'income' && t.category == kInitialBalance) continue;
+      // 과거 일괄 시딩(정기용돈/지출)은 한 날짜에 뭉쳐 추세를 왜곡 → 제외
+      if (isPastSeedTx(t)) continue;
       final key =
           '${t.date.year.toString().padLeft(4, '0')}-${t.date.month.toString().padLeft(2, '0')}';
       map.putIfAbsent(key, () => {'income': 0, 'expense': 0});

@@ -81,40 +81,43 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
 
-        const SectionHeader('카테고리 관리'),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              _CategoryExpansion(
-                title: '지출 카테고리',
-                subtitle: '간식, 문구 등 사용 내역 종류',
-                icon: Icons.shopping_bag_outlined,
-                kind: 'expense',
-                items: settings.expenseCategories,
-                ref: ref,
-              ),
-              const Divider(height: 1),
-              _CategoryExpansion(
-                title: '수입 종류',
-                subtitle: '설날, 생일 등 특별 용돈 종류',
-                icon: Icons.card_giftcard,
-                kind: 'income',
-                items: settings.incomeCategories,
-                ref: ref,
-              ),
-              const Divider(height: 1),
-              _CategoryExpansion(
-                title: '받은 사람',
-                subtitle: '용돈을 준 사람 (엄마, 할머니 등)',
-                icon: Icons.people_alt_outlined,
-                kind: 'giver',
-                items: settings.givers,
-                ref: ref,
-              ),
-            ],
+        // 카테고리 관리는 부모만 (아이가 지출/수입 종류를 지우면 통계가 깨짐)
+        if (!settings.isChild) ...[
+          const SectionHeader('카테고리 관리'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                _CategoryExpansion(
+                  title: '지출 카테고리',
+                  subtitle: '간식, 문구 등 사용 내역 종류',
+                  icon: Icons.shopping_bag_outlined,
+                  kind: 'expense',
+                  items: settings.expenseCategories,
+                  ref: ref,
+                ),
+                const Divider(height: 1),
+                _CategoryExpansion(
+                  title: '수입 종류',
+                  subtitle: '설날, 생일 등 특별 용돈 종류',
+                  icon: Icons.card_giftcard,
+                  kind: 'income',
+                  items: settings.incomeCategories,
+                  ref: ref,
+                ),
+                const Divider(height: 1),
+                _CategoryExpansion(
+                  title: '받은 사람',
+                  subtitle: '용돈을 준 사람 (엄마, 할머니 등)',
+                  icon: Icons.people_alt_outlined,
+                  kind: 'giver',
+                  items: settings.givers,
+                  ref: ref,
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
 
         if (!settings.isChild) ...[
           const SectionHeader('절약 보너스 규칙'),
@@ -179,30 +182,33 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
 
-        const SectionHeader('수동 백업 (파일로 주고받기)'),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.upload_file),
-                title: const Text('내보내기 (Export)'),
-                subtitle: Text(settings.lastExportedAt != null
-                    ? '마지막 내보내기: ${formatDate(settings.lastExportedAt!)}'
-                    : '아직 내보낸 적 없음'),
-                onTap: () => _handleExport(context, ref),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.download),
-                title: const Text('가져오기 (Import)'),
-                subtitle: Text(settings.lastImportedAt != null
-                    ? '마지막 가져오기: ${formatDate(settings.lastImportedAt!)}'
-                    : '아직 가져온 적 없음'),
-                onTap: () => _handleImport(context, ref),
-              ),
-            ],
+        // 백업/복원은 부모만. 특히 가져오기(Import)는 전체 데이터를 덮어쓴다.
+        if (!settings.isChild) ...[
+          const SectionHeader('수동 백업 (파일로 주고받기)'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('내보내기 (Export)'),
+                  subtitle: Text(settings.lastExportedAt != null
+                      ? '마지막 내보내기: ${formatDate(settings.lastExportedAt!)}'
+                      : '아직 내보낸 적 없음'),
+                  onTap: () => _handleExport(context, ref),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.download),
+                  title: const Text('가져오기 (Import)'),
+                  subtitle: Text(settings.lastImportedAt != null
+                      ? '마지막 가져오기: ${formatDate(settings.lastImportedAt!)}'
+                      : '아직 가져온 적 없음'),
+                  onTap: () => _handleImport(context, ref),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
 
         const SectionHeader('알림'),
         Card(
@@ -328,12 +334,31 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SectionHeader('부모 암호'),
           Card(
+            // 암호가 없으면 아이가 설정에서 그냥 부모 모드로 바꿔 모든 제한을 우회할 수 있다.
+            color: settings.hasParentPasscode
+                ? null
+                : appPalette(context).expense.bg,
             child: ListTile(
-              leading: const Icon(Icons.shield_outlined),
-              title: Text(settings.hasParentPasscode ? '부모 암호 변경' : '부모 암호 설정'),
+              leading: Icon(
+                  settings.hasParentPasscode
+                      ? Icons.shield_outlined
+                      : Icons.gpp_maybe_outlined,
+                  color: settings.hasParentPasscode
+                      ? null
+                      : appPalette(context).expense.fg),
+              title: Text(settings.hasParentPasscode ? '부모 암호 변경' : '부모 암호를 설정해주세요',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: settings.hasParentPasscode
+                          ? null
+                          : appPalette(context).expense.fg)),
               subtitle: Text(settings.hasParentPasscode
                   ? '아이 폰에서 부모 모드로 못 들어가게 막아요'
-                  : '설정하면 아이가 부모 모드로 전환할 수 없어요 (권장)'),
+                  : '지금은 아이가 설정에서 부모 모드로 바꿔 모든 제한을 풀 수 있어요.',
+                  style: TextStyle(
+                      color: settings.hasParentPasscode
+                          ? null
+                          : appPalette(context).expense.fg)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showSetParentPasscodeDialog(context, ref),
             ),
@@ -774,8 +799,15 @@ class SettingsScreen extends ConsumerWidget {
   // ---------- 실시간 자동 동기화 (Firebase) ----------
   Widget _buildSyncPanel(BuildContext context, WidgetRef ref, AppSettings settings) {
     final code = settings.familyCode;
+    final isChild = settings.isChild;
 
     if (code == null) {
+      // 자녀 모드에서는 가족 연결을 새로 만들거나 갈아끼울 수 없다.
+      if (isChild) {
+        return Text('아직 가족 연결이 안 돼 있어요. 부모님께 말씀드리면 연결해 주실 거예요.',
+            style: TextStyle(
+                fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant));
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -823,7 +855,8 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('가족 코드: $code',
+                  // 자녀 모드에선 코드를 노출하지 않는다(코드를 알면 다른 기기에서 참여 가능)
+                  Text(isChild ? '가족과 연결됨' : '가족 코드: $code',
                       style: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 15.5, letterSpacing: 1)),
                   Text(statusText,
@@ -832,23 +865,27 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              tooltip: '코드 공유',
-              onPressed: () => Share.share(
-                  '용돈관리 앱 동기화 코드: $code\n앱 설정 > 실시간 자동 동기화 > "상대방 코드로 참여하기"에 입력해주세요.'),
-            ),
+            if (!isChild)
+              IconButton(
+                icon: const Icon(Icons.share_outlined),
+                tooltip: '코드 공유',
+                onPressed: () => Share.share(
+                    '용돈관리 앱 동기화 코드: $code\n앱 설정 > 실시간 자동 동기화 > "상대방 코드로 참여하기"에 입력해주세요.'),
+              ),
           ],
         ),
-        const SizedBox(height: 6),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => _handleLeaveFamily(context, ref),
-            icon: const Icon(Icons.link_off, size: 18),
-            label: const Text('동기화 끊기'),
+        // 동기화 끊기는 부모만 (아이가 끊으면 기록이 부모 폰과 어긋남)
+        if (!isChild) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _handleLeaveFamily(context, ref),
+              icon: const Icon(Icons.link_off, size: 18),
+              label: const Text('동기화 끊기'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
