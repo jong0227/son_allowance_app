@@ -97,6 +97,8 @@ const Map<String, String> _tierEnglish = {
   'sav_23': 'Ender Dragon',
   'sav_24': 'Star of Nether',
   'sav_25': 'End Crystal',
+  'sav_26': 'Herobrine',
+  'sav_27': 'Mojang',
 };
 
 String? tierEnglishName(String id) => _tierEnglish[id];
@@ -128,6 +130,8 @@ const Map<String, String> _tierAssetName = {
   'sav_23': 'ender_dragon',
   'sav_24': 'nether_star',
   'sav_25': 'end_crystal',
+  'sav_26': 'herobrine',
+  'sav_27': 'mojang',
 };
 
 String? tierAssetPath(String id) {

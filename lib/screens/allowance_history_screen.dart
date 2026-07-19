@@ -200,13 +200,17 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                 const _Muted('이 기간에 받은 정기용돈이 없어요.')
               else
                 for (final t in received)
-                  _ReceivedRow(
-                    tx: t,
-                    palette: palette,
-                    scheduledDate: t.linkedScheduleId != null
-                        ? schedById[t.linkedScheduleId!]?.scheduledDate
-                        : null,
-                  ),
+                  if ((t.memo ?? '').startsWith('과거 정기용돈 일괄'))
+                    // 일괄 내역은 실제로는 한 건이지만, 여기서는 주 단위로 펼쳐 보여준다.
+                    _LumpReceivedRow(tx: t, child: child, palette: palette)
+                  else
+                    _ReceivedRow(
+                      tx: t,
+                      palette: palette,
+                      scheduledDate: t.linkedScheduleId != null
+                          ? schedById[t.linkedScheduleId!]?.scheduledDate
+                          : null,
+                    ),
             ],
           );
         },
@@ -274,6 +278,89 @@ class _ReceivedRow extends StatelessWidget {
         title: Text(formatWon(tx.amount),
             style: TextStyle(fontWeight: FontWeight.w800, color: pair.fg, letterSpacing: -0.3)),
         subtitle: Text(sub, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+      ),
+    );
+  }
+}
+
+/// 과거 정기용돈 "일괄" 한 건을, 주 단위 지급 목록으로 펼쳐 보여주는 카드.
+/// 실제 거래는 하나로 유지되고, 여기서만 "언제 얼마씩 줬는지" 확인용으로 분해한다.
+class _LumpReceivedRow extends ConsumerWidget {
+  final TransactionEntry tx;
+  final Child child;
+  final AppPalette palette;
+  const _LumpReceivedRow(
+      {required this.tx, required this.child, required this.palette});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final pair = palette.income;
+    final paymentsAsync = ref.watch(pastAllowancePaymentsProvider(
+        (childId: child.id, startDate: tx.date, amount: tx.amount)));
+    return Card(
+      child: Theme(
+        // ExpansionTile 기본 divider 제거
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: const EdgeInsets.only(bottom: 6),
+          leading: CircleAvatar(
+              backgroundColor: pair.bg,
+              child: Icon(Icons.event_repeat, color: pair.fg)),
+          title: Text(formatWon(tx.amount),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800, color: pair.fg, letterSpacing: -0.3)),
+          subtitle: Text(
+            paymentsAsync.maybeWhen(
+              data: (list) =>
+                  '과거 정기용돈 · ${list.length}회 · ${formatDate(tx.date)}부터 (눌러서 펼치기)',
+              orElse: () => '과거 정기용돈 · ${formatDate(tx.date)}부터',
+            ),
+            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+          ),
+          children: [
+            paymentsAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(12),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('불러오기 오류: $e'),
+              ),
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('주 단위 내역을 계산할 수 없어요.'),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final p in list.reversed) // 최신 주가 위로
+                      ListTile(
+                        dense: true,
+                        contentPadding:
+                            const EdgeInsets.only(left: 20, right: 16),
+                        leading: Icon(Icons.check_circle_outline,
+                            size: 20, color: pair.fg.withValues(alpha: 0.7)),
+                        title: Text(
+                            '${formatDate(p.date)} (${weekdayName(p.date.weekday)})',
+                            style: const TextStyle(
+                                fontSize: 13.5, fontWeight: FontWeight.w600)),
+                        trailing: Text(formatWon(p.amount),
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: pair.fg)),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

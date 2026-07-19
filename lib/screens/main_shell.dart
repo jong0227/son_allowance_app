@@ -62,10 +62,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final index = ref.watch(mainTabIndexProvider);
     final child = widget.child;
-    // 상단 티어 배지: 누적 저축 티어 + 이번 주 저축률 티어
-    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    // 상단 티어 배지: 누적 저축 티어(저축 점수 기준) + 이번 주 저축률 티어
+    final tierScore = ref.watch(summaryProvider(child.id)).valueOrNull?['tierScore'] ?? 0;
     final savingsTiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
-    final savingsTier = tierFor(savingsTiers, savings).current;
+    final savingsTier = tierFor(savingsTiers, tierScore).current;
 
     final weeklyTiers = ref.watch(weeklyTiersProvider).valueOrNull ?? const [];
     final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];

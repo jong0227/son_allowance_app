@@ -178,6 +178,13 @@ class Tiers extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
+class PastAllowancePayment {
+  final DateTime date;
+  final int amount;
+  const PastAllowancePayment(this.date, this.amount);
+}
+
 @DriftDatabase(
   tables: [
     Children,
@@ -287,6 +294,45 @@ class AppDatabase extends _$AppDatabase {
       guard++;
     }
     return total;
+  }
+
+  /// 과거 정기용돈 "일괄" 내역(하나의 큰 수입)을 주(週) 단위 지급 목록으로 복원한다.
+  /// 실제 거래는 한 건으로 유지하되, 이력 화면에서 "언제 얼마씩 줬는지" 보여주기 위함.
+  /// estimatePastAllowance와 같은 규칙(지급 요일 + 시점별 용돈액)으로 재구성하며,
+  /// 합계가 lumpAmount와 정확히 맞도록 마지막 주를 보정한다.
+  Future<List<PastAllowancePayment>> expandPastAllowancePayments(
+      Child child, DateTime startDate, int lumpAmount) async {
+    final rates = await (select(allowanceRates)
+          ..where((t) => t.childId.equals(child.id) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.changedAt)]))
+        .get();
+    int amountAt(DateTime d) {
+      if (rates.isEmpty) return child.weeklyAllowanceDefault;
+      if (d.isBefore(rates.first.changedAt)) return rates.first.amount;
+      var a = rates.first.amount;
+      for (final r in rates) {
+        if (!r.changedAt.isAfter(d)) a = r.amount;
+      }
+      return a;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    var d = _nextOccurrence(child.payDayOfWeek, start);
+    final out = <PastAllowancePayment>[];
+    var sum = 0;
+    var guard = 0;
+    while (d.isBefore(today) && guard < 2000 && sum < lumpAmount) {
+      var amt = amountAt(d);
+      if (sum + amt > lumpAmount) amt = lumpAmount - sum; // 마지막 조각 보정
+      if (amt <= 0) break;
+      out.add(PastAllowancePayment(d, amt));
+      sum += amt;
+      d = _nextOccurrence(child.payDayOfWeek, d.add(const Duration(days: 1)));
+      guard++;
+    }
+    return out;
   }
 
   /// 시작 설정: 시작 날짜 + "지금까지 모은 돈(savedAmount)"만 넣으면,
@@ -1143,7 +1189,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// 티어 기본값 버전. 올리면 앱 시작 시 기존 기기의 티어를 이 기본값으로 재적용한다.
-  static const int tierSeedVersion = 2;
+  static const int tierSeedVersion = 3;
 
   /// 기존 기기의 티어를 기본값으로 재적용(재구성). 고정 시각으로 upsert해서
   /// 모든 기기가 동일해지고, 기본에 없는 옛 티어 id는 소프트 삭제한다.
@@ -1178,30 +1224,32 @@ class AppDatabase extends _$AppDatabase {
   /// 누적 저축 티어는 서원이 표(25단계, 마인크래프트) 기준.
   static const List<(String, String, int, int, String, String, String?)> _defaultTiers = [
     ('sav_01', 'savings', 1, 0, '흙', '🟫', null),
-    ('sav_02', 'savings', 2, 1000, '나무', '🪵', null),
-    ('sav_03', 'savings', 3, 3000, '밀 씨앗', '🌱', null),
-    ('sav_04', 'savings', 4, 5000, '밀', '🌾', '좋아하는 간식 1개'),
-    ('sav_05', 'savings', 5, 7500, '유리', '🫙', '좋아하는 간식 2개'),
-    ('sav_06', 'savings', 6, 10000, '석탄', '⬛', '마인크래프트 15분 추가'),
-    ('sav_07', 'savings', 7, 20000, '물', '💧', '마인크래프트 30분 추가'),
-    ('sav_08', 'savings', 8, 25000, '안산암', '⬜', '아이스크림'),
-    ('sav_09', 'savings', 9, 30000, '돌', '🪨', '과자'),
-    ('sav_10', 'savings', 10, 40000, '구리', '🟧', '아이스크림 & 음료'),
-    ('sav_11', 'savings', 11, 45000, '철', '⚙️', '원하는 책 1권'),
-    ('sav_12', 'savings', 12, 47000, '금', '🟨', '치킨 or 피자'),
-    ('sav_13', 'savings', 13, 50000, '청금석', '🔵', '치킨 or 피자 or 파스타'),
-    ('sav_14', 'savings', 14, 75000, '레드스톤', '🔴', '마크 아이템/스킨'),
-    ('sav_15', 'savings', 15, 99999, '에메랄드', '💚', null),
-    ('sav_16', 'savings', 16, 105000, '다이아몬드', '💎', null),
-    ('sav_17', 'savings', 17, 150000, '네더라이트', '🖤', null),
-    ('sav_18', 'savings', 18, 200000, '흑요석', '🟪', null),
-    ('sav_19', 'savings', 19, 300000, '네더포탈', '🌀', null),
-    ('sav_20', 'savings', 20, 500000, '신호기', '🔆', null),
-    ('sav_21', 'savings', 21, 750000, '엔더 유적', '🏛️', null),
-    ('sav_22', 'savings', 22, 1000000, '엔더 포탈', '🌌', null),
-    ('sav_23', 'savings', 23, 1500000, '엔더 드래곤', '🐉', null),
-    ('sav_24', 'savings', 24, 2000000, '네더의 별', '🌟', null),
-    ('sav_25', 'savings', 25, 2005000, '엔드 크리스탈', '🔮', null),
+    ('sav_02', 'savings', 2, 30000, '나무', '🪵', '좋아하는 간식 1개'),
+    ('sav_03', 'savings', 3, 35000, '밀 씨앗', '🌱', '좋아하는 간식 2개'),
+    ('sav_04', 'savings', 4, 40000, '밀', '🌾', '베스킨라빈스 아이스크림 콘'),
+    ('sav_05', 'savings', 5, 45000, '유리', '🫙', '좋아하는 간식 3개'),
+    ('sav_06', 'savings', 6, 50000, '석탄', '⬛', 'Minecraft 15분 플레이권 1회(평일 가능)'),
+    ('sav_07', 'savings', 7, 60000, '물', '💧', 'Minecraft 30분 플레이권 1회(평일 가능)'),
+    ('sav_08', 'savings', 8, 70000, '안산암', '⬜', '아이스크림 & 음료'),
+    ('sav_09', 'savings', 9, 80000, '돌', '🪨', '원하는 책 1권'),
+    ('sav_10', 'savings', 10, 90000, '구리', '🟧', '치킨 or 피자'),
+    ('sav_11', 'savings', 11, 100000, '철', '⚙️', '치킨 or 피자 or 파스타 + 이자기능 Open'),
+    ('sav_12', 'savings', 12, 120000, '금', '🟨', '마크 아이템/스킨'),
+    ('sav_13', 'savings', 13, 140000, '청금석', '🔵', '키즈카페'),
+    ('sav_14', 'savings', 14, 160000, '레드스톤', '🔴', '장난감(1.5만원 내)'),
+    ('sav_15', 'savings', 15, 180000, '에메랄드', '💚', '장난감(2만원 내)'),
+    ('sav_16', 'savings', 16, 200000, '다이아몬드', '💎', '원하는 식당 외식권'),
+    ('sav_17', 'savings', 17, 250000, '네더라이트', '🖤', 'PPT or Excel 1시간'),
+    ('sav_18', 'savings', 18, 300000, '흑요석', '🟪', '레고 세트(4만원 내)'),
+    ('sav_19', 'savings', 19, 350000, '네더포탈', '🌀', '놀이공원 하루'),
+    ('sav_20', 'savings', 20, 400000, '신호기', '🔆', 'Minecraft 1시간 플레이권 1회(평일 가능)'),
+    ('sav_21', 'savings', 21, 500000, '엔더 유적', '🏛️', '원하는 학원 등록'),
+    ('sav_22', 'savings', 22, 700000, '엔더 포탈', '🌌', '원하는 장난감(5만원 내)'),
+    ('sav_23', 'savings', 23, 1000000, '엔더 드래곤', '🐉', '서울 여행 원하는 곳'),
+    ('sav_24', 'savings', 24, 1500000, '네더의 별', '🌟', '원하는 장난감(10만원 내)'),
+    ('sav_25', 'savings', 25, 2000000, '엔드 크리스탈', '🔮', '가족여행 선택권'),
+    ('sav_26', 'savings', 26, 3000000, '히로빈', '👤', '원하는 장난감(20만원 내)'),
+    ('sav_27', 'savings', 27, 5000000, '모장', '🟥', '원하는 장난감(30만원 내)'),
     // 주간 저축률 티어 (threshold=퍼센트 하한)
     ('wk_01', 'weekly', 1, 0, '일반 저축가', '🐜', null),
     ('wk_02', 'weekly', 2, 40, '새싹 저축가', '🌱', null),
@@ -1241,7 +1289,8 @@ class AppDatabase extends _$AppDatabase {
         .get();
 
     int totalRegularIncome = 0;
-    int totalSpecialIncome = 0;
+    int totalSpecialIncome = 0; // 특별용돈(선물). 저축점수엔 10%만 반영
+    int rewardIncome = 0; // 절약보너스+이자: 저축 보상 → 100% 반영
     int initialBalance = 0; // 시작 잔액(이월잔액): 잔액엔 포함, "받은 수입" 통계엔 제외
     int totalExpense = 0;
     for (final t in txs) {
@@ -1250,6 +1299,8 @@ class AppDatabase extends _$AppDatabase {
           totalRegularIncome += t.amount;
         } else if (t.category == kInitialBalance) {
           initialBalance += t.amount;
+        } else if (t.category == kSavingsBonus || t.category == kInterest) {
+          rewardIncome += t.amount;
         } else {
           totalSpecialIncome += t.amount;
         }
@@ -1258,21 +1309,32 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     final totalTransfer = transfers.fold<int>(0, (sum, s) => sum + s.amount);
-    // "총 수입"은 실제로 받은 것(정기+특별)만. 시작 잔액은 별도.
-    final totalIncome = totalRegularIncome + totalSpecialIncome;
+    // "총 수입"은 실제로 받은 것(정기+특별+보상)만. 시작 잔액은 별도.
+    final totalIncome = totalRegularIncome + totalSpecialIncome + rewardIncome;
     // 잔액은 시작 잔액까지 포함해서 계산.
     final balance = totalIncome + initialBalance - totalExpense - totalTransfer;
     final totalSavings = totalTransfer + balance;
 
+    // 저축 티어 점수: 정기용돈/보너스/이자/시작잔액은 100%, 특별용돈은 10%.
+    // 지출은 "특별용돈 먼저 쓴 것"으로 계산해 큰 선물이 티어를 수직상승시키는 걸 막는다.
+    final allowancePool = totalRegularIncome + rewardIncome + initialBalance;
+    final giftIncome = totalSpecialIncome;
+    final giftSpent = totalExpense < giftIncome ? totalExpense : giftIncome;
+    final regularSpent = totalExpense - giftSpent; // 선물 다 쓰고 남은 지출은 저축분에서
+    final giftRemaining = giftIncome - giftSpent;
+    final tierScore = (allowancePool - regularSpent) + (giftRemaining * 0.1).round();
+
     return {
       'totalRegularIncome': totalRegularIncome,
       'totalSpecialIncome': totalSpecialIncome,
+      'rewardIncome': rewardIncome,
       'initialBalance': initialBalance,
       'totalIncome': totalIncome,
       'totalExpense': totalExpense,
       'totalTransfer': totalTransfer,
       'balance': balance,
       'totalSavings': totalSavings,
+      'tierScore': tierScore < 0 ? 0 : tierScore,
     };
   }
 

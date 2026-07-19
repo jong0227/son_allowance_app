@@ -68,10 +68,30 @@ class OverviewScreen extends ConsumerWidget {
                 });
               }
 
+              final txsForBudget = transactionsAsync.valueOrNull ?? const [];
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _HeroBalanceCard(childName: child.name, balance: balance, rate: rate),
+                  // 잔액 + 이번 주 남은 예산 나란히
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _BalanceMiniCard(
+                              childName: child.name, balance: balance, rate: rate),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _WeeklyBudgetMiniCard(
+                              txs: txsForBudget,
+                              weeklyBudget: child.weeklyAllowanceDefault,
+                              weeklyTiers:
+                                  ref.watch(weeklyTiersProvider).valueOrNull ?? const []),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -105,7 +125,8 @@ class OverviewScreen extends ConsumerWidget {
                     _TransferBanner(threshold: threshold),
                   ],
                   const SizedBox(height: 8),
-                  _SavingsRateCard(income: income, expense: expense, savings: savings, rate: rate),
+                  _SavingsRateCard(
+                      income: income, expense: expense, savings: savings, rate: rate),
                   _buildBonus(context, ref, balance, isChild),
                   if (!isChild) _buildInterest(context, ref, balance),
                 ],
@@ -187,14 +208,6 @@ class OverviewScreen extends ConsumerWidget {
               );
             },
           ),
-          const SectionHeader('이번 주 예산'),
-          transactionsAsync.maybeWhen(
-            orElse: () => const _LoadingBox(height: 64),
-            data: (txs) => _WeeklyBudgetCard(
-                txs: txs,
-                weeklyBudget: child.weeklyAllowanceDefault,
-                weeklyTiers: ref.watch(weeklyTiersProvider).valueOrNull ?? const []),
-          ),
           SectionHeader(isChild ? '갖고 싶은 것 (위시리스트)' : '저축 목표',
               trailing: IconButton(
                 visualDensity: VisualDensity.compact,
@@ -226,26 +239,30 @@ class OverviewScreen extends ConsumerWidget {
               );
             },
           ),
-          const SectionHeader('최근 내역'),
-          transactionsAsync.when(
-            loading: () => const _LoadingBox(height: 80),
-            error: (e, _) => Text('오류: $e'),
-            data: (txs) {
-              final recent = txs.take(5).toList();
-              if (recent.isEmpty) return const _MutedCard(text: '아직 등록된 내역이 없어요.');
-              return Column(children: [for (final t in recent) _TxRow(t: t)]);
-            },
-          ),
-          const SizedBox(height: 12),
-          // 상세 통계는 기본으로 접어두고, 버튼으로 펼친다(홈을 간결하게).
-          Center(
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  ref.read(_showDetailsProvider.notifier).state = !showDetails,
-              icon: Icon(showDetails ? Icons.expand_less : Icons.expand_more),
-              label: Text(showDetails ? '상세 통계 접기' : '상세 통계 보기'),
+          const SizedBox(height: 8),
+          // 최근 내역은 내역 탭으로 이동(홈을 간결하게).
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: CircleAvatar(
+                backgroundColor: palette.expense.bg,
+                child: Icon(Icons.receipt_long, color: palette.expense.fg),
+              ),
+              title: const Text('전체 내역 보기',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('수입·지출 내역을 내역 탭에서 확인해요'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => ref.read(mainTabIndexProvider.notifier).state = 1,
             ),
           ),
+          const SizedBox(height: 12),
+          // 상세 통계 바로가기 — 크고 눈에 띄게(접근성 ↑). 누르면 아래 통계가 펼쳐진다.
+          _DetailsToggleButton(
+            expanded: showDetails,
+            onTap: () =>
+                ref.read(_showDetailsProvider.notifier).state = !showDetails,
+          ),
+          const SizedBox(height: 12),
           if (showDetails) ...[
           const SectionHeader('카테고리별 지출'),
           expenseByCategoryAsync.when(
@@ -801,7 +818,7 @@ class OverviewScreen extends ConsumerWidget {
 
   /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.
   Widget _buildTierCard(WidgetRef ref) {
-    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    final tierScore = ref.watch(summaryProvider(child.id)).valueOrNull?['tierScore'] ?? 0;
     final savingsTiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
     final weeklyTiers = ref.watch(weeklyTiersProvider).valueOrNull ?? const [];
     if (savingsTiers.isEmpty) return const SizedBox.shrink();
@@ -827,7 +844,7 @@ class OverviewScreen extends ConsumerWidget {
           children: [
             Expanded(
               child: TierSummaryCard(
-                  label: '부자 등급', tiers: savingsTiers, value: savings),
+                  label: '부자 등급', tiers: savingsTiers, value: tierScore),
             ),
             const SizedBox(width: 4),
             Expanded(
@@ -845,10 +862,10 @@ class OverviewScreen extends ConsumerWidget {
 
   /// 새 티어 도달 시 축하 배너. 마지막으로 축하한 순서보다 높아졌을 때만 1회 표시.
   Widget _buildLevelUpBanner(BuildContext context, WidgetRef ref) {
-    final savings = ref.watch(summaryProvider(child.id)).valueOrNull?['totalSavings'] ?? 0;
+    final tierScore = ref.watch(summaryProvider(child.id)).valueOrNull?['tierScore'] ?? 0;
     final tiers = ref.watch(savingsTiersProvider).valueOrNull ?? const [];
     if (tiers.isEmpty) return const SizedBox.shrink();
-    final pos = tierFor(tiers, savings);
+    final pos = tierFor(tiers, tierScore);
     final cur = pos.current;
     final lastCelebrated = ref.watch(settingsProvider).lastCelebratedTierOrder;
     // 기본 티어(흙, order 1)는 축하하지 않는다.
@@ -997,19 +1014,21 @@ class OverviewScreen extends ConsumerWidget {
   }
 }
 
-class _HeroBalanceCard extends StatelessWidget {
+/// 홈 상단 좌측: 잔액 미니 카드(그라데이션). 오른쪽 주간예산 카드와 나란히.
+class _BalanceMiniCard extends StatelessWidget {
   final String childName;
   final int balance;
   final double rate;
-  const _HeroBalanceCard({required this.childName, required this.balance, required this.rate});
+  const _BalanceMiniCard(
+      {required this.childName, required this.balance, required this.rate});
 
   @override
   Widget build(BuildContext context) {
     final palette = appPalette(context);
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           colors: [palette.heroFrom, palette.heroTo],
           begin: Alignment.topLeft,
@@ -1018,40 +1037,190 @@ class _HeroBalanceCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('$childName의 잔여금액',
-              style: TextStyle(
-                  color: palette.heroText.withValues(alpha: 0.75),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text(formatWon(balance),
-              style: TextStyle(
-                  color: palette.heroText,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.2)),
-          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet_rounded,
+                  size: 15, color: palette.heroText.withValues(alpha: 0.85)),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text('$childName의 잔액',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: palette.heroText.withValues(alpha: 0.78),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(formatWon(balance),
+                style: TextStyle(
+                    color: palette.heroText,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.1)),
+          ),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: palette.heroText.withValues(alpha: 0.10),
+              color: palette.heroText.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.trending_up, size: 15, color: palette.heroText),
-                const SizedBox(width: 6),
+                Icon(Icons.trending_up, size: 13, color: palette.heroText),
+                const SizedBox(width: 5),
                 Text('저축비율 ${rate.toStringAsFixed(0)}%',
                     style: TextStyle(
                         color: palette.heroText,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700)),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 홈 상단 우측: 이번 주 남은 예산 미니 카드. 왼쪽 잔액 카드와 나란히.
+class _WeeklyBudgetMiniCard extends StatelessWidget {
+  final List<TransactionEntry> txs;
+  final int weeklyBudget;
+  final List<Tier> weeklyTiers;
+  const _WeeklyBudgetMiniCard(
+      {required this.txs, required this.weeklyBudget, this.weeklyTiers = const []});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    final spent = txs
+        .where((t) =>
+            t.flow == 'expense' &&
+            !t.date.isBefore(weekStart) &&
+            t.date.isBefore(weekEnd))
+        .fold<int>(0, (a, b) => a + b.amount);
+    final remaining = weeklyBudget - spent;
+    final palette = appPalette(context);
+    final scheme = Theme.of(context).colorScheme;
+    final ratio = weeklyBudget == 0 ? 0.0 : (spent / weeklyBudget).clamp(0.0, 1.0);
+    final over = remaining < 0;
+    final barColor = over ? palette.expense.fg : palette.income.fg;
+    final savePct =
+        weeklyBudget == 0 ? 0 : ((remaining / weeklyBudget) * 100).clamp(0, 100).round();
+    final weeklyTier = tierFor(weeklyTiers, savePct).current;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_today_rounded,
+                  size: 14, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(over ? '이번 주 예산 초과' : '이번 주 남은 예산',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text('${over ? '-' : ''}${formatWon(remaining.abs())}',
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.1,
+                    color: over ? palette.expense.fg : scheme.onSurface)),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 7,
+              backgroundColor: scheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(barColor),
+            ),
+          ),
+          const SizedBox(height: 7),
+          if (weeklyTier != null && !over)
+            Text('${weeklyTier.icon} ${weeklyTier.title} · 저축 $savePct%',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant))
+          else
+            Text('용돈 ${formatWon(weeklyBudget)} · 지출 ${formatWon(spent)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 상세 통계 펼치기/접기 버튼. 홈 요약 바로 아래에 크게 배치해 접근성 ↑.
+class _DetailsToggleButton extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onTap;
+  const _DetailsToggleButton({required this.expanded, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Icon(Icons.insights_rounded, size: 20, color: scheme.onSecondaryContainer),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(expanded ? '상세 통계 접기' : '상세 통계 보기',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                        color: scheme.onSecondaryContainer)),
+              ),
+              Icon(expanded ? Icons.expand_less : Icons.expand_more,
+                  color: scheme.onSecondaryContainer),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1176,45 +1345,6 @@ class _TransferBanner extends StatelessWidget {
   }
 }
 
-class _TxRow extends StatelessWidget {
-  final TransactionEntry t;
-  const _TxRow({required this.t});
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = appPalette(context);
-    final isIncome = t.flow == 'income';
-    final pair = isIncome
-        ? (t.category == '정기용돈' ? palette.allowance : palette.special)
-        : palette.expense;
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: pair.bg,
-          child: Icon(isIncome ? Icons.add_rounded : Icons.remove_rounded, color: pair.fg),
-        ),
-        title: Row(
-          children: [
-            TagChip(label: t.category, pair: palette.tagFor(t.category)),
-            const Spacer(),
-            Text('${isIncome ? '+' : '-'}${formatWon(t.amount)}',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: isIncome ? palette.income.fg : palette.expense.fg)),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 3),
-          child: Text(txSubtitle(t)),
-        ),
-      ),
-    );
-  }
-}
-
 class _MutedCard extends StatelessWidget {
   final String text;
   const _MutedCard({required this.text});
@@ -1240,91 +1370,6 @@ class _LoadingBox extends StatelessWidget {
     return SizedBox(
       height: height,
       child: const Center(child: CircularProgressIndicator()),
-    );
-  }
-}
-
-class _WeeklyBudgetCard extends StatelessWidget {
-  final List<TransactionEntry> txs;
-  final int weeklyBudget;
-  final List<Tier> weeklyTiers;
-  const _WeeklyBudgetCard(
-      {required this.txs, required this.weeklyBudget, this.weeklyTiers = const []});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekStart = today.subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final spent = txs
-        .where((t) =>
-            t.flow == 'expense' &&
-            !t.date.isBefore(weekStart) &&
-            t.date.isBefore(weekEnd))
-        .fold<int>(0, (a, b) => a + b.amount);
-    final remaining = weeklyBudget - spent;
-    final palette = appPalette(context);
-    final scheme = Theme.of(context).colorScheme;
-    final ratio = weeklyBudget == 0 ? 0.0 : (spent / weeklyBudget).clamp(0.0, 1.0);
-    final over = remaining < 0;
-    final barColor = over ? palette.expense.fg : palette.income.fg;
-    // 이번 주 저축률 = 남은 예산 / 주간 용돈 (0~100%)
-    final savePct =
-        weeklyBudget == 0 ? 0 : ((remaining / weeklyBudget) * 100).clamp(0, 100).round();
-    final weeklyTier = tierFor(weeklyTiers, savePct).current;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(over ? '이번 주 예산 초과' : '이번 주 남은 예산',
-                    style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-                if (weeklyTier != null && !over)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: scheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(20)),
-                    child: Text('${weeklyTier.icon} ${weeklyTier.title} · $savePct%',
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: scheme.onSecondaryContainer)),
-                  )
-                else
-                  Text('용돈 ${formatWon(weeklyBudget)}',
-                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text('${over ? '-' : ''}${formatWon(remaining.abs())}',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.8,
-                    color: over ? palette.expense.fg : scheme.onSurface)),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 8,
-                backgroundColor: scheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation(barColor),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text('이번 주 지출 ${formatWon(spent)}',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
     );
   }
 }

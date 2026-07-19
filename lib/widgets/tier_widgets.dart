@@ -399,7 +399,8 @@ class TierSummaryCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: pos.progress,
+                // 주간 카드는 이번 주 저축률(0~100%)만큼 채운다. 누적은 다음 티어까지 진행률.
+                value: isPercent ? (value / 100).clamp(0.0, 1.0) : pos.progress,
                 minHeight: 7,
                 backgroundColor: scheme.onPrimaryContainer.withValues(alpha: 0.15),
                 valueColor: AlwaysStoppedAnimation(scheme.primary),
@@ -461,7 +462,7 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
             Text(
                 isPercent
                     ? '이번 주 저축률 $value% · 현재 "${pos.current?.title ?? '-'}"'
-                    : '총 저축 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
+                    : '저축 점수 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
                 style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
             const SizedBox(height: 12),
             for (final t in tiers)

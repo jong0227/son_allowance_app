@@ -553,17 +553,75 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         child: StatefulBuilder(
           builder: (context, setState) {
             final palette = appPalette(context);
+            Future<void> submit() async {
+              final amount = int.tryParse(amountController.text);
+              if (amount == null || amount <= 0) return;
+              final resolvedGiverRaw = !withGiver
+                  ? null
+                  : (giver == '기타'
+                      ? customGiverController.text.trim()
+                      : giver);
+              final resolvedGiver =
+                  (resolvedGiverRaw == null || resolvedGiverRaw.isEmpty)
+                      ? null
+                      : resolvedGiverRaw;
+              final db = ref.read(databaseProvider);
+              final owner = ref.read(settingsProvider).deviceOwner ?? '';
+              if (isEdit) {
+                await db.updateTransactionFields(
+                  existing.id,
+                  date: date,
+                  amount: amount,
+                  category: category,
+                  memo: memoController.text.trim(),
+                  giver: resolvedGiver,
+                  editedBy: owner,
+                );
+              } else {
+                await db.upsertTransaction(TransactionEntriesCompanion.insert(
+                  id: const Uuid().v4(),
+                  childId: widget.child.id,
+                  date: date,
+                  flow: flow,
+                  category: category,
+                  amount: amount,
+                  memo: Value(memoController.text.trim()),
+                  giver: Value(resolvedGiver),
+                  editedBy: Value(owner),
+                  updatedAt: Value(DateTime.now()),
+                ));
+              }
+              if (context.mounted) Navigator.pop(context);
+            }
+
             return SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                    const SizedBox(height: 20),
+                    // 저장 버튼을 상단 우측으로 — 키보드에 가리지 않게.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(title,
+                              style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5)),
+                        ),
+                        FilledButton(
+                          onPressed: submit,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                          ),
+                          child: Text(isEdit ? '수정 저장' : '저장',
+                              style: const TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     _FieldLabel(flow == 'income' ? '종류' : '카테고리'),
                     Wrap(
                       spacing: 8,
@@ -579,7 +637,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       ],
                     ),
                     if (withGiver) ...[
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
                       _FieldLabel('누가 줬어요?'),
                       Wrap(
                         spacing: 8,
@@ -602,7 +660,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ),
                       ],
                     ],
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
                     _FieldLabel('금액'),
                     TextField(
                       controller: amountController,
@@ -611,33 +669,40 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       style: const TextStyle(
                           fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.8),
                       decoration: const InputDecoration(
+                        isDense: true,
                         hintText: '0',
                         suffixText: '원',
                         suffixStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     // 빠른 금액 추가 칩. 누를 때마다 현재 금액에 더해진다(만원 두 번 = 2만원).
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        for (final add in const [1000, 10000, 50000, 100000])
+                        for (final add in const [100, 1000, 10000, 50000, 100000])
                           ActionChip(
                             label: Text('+${_shortWon(add)}'),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             onPressed: () {
                               final cur = int.tryParse(amountController.text) ?? 0;
                               amountController.text = '${cur + add}';
                             },
                           ),
-                        ActionChip(
-                          avatar: const Icon(Icons.backspace_outlined, size: 16),
-                          label: const Text('지우기'),
+                        // 지우기는 작게(아이콘만)
+                        IconButton(
                           onPressed: () => amountController.text = '',
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 18,
+                          tooltip: '지우기',
+                          icon: const Icon(Icons.backspace_outlined),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
                     _FieldLabel('날짜'),
                     InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -668,66 +733,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     _FieldLabel('메모 (선택)'),
                     TextField(
                       controller: memoController,
-                      decoration: const InputDecoration(hintText: '예: 학교 앞 문방구'),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () async {
-                          final amount = int.tryParse(amountController.text);
-                          if (amount == null || amount <= 0) return;
-                          final resolvedGiverRaw = !withGiver
-                              ? null
-                              : (giver == '기타'
-                                  ? customGiverController.text.trim()
-                                  : giver);
-                          final resolvedGiver =
-                              (resolvedGiverRaw == null || resolvedGiverRaw.isEmpty)
-                                  ? null
-                                  : resolvedGiverRaw;
-                          final db = ref.read(databaseProvider);
-                          final owner = ref.read(settingsProvider).deviceOwner ?? '';
-                          if (isEdit) {
-                            await db.updateTransactionFields(
-                              existing.id,
-                              date: date,
-                              amount: amount,
-                              category: category,
-                              memo: memoController.text.trim(),
-                              giver: resolvedGiver,
-                              editedBy: owner,
-                            );
-                          } else {
-                            await db.upsertTransaction(TransactionEntriesCompanion.insert(
-                              id: const Uuid().v4(),
-                              childId: widget.child.id,
-                              date: date,
-                              flow: flow,
-                              category: category,
-                              amount: amount,
-                              memo: Value(memoController.text.trim()),
-                              giver: Value(resolvedGiver),
-                              editedBy: Value(owner),
-                              updatedAt: Value(DateTime.now()),
-                            ));
-                          }
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(isEdit ? '수정 저장' : '저장'),
-                        ),
-                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => submit(),
+                      decoration: const InputDecoration(
+                          isDense: true, hintText: '예: 학교 앞 문방구'),
                     ),
                     if (isEdit) ...[
                       const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
+                      Align(
+                        alignment: Alignment.centerRight,
                         child: TextButton.icon(
                           onPressed: () => _confirmDeleteFromSheet(context, existing),
                           icon: Icon(Icons.delete_outline,

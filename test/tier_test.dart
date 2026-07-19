@@ -11,7 +11,7 @@ void main() {
   test('티어 시드는 비어있을 때만 넣고, 재호출해도 중복되지 않는다', () async {
     await db.seedTiersIfEmpty();
     final first = await db.allTiersRaw();
-    expect(first.where((t) => t.kind == 'savings').length, 25);
+    expect(first.where((t) => t.kind == 'savings').length, 27);
     expect(first.where((t) => t.kind == 'weekly').length, 5);
     // 시드는 고정 과거 시각(2020)이라 부모 수정이 항상 우선
     expect(first.first.updatedAt.year, 2020);
@@ -26,17 +26,17 @@ void main() {
     final tiers = (await db.allTiersRaw()).where((t) => t.kind == 'savings').toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-    // 12,000원 → 석탄(10000) 현재, 물(20000) 다음
-    final p = tierFor(tiers, 12000);
+    // 55,000원 → 석탄(50000) 현재, 물(60000) 다음
+    final p = tierFor(tiers, 55000);
     expect(p.current!.title, '석탄');
     expect(p.next!.title, '물');
-    expect(p.remaining, 8000);
+    expect(p.remaining, 5000);
     expect(p.progress > 0 && p.progress < 1, true);
 
     // 0원 → 흙, 최상단 초과 → 다음 없음
     expect(tierFor(tiers, 0).current!.title, '흙');
     final top = tierFor(tiers, 99999999);
-    expect(top.current!.title, '엔드 크리스탈');
+    expect(top.current!.title, '모장');
     expect(top.next, null);
     expect(top.progress, 1);
   });

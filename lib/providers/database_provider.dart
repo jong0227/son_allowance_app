@@ -84,6 +84,24 @@ final interestGivenProvider =
   return ref.watch(databaseProvider).interestGivenThisPeriod(args.childId, args.period);
 });
 
+/// 과거 정기용돈 "일괄" 한 건을 주 단위 지급 목록으로 복원.
+/// key: (자녀 id, 일괄 시작일, 일괄 총액)
+final pastAllowancePaymentsProvider = FutureProvider.family<List<PastAllowancePayment>,
+    ({String childId, DateTime startDate, int amount})>((ref, args) async {
+  final children = await ref.watch(childrenListProvider.future);
+  Child? child;
+  for (final c in children) {
+    if (c.id == args.childId) {
+      child = c;
+      break;
+    }
+  }
+  if (child == null) return const [];
+  return ref
+      .watch(databaseProvider)
+      .expandPastAllowancePayments(child, args.startDate, args.amount);
+});
+
 final yearlyStatsProvider =
     FutureProvider.family<Map<int, Map<String, int>>, String>((ref, childId) async {
   ref.watch(transactionsProvider(childId));
