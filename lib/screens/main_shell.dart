@@ -34,6 +34,12 @@ class _MainShellState extends ConsumerState<MainShell> {
       final owner = ref.read(settingsProvider).deviceOwner ?? '';
       // 티어 기본값이 없으면 시드(첫 실행/신규 기기)
       await db.seedTiersIfEmpty();
+      // 티어 기본값 버전이 올라갔으면 기존 티어를 새 기본값으로 재구성
+      final prefs = ref.read(sharedPreferencesProvider);
+      if ((prefs.getInt('tierSeedVersion') ?? 1) < AppDatabase.tierSeedVersion) {
+        await db.reseedTiers();
+        await prefs.setInt('tierSeedVersion', AppDatabase.tierSeedVersion);
+      }
       // 앱 시작 시 중복 프로필 정리 + 데이터 있는 프로필 자동 선택(동기화 후 self-heal)
       final primary = await db.reconcileToSingleChild(owner);
       if (primary != null && primary != widget.child.id) {

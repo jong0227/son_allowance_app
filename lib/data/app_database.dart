@@ -1142,25 +1142,66 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// (id, kind, order, threshold, title, icon, reward)
+  /// 티어 기본값 버전. 올리면 앱 시작 시 기존 기기의 티어를 이 기본값으로 재적용한다.
+  static const int tierSeedVersion = 2;
+
+  /// 기존 기기의 티어를 기본값으로 재적용(재구성). 고정 시각으로 upsert해서
+  /// 모든 기기가 동일해지고, 기본에 없는 옛 티어 id는 소프트 삭제한다.
+  Future<void> reseedTiers() async {
+    final seedTime = DateTime(2025, 7, 1); // 옛 시드(2020)보다 최신 → 우선 적용
+    final keepIds = <String>{};
+    for (final t in _defaultTiers) {
+      keepIds.add(t.$1);
+      await into(tiers).insertOnConflictUpdate(TiersCompanion.insert(
+        id: t.$1,
+        kind: t.$2,
+        sortOrder: t.$3,
+        threshold: t.$4,
+        title: t.$5,
+        icon: t.$6,
+        reward: Value(t.$7),
+        updatedAt: Value(seedTime),
+      ));
+    }
+    // 기본 목록에 없는 옛 티어 정리
+    final all = await select(tiers).get();
+    for (final t in all) {
+      if (!keepIds.contains(t.id) && t.deletedAt == null) {
+        await (update(tiers)..where((x) => x.id.equals(t.id))).write(
+          TiersCompanion(deletedAt: Value(seedTime), updatedAt: Value(seedTime)),
+        );
+      }
+    }
+  }
+
+  /// (id, kind, order, threshold, title, icon(이모지 폴백), reward)
+  /// 누적 저축 티어는 서원이 표(25단계, 마인크래프트) 기준.
   static const List<(String, String, int, int, String, String, String?)> _defaultTiers = [
-    // 누적 저축액 티어 (마인크래프트 테마)
     ('sav_01', 'savings', 1, 0, '흙', '🟫', null),
-    ('sav_02', 'savings', 2, 5000, '나무', '🪵', '좋아하는 간식 1개'),
-    ('sav_03', 'savings', 3, 10000, '조약돌', '🪨', '마인크래프트 30분 추가'),
-    ('sav_04', 'savings', 4, 20000, '석탄', '⬛', '문구점 3천원 쇼핑'),
-    ('sav_05', 'savings', 5, 30000, '구리', '🟧', '아이스크림'),
-    ('sav_06', 'savings', 6, 40000, '철', '⚙️', '만화책 1권'),
-    ('sav_07', 'savings', 7, 50000, '금', '🟨', '치킨 or 피자'),
-    ('sav_08', 'savings', 8, 70000, '레드스톤', '🔴', '마크 아이템/스킨'),
-    ('sav_09', 'savings', 9, 100000, '청금석', '🔵', '키즈카페'),
-    ('sav_10', 'savings', 10, 150000, '에메랄드', '💚', '장난감(2만원 내)'),
-    ('sav_11', 'savings', 11, 200000, '다이아몬드', '💎', '레고 세트'),
-    ('sav_12', 'savings', 12, 300000, '네더라이트', '🖤', '놀이공원 하루'),
-    ('sav_13', 'savings', 13, 500000, '엔더 드래곤', '🐉', '게임 타이틀'),
-    ('sav_14', 'savings', 14, 1000000, '비컨', '🔆', '가족여행 선택권'),
-    ('sav_15', 'savings', 15, 3000000, '네더의 별', '🌟', '원하는 전자기기'),
-    ('sav_16', 'savings', 16, 5000000, '엔드 크리스탈', '🔮', '부모님과 자유 협의'),
+    ('sav_02', 'savings', 2, 1000, '나무', '🪵', null),
+    ('sav_03', 'savings', 3, 3000, '밀 씨앗', '🌱', null),
+    ('sav_04', 'savings', 4, 5000, '밀', '🌾', '좋아하는 간식 1개'),
+    ('sav_05', 'savings', 5, 7500, '유리', '🫙', '좋아하는 간식 2개'),
+    ('sav_06', 'savings', 6, 10000, '석탄', '⬛', '마인크래프트 15분 추가'),
+    ('sav_07', 'savings', 7, 20000, '물', '💧', '마인크래프트 30분 추가'),
+    ('sav_08', 'savings', 8, 25000, '안산암', '⬜', '아이스크림'),
+    ('sav_09', 'savings', 9, 30000, '돌', '🪨', '과자'),
+    ('sav_10', 'savings', 10, 40000, '구리', '🟧', '아이스크림 & 음료'),
+    ('sav_11', 'savings', 11, 45000, '철', '⚙️', '원하는 책 1권'),
+    ('sav_12', 'savings', 12, 47000, '금', '🟨', '치킨 or 피자'),
+    ('sav_13', 'savings', 13, 50000, '청금석', '🔵', '치킨 or 피자 or 파스타'),
+    ('sav_14', 'savings', 14, 75000, '레드스톤', '🔴', '마크 아이템/스킨'),
+    ('sav_15', 'savings', 15, 99999, '에메랄드', '💚', null),
+    ('sav_16', 'savings', 16, 105000, '다이아몬드', '💎', null),
+    ('sav_17', 'savings', 17, 150000, '네더라이트', '🖤', null),
+    ('sav_18', 'savings', 18, 200000, '흑요석', '🟪', null),
+    ('sav_19', 'savings', 19, 300000, '네더포탈', '🌀', null),
+    ('sav_20', 'savings', 20, 500000, '신호기', '🔆', null),
+    ('sav_21', 'savings', 21, 750000, '엔더 유적', '🏛️', null),
+    ('sav_22', 'savings', 22, 1000000, '엔더 포탈', '🌌', null),
+    ('sav_23', 'savings', 23, 1500000, '엔더 드래곤', '🐉', null),
+    ('sav_24', 'savings', 24, 2000000, '네더의 별', '🌟', null),
+    ('sav_25', 'savings', 25, 2005000, '엔드 크리스탈', '🔮', null),
     // 주간 저축률 티어 (threshold=퍼센트 하한)
     ('wk_01', 'weekly', 1, 0, '일반 저축가', '🐜', null),
     ('wk_02', 'weekly', 2, 40, '새싹 저축가', '🌱', null),
