@@ -178,6 +178,24 @@ class Tiers extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 부모-자녀 약속. 지키면(enabled=true=ON) 저축 이자율을 bonusPercent 만큼 올려준다.
+/// 약속 안 지킨 주엔 부모가 OFF(enabled=false)로 돌려 그만큼 낮은 이자를 적용한다.
+/// 가족 동기화(부부 폰) 대상.
+class Promises extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get title => text()(); // 약속 내용 (예: 매일 이 닦기)
+  RealColumn get bonusPercent => real().withDefault(const Constant(0.1))(); // ON일 때 더할 이자율 %
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))(); // true=지킴(ON)
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -196,6 +214,7 @@ class PastAllowancePayment {
     AllowanceRates,
     Requests,
     Tiers,
+    Promises,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -203,7 +222,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -243,6 +262,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 10) {
             await m.createTable(tiers);
+          }
+          if (from < 11) {
+            await m.createTable(promises);
           }
         },
       );
@@ -892,12 +914,27 @@ class AppDatabase extends _$AppDatabase {
     return rows.isNotEmpty;
   }
 
-  /// 이번 주기에 지급 가능한 이자 금액(현재 잔액 × 이율). 원 단위 반올림.
+  /// 켜진(ON) 약속들의 이자 보너스 합계 %. 약속이 없거나 모두 OFF면 0.
+  Future<double> promiseBonusPercent(String childId) async {
+    final rows = await (select(promises)
+          ..where((t) =>
+              t.childId.equals(childId) & t.deletedAt.isNull() & t.enabled.equals(true)))
+        .get();
+    return rows.fold<double>(0, (sum, p) => sum + p.bonusPercent);
+  }
+
+  /// 실제 적용 이자율 = 기본 이자율 + 켜진 약속 보너스 합계.
+  Future<double> effectiveInterestPercent(Child child) async {
+    return child.interestPercent + await promiseBonusPercent(child.id);
+  }
+
+  /// 이번 주기에 지급 가능한 이자 금액(현재 잔액 × 실효 이율). 원 단위 반올림.
   Future<int> pendingInterestAmount(Child child) async {
     final summary = await computeSummary(child.id);
     final balance = summary['balance'] ?? 0;
     if (balance <= 0) return 0;
-    return (balance * child.interestPercent / 100).round();
+    final percent = await effectiveInterestPercent(child);
+    return (balance * percent / 100).round();
   }
 
   /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
@@ -905,6 +942,7 @@ class AppDatabase extends _$AppDatabase {
     if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return false;
     final amount = await pendingInterestAmount(child);
     if (amount <= 0) return false;
+    final percent = await effectiveInterestPercent(child);
     final now = DateTime.now();
     await upsertTransaction(TransactionEntriesCompanion.insert(
       id: const Uuid().v4(),
@@ -913,12 +951,50 @@ class AppDatabase extends _$AppDatabase {
       flow: 'income',
       category: kInterest,
       amount: amount,
-      memo: Value('저축 이자 ${child.interestPercent}%'),
+      memo: Value('저축 이자 ${_trimPercent(percent)}%'),
       editedBy: Value(editedBy),
       updatedAt: Value(now),
     ));
     return true;
   }
+
+  /// 1.20 -> "1.2", 1.00 -> "1" 처럼 불필요한 0을 없앤 퍼센트 문자열.
+  static String _trimPercent(double v) {
+    final s = v.toStringAsFixed(2);
+    return s.contains('.') ? s.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '') : s;
+  }
+
+  // ---------------- 부모-자녀 약속 (이자 보너스) ----------------
+  Stream<List<Promise>> watchPromises(String childId) => (select(promises)
+        ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
+      .watch();
+
+  Future<List<Promise>> allPromisesRaw() => select(promises).get();
+
+  Future<void> upsertPromise(PromisesCompanion p) => into(promises).insertOnConflictUpdate(p);
+
+  /// 약속 필드 수정(부모). 수정 시각을 now로 갱신해 동기화 시 우선 반영되게 한다.
+  Future<void> updatePromiseFields(
+    String id, {
+    String? title,
+    double? bonusPercent,
+    bool? enabled,
+    int? sortOrder,
+  }) =>
+      (update(promises)..where((t) => t.id.equals(id))).write(PromisesCompanion(
+        title: title == null ? const Value.absent() : Value(title),
+        bonusPercent: bonusPercent == null ? const Value.absent() : Value(bonusPercent),
+        enabled: enabled == null ? const Value.absent() : Value(enabled),
+        sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+  Future<void> softDeletePromise(String id) =>
+      (update(promises)..where((t) => t.id.equals(id))).write(PromisesCompanion(
+        deletedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
 
   // ---------------- 연간 통계 ----------------
   /// 연도별 집계. key: 연도, value: {regular, special, bonus, interest, expense, transfer}

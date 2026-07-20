@@ -77,6 +77,21 @@ final pendingRequestsProvider =
   return ref.watch(databaseProvider).watchPendingRequests(childId);
 });
 
+/// 부모-자녀 약속 목록(삭제 안 된 것, 정렬됨).
+final promisesProvider =
+    StreamProvider.family<List<Promise>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchPromises(childId);
+});
+
+/// 켜진(ON) 약속들의 이자 보너스 합계 %. 약속 목록이 바뀌면 자동 재계산.
+final promiseBonusProvider =
+    FutureProvider.family<double, String>((ref, childId) async {
+  final promises = await ref.watch(promisesProvider(childId).future);
+  return promises
+      .where((p) => p.enabled)
+      .fold<double>(0, (sum, p) => sum + p.bonusPercent);
+});
+
 /// 이번 주기 이자 지급 여부 (childId, period=0주간/1월간)
 final interestGivenProvider =
     FutureProvider.family<bool, ({String childId, int period})>((ref, args) async {

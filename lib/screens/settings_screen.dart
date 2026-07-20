@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
+import '../providers/cofix_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
@@ -172,6 +174,12 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          if (child.interestEnabled) ...[
+            const SectionHeader('부모님과 약속'),
+            _buildPromises(context, ref),
+            const SectionHeader('금리 표시 (COFIX·기준금리·예금)'),
+            _buildCofixSettings(context, ref),
+          ],
         ],
 
         const SectionHeader('실시간 자동 동기화'),
@@ -695,6 +703,253 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ---------------- 부모-자녀 약속 ----------------
+  Widget _buildPromises(BuildContext context, WidgetRef ref) {
+    final promisesAsync = ref.watch(promisesProvider(child.id));
+    final db = ref.read(databaseProvider);
+    return Card(
+      child: Column(
+        children: [
+          promisesAsync.when(
+            loading: () => const Padding(
+                padding: EdgeInsets.all(16), child: LinearProgressIndicator()),
+            error: (e, _) => Padding(padding: const EdgeInsets.all(16), child: Text('오류: $e')),
+            data: (promises) {
+              if (promises.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    '약속을 추가하면, 켜진(ON) 약속마다 이자율이 올라가요.\n'
+                    '약속 안 지킨 주엔 OFF로 바꿔 낮은 이자를 적용하세요.',
+                    style: TextStyle(fontSize: 13, height: 1.4),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final p in promises)
+                    SwitchListTile(
+                      value: p.enabled,
+                      onChanged: (v) => db.updatePromiseFields(p.id, enabled: v),
+                      title: Text(p.title),
+                      subtitle: Text('지키면 +${formatPercent(p.bonusPercent)}%'),
+                      secondary: IconButton(
+                        icon: const Icon(Icons.more_horiz),
+                        tooltip: '수정/삭제',
+                        onPressed: () => _showPromiseDialog(context, ref, existing: p),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.add),
+            title: const Text('약속 추가'),
+            onTap: () => _showPromiseDialog(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPromiseDialog(BuildContext context, WidgetRef ref, {Promise? existing}) {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final bonusController =
+        TextEditingController(text: formatPercent(existing?.bonusPercent ?? 0.1));
+    final db = ref.read(databaseProvider);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(existing == null ? '약속 추가' : '약속 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration:
+                  const InputDecoration(labelText: '약속 내용', hintText: '예: 매일 이 닦기'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bonusController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration:
+                  const InputDecoration(labelText: '지키면 올려줄 이자율(%)', hintText: '예: 0.1'),
+            ),
+          ],
+        ),
+        actions: [
+          if (existing != null)
+            TextButton(
+              onPressed: () async {
+                await db.softDeletePromise(existing.id);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child:
+                  Text('삭제', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              final title = titleController.text.trim();
+              if (title.isEmpty) return;
+              final bonus = double.tryParse(bonusController.text.trim()) ?? 0.1;
+              if (existing == null) {
+                await db.upsertPromise(PromisesCompanion.insert(
+                  id: const Uuid().v4(),
+                  childId: child.id,
+                  title: title,
+                  bonusPercent: Value(bonus),
+                  updatedAt: Value(DateTime.now()),
+                ));
+              } else {
+                await db.updatePromiseFields(existing.id, title: title, bonusPercent: bonus);
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------- COFIX 금리 설정 ----------------
+  Widget _buildCofixSettings(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(cofixConfigProvider);
+    final shown = ref.watch(cofixProvider).valueOrNull;
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.account_balance_outlined),
+            title: Text(shown != null
+                ? '현재 표시: ${formatPercent(shown.rate)}% (${shown.isAuto ? '자동' : '수동'})'
+                : 'COFIX 값이 아직 없어요'),
+            subtitle: const Text('이자 카드와 "COFIX 금리란?" 설명에 함께 보여줘요'),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('COFIX 금리 직접 입력'),
+            subtitle: Text(config.hasManual
+                ? '${formatPercent(config.manualRate!)}%'
+                    '${config.manualDate != null ? ' · ${formatDate(config.manualDate!)} 갱신' : ''}'
+                : '매월 한 번 입력 (은행연합회 발표값)'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showCofixManualDialog(context, ref),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_outlined),
+            title: const Text('기준금리·정기예금 자동조회 (ECOS)'),
+            subtitle: Text(config.hasCustomKey
+                ? '내 인증키 사용 중'
+                : '기본 인증키로 자동 표시 중 · 필요하면 내 키로 교체'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showEcosKeyDialog(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCofixManualDialog(BuildContext context, WidgetRef ref) {
+    final config = ref.read(cofixConfigProvider);
+    final controller =
+        TextEditingController(text: config.manualRate == null ? '' : formatPercent(config.manualRate!));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('COFIX 금리 입력'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'COFIX 금리(%)', hintText: '예: 3.05'),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('은행연합회 공식 COFIX 확인'),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://portal.kfb.or.kr/fingood/cofix.php'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              final rate = double.tryParse(controller.text.trim());
+              if (rate == null) return;
+              await ref.read(cofixConfigProvider.notifier).setManualRate(rate);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEcosKeyDialog(BuildContext context, WidgetRef ref) {
+    final config = ref.read(cofixConfigProvider);
+    final controller = TextEditingController(text: config.ecosApiKey);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ECOS 자동조회 (선택)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('기준금리·정기예금은 기본 인증키로 이미 자동 표시돼요. '
+                '내 인증키로 바꾸고 싶을 때만 넣으면 돼요. (COFIX는 키 없이 자동)',
+                style: TextStyle(fontSize: 13, height: 1.4)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration:
+                  const InputDecoration(labelText: 'ECOS 인증키(선택)', hintText: '비우면 기본키 사용'),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('무료 인증키 발급받기'),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://ecos.bok.or.kr/api/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              await ref.read(cofixConfigProvider.notifier).setEcosApiKey(controller.text.trim());
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
       ),
     );
   }

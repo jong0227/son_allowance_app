@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
+import '../providers/cofix_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/tier_provider.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/market_index_strip.dart';
+import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
+import 'cofix_explainer_screen.dart';
 import 'main_shell.dart';
 
 /// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
@@ -41,6 +45,7 @@ class OverviewScreen extends ConsumerWidget {
         children: [
           _buildLevelUpBanner(context, ref),
           _buildTierCard(ref),
+          const MarketIndexStrip(),
           if (!isChild) _buildBackupReminder(context, ref),
           _buildRequestsSection(context, ref, isChild),
           summaryAsync.when(
@@ -127,6 +132,8 @@ class OverviewScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   _SavingsRateCard(
                       income: income, expense: expense, savings: savings, rate: rate),
+                  const SizedBox(height: 8),
+                  const RatesStrip(),
                   _buildBonus(context, ref, balance, isChild),
                   if (!isChild) _buildInterest(context, ref, balance),
                 ],
@@ -769,6 +776,7 @@ class OverviewScreen extends ConsumerWidget {
   }
 
   /// 저축 이자 카드 (원버튼 지급). 규칙이 켜져 있을 때만 표시.
+  /// COFIX 금리 안내 + "COFIX 금리란?" 설명 링크 + 약속 보너스가 반영된 실효 이자율을 보여준다.
   Widget _buildInterest(BuildContext context, WidgetRef ref, int balance) {
     if (!child.interestEnabled) return const SizedBox.shrink();
     final given = ref
@@ -776,34 +784,72 @@ class OverviewScreen extends ConsumerWidget {
             .valueOrNull ??
         false;
     if (given) return const SizedBox.shrink();
-    final amount = (balance * child.interestPercent / 100).round();
+    final bonus = ref.watch(promiseBonusProvider(child.id)).valueOrNull ?? 0.0;
+    final percent = child.interestPercent + bonus;
+    final amount = (balance * percent / 100).round();
     if (amount <= 0) return const SizedBox.shrink();
     final pair = appPalette(context).savings;
     final periodName = child.interestPeriod == 0 ? '이번 주' : '이번 달';
+    final cofix = ref.watch(cofixProvider).valueOrNull;
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.percent, color: pair.fg, size: 24),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$periodName 저축 이자',
-                      style: TextStyle(color: pair.fg, fontWeight: FontWeight.w800, fontSize: 14.5)),
-                  Text('잔액 ${formatWon(balance)}의 ${child.interestPercent}%',
-                      style: TextStyle(color: pair.fg, fontSize: 12.5)),
-                ],
-              ),
+            // COFIX 안내 줄 + "COFIX 금리란?" 링크
+            Row(
+              children: [
+                Icon(Icons.account_balance_outlined, size: 15, color: pair.fg),
+                const SizedBox(width: 5),
+                Text(
+                  cofix != null ? '오늘 COFIX 금리 ${formatPercent(cofix.rate)}%' : 'COFIX 금리',
+                  style: TextStyle(color: pair.fg, fontSize: 12.5, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CofixExplainerScreen()),
+                  ),
+                  child: Text('COFIX 금리란?',
+                      style: TextStyle(
+                        color: pair.fg,
+                        fontSize: 11.5,
+                        decoration: TextDecoration.underline,
+                      )),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () => _giveInterest(ref),
-              child: Text('+${formatWon(amount)}'),
+            Divider(height: 18, color: pair.fg.withValues(alpha: 0.18)),
+            Row(
+              children: [
+                Icon(Icons.percent, color: pair.fg, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$periodName 저축 이자',
+                          style: TextStyle(
+                              color: pair.fg, fontWeight: FontWeight.w800, fontSize: 14.5)),
+                      Text('잔액 ${formatWon(balance)}의 ${formatPercent(percent)}%',
+                          style: TextStyle(color: pair.fg, fontSize: 12.5)),
+                      if (bonus > 0)
+                        Text(
+                            '기본 ${formatPercent(child.interestPercent)}% + 약속 ${formatPercent(bonus)}%',
+                            style: TextStyle(
+                                color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => _giveInterest(ref),
+                  child: Text('+${formatWon(amount)}'),
+                ),
+              ],
             ),
           ],
         ),

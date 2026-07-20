@@ -5,6 +5,13 @@ final _krwFormat = NumberFormat.decimalPattern('ko_KR');
 
 String formatWon(int amount) => '${_krwFormat.format(amount)}원';
 
+/// 이자율 등 퍼센트 표기. 불필요한 0을 없앤다. 1.20 -> "1.2", 1.00 -> "1".
+String formatPercent(double v) {
+  final s = v.toStringAsFixed(2);
+  if (!s.contains('.')) return s;
+  return s.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+}
+
 final _dateFormat = DateFormat('yyyy.MM.dd (E)', 'ko_KR');
 String formatDate(DateTime d) => _dateFormat.format(d);
 

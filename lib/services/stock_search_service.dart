@@ -35,6 +35,26 @@ class StockPrice {
   const StockPrice({required this.native, required this.currency, required this.krw});
 }
 
+/// 시장 지수 시세 (지수값 + 전일 대비 등락). 홈/주식탭의 "오늘의 지수" 스트립에 쓴다.
+class MarketIndex {
+  final String label; // 표시명: 코스피/코스닥/나스닥
+  final String symbol; // ^KS11 등 야후 심볼
+  final double value; // 현재 지수
+  final double change; // 전일 종가 대비 포인트
+  final double changePercent; // 전일 종가 대비 %
+
+  const MarketIndex({
+    required this.label,
+    required this.symbol,
+    required this.value,
+    required this.change,
+    required this.changePercent,
+  });
+
+  bool get isUp => change > 0;
+  bool get isDown => change < 0;
+}
+
 /// 야후 파이낸스의 공개 검색 엔드포인트를 사용한 종목 자동완성.
 /// - API 키 불필요(공개 저장소 안전), 한글·영어·티커 모두 검색 가능.
 /// - 비공식 엔드포인트라 드물게 형식이 바뀌거나 제한될 수 있어, 실패해도
@@ -127,6 +147,45 @@ class StockSearchService {
         krw = price * fx;
       }
       return StockPrice(native: price, currency: currency, krw: krw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 주요 시장 지수(코스피/코스닥/나스닥) 시세. 개별 조회 실패 항목은 목록에서 빠진다.
+  /// 야후 심볼: 코스피 ^KS11, 코스닥 ^KQ11, 나스닥 종합 ^IXIC. API 키 불필요.
+  static const List<(String, String)> indexTargets = [
+    ('코스피', '^KS11'),
+    ('코스닥', '^KQ11'),
+    ('나스닥', '^IXIC'),
+  ];
+
+  Future<List<MarketIndex>> marketIndices() async {
+    final out = <MarketIndex>[];
+    for (final (label, symbol) in indexTargets) {
+      final idx = await marketIndex(label, symbol);
+      if (idx != null) out.add(idx);
+    }
+    return out;
+  }
+
+  /// 지수 하나의 시세. 실패하면 null.
+  Future<MarketIndex?> marketIndex(String label, String symbol) async {
+    try {
+      final meta = await _chartMeta(symbol);
+      if (meta == null) return null;
+      final price = (meta['regularMarketPrice'] as num?)?.toDouble();
+      final prev = (meta['chartPreviousClose'] as num?)?.toDouble() ??
+          (meta['previousClose'] as num?)?.toDouble();
+      if (price == null || prev == null || prev == 0) return null;
+      final change = price - prev;
+      return MarketIndex(
+        label: label,
+        symbol: symbol,
+        value: price,
+        change: change,
+        changePercent: change / prev * 100,
+      );
     } catch (_) {
       return null;
     }

@@ -42,6 +42,7 @@ class ExportImportService {
     final rates = await db.allAllowanceRatesRaw();
     final reqs = await db.allRequestsRaw();
     final tierList = await db.allTiersRaw();
+    final promiseList = await db.allPromisesRaw();
 
     return {
       'version': dataFormatVersion,
@@ -55,6 +56,7 @@ class ExportImportService {
       'allowanceRates': rates.map(_rateToJson).toList(),
       'requests': reqs.map(_requestToJson).toList(),
       'tiers': tierList.map(_tierToJson).toList(),
+      'promises': promiseList.map(_promiseToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -173,6 +175,7 @@ class ExportImportService {
     await diff('requests', db.allRequestsRaw, (Request r) => r.id,
         (Request r) => r.updatedAt);
     await diff('tiers', db.allTiersRaw, (Tier t) => t.id, (Tier t) => t.updatedAt);
+    await diff('promises', db.allPromisesRaw, (Promise p) => p.id, (Promise p) => p.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -225,6 +228,8 @@ class ExportImportService {
         (row) => db.upsertRequest(_requestFromJson(row)));
     await merge('tiers', db.allTiersRaw, (Tier t) => t.id, (t) => t.updatedAt,
         (row) => db.upsertTier(_tierFromJson(row)));
+    await merge('promises', db.allPromisesRaw, (Promise p) => p.id, (p) => p.updatedAt,
+        (row) => db.upsertPromise(_promiseFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -475,6 +480,33 @@ class ExportImportService {
       title: _str(j['title'], '티어'),
       icon: _str(j['icon'], '⭐'),
       reward: Value(_strn(j['reward'])),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _promiseToJson(Promise p) => {
+        'id': p.id,
+        'childId': p.childId,
+        'title': p.title,
+        'bonusPercent': p.bonusPercent,
+        'enabled': p.enabled,
+        'sortOrder': p.sortOrder,
+        'createdAt': p.createdAt.toIso8601String(),
+        'updatedAt': p.updatedAt.toIso8601String(),
+        'deletedAt': p.deletedAt?.toIso8601String(),
+      };
+
+  PromisesCompanion _promiseFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return PromisesCompanion.insert(
+      id: _str(j['id']),
+      childId: _str(j['childId']),
+      title: _str(j['title'], '약속'),
+      bonusPercent: Value(_double(j['bonusPercent'], 0.1)),
+      enabled: Value(_bool(j['enabled'], true)),
+      sortOrder: Value(_int(j['sortOrder'])),
+      createdAt: Value(_dtOr(j['createdAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
     );

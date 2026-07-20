@@ -7,6 +7,7 @@ import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/stock_search_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/market_index_strip.dart';
 import '../widgets/stock_search.dart';
 import '../widgets/ui_kit.dart';
 
@@ -30,6 +31,8 @@ class StockTransferScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const MarketIndexStrip(),
+          const SizedBox(height: 12),
           summaryAsync.when(
             data: (s) => Card(
               color: Theme.of(context).colorScheme.secondaryContainer,
