@@ -7004,6 +7004,617 @@ class PromiseCommentsCompanion extends UpdateCompanion<PromiseComment> {
   }
 }
 
+class $QuizAttemptsTable extends QuizAttempts
+    with TableInfo<$QuizAttemptsTable, QuizAttempt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuizAttemptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _questionIdMeta = const VerificationMeta(
+    'questionId',
+  );
+  @override
+  late final GeneratedColumn<String> questionId = GeneratedColumn<String>(
+    'question_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekStartMeta = const VerificationMeta(
+    'weekStart',
+  );
+  @override
+  late final GeneratedColumn<DateTime> weekStart = GeneratedColumn<DateTime>(
+    'week_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstTryMeta = const VerificationMeta(
+    'firstTry',
+  );
+  @override
+  late final GeneratedColumn<bool> firstTry = GeneratedColumn<bool>(
+    'first_try',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("first_try" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _correctMeta = const VerificationMeta(
+    'correct',
+  );
+  @override
+  late final GeneratedColumn<bool> correct = GeneratedColumn<bool>(
+    'correct',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("correct" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _rewardMeta = const VerificationMeta('reward');
+  @override
+  late final GeneratedColumn<int> reward = GeneratedColumn<int>(
+    'reward',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _answeredAtMeta = const VerificationMeta(
+    'answeredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> answeredAt = GeneratedColumn<DateTime>(
+    'answered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    childId,
+    questionId,
+    weekStart,
+    firstTry,
+    correct,
+    reward,
+    answeredAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quiz_attempts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QuizAttempt> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('question_id')) {
+      context.handle(
+        _questionIdMeta,
+        questionId.isAcceptableOrUnknown(data['question_id']!, _questionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_questionIdMeta);
+    }
+    if (data.containsKey('week_start')) {
+      context.handle(
+        _weekStartMeta,
+        weekStart.isAcceptableOrUnknown(data['week_start']!, _weekStartMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekStartMeta);
+    }
+    if (data.containsKey('first_try')) {
+      context.handle(
+        _firstTryMeta,
+        firstTry.isAcceptableOrUnknown(data['first_try']!, _firstTryMeta),
+      );
+    }
+    if (data.containsKey('correct')) {
+      context.handle(
+        _correctMeta,
+        correct.isAcceptableOrUnknown(data['correct']!, _correctMeta),
+      );
+    }
+    if (data.containsKey('reward')) {
+      context.handle(
+        _rewardMeta,
+        reward.isAcceptableOrUnknown(data['reward']!, _rewardMeta),
+      );
+    }
+    if (data.containsKey('answered_at')) {
+      context.handle(
+        _answeredAtMeta,
+        answeredAt.isAcceptableOrUnknown(data['answered_at']!, _answeredAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuizAttempt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuizAttempt(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      questionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}question_id'],
+      )!,
+      weekStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}week_start'],
+      )!,
+      firstTry: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}first_try'],
+      )!,
+      correct: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}correct'],
+      )!,
+      reward: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reward'],
+      )!,
+      answeredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}answered_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $QuizAttemptsTable createAlias(String alias) {
+    return $QuizAttemptsTable(attachedDatabase, alias);
+  }
+}
+
+class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
+  final String id;
+  final String childId;
+  final String questionId;
+
+  /// 그 주의 월요일(주차 식별용).
+  final DateTime weekStart;
+
+  /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
+  final bool firstTry;
+  final bool correct;
+  final int reward;
+  final DateTime answeredAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const QuizAttempt({
+    required this.id,
+    required this.childId,
+    required this.questionId,
+    required this.weekStart,
+    required this.firstTry,
+    required this.correct,
+    required this.reward,
+    required this.answeredAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['child_id'] = Variable<String>(childId);
+    map['question_id'] = Variable<String>(questionId);
+    map['week_start'] = Variable<DateTime>(weekStart);
+    map['first_try'] = Variable<bool>(firstTry);
+    map['correct'] = Variable<bool>(correct);
+    map['reward'] = Variable<int>(reward);
+    map['answered_at'] = Variable<DateTime>(answeredAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  QuizAttemptsCompanion toCompanion(bool nullToAbsent) {
+    return QuizAttemptsCompanion(
+      id: Value(id),
+      childId: Value(childId),
+      questionId: Value(questionId),
+      weekStart: Value(weekStart),
+      firstTry: Value(firstTry),
+      correct: Value(correct),
+      reward: Value(reward),
+      answeredAt: Value(answeredAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory QuizAttempt.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuizAttempt(
+      id: serializer.fromJson<String>(json['id']),
+      childId: serializer.fromJson<String>(json['childId']),
+      questionId: serializer.fromJson<String>(json['questionId']),
+      weekStart: serializer.fromJson<DateTime>(json['weekStart']),
+      firstTry: serializer.fromJson<bool>(json['firstTry']),
+      correct: serializer.fromJson<bool>(json['correct']),
+      reward: serializer.fromJson<int>(json['reward']),
+      answeredAt: serializer.fromJson<DateTime>(json['answeredAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'childId': serializer.toJson<String>(childId),
+      'questionId': serializer.toJson<String>(questionId),
+      'weekStart': serializer.toJson<DateTime>(weekStart),
+      'firstTry': serializer.toJson<bool>(firstTry),
+      'correct': serializer.toJson<bool>(correct),
+      'reward': serializer.toJson<int>(reward),
+      'answeredAt': serializer.toJson<DateTime>(answeredAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  QuizAttempt copyWith({
+    String? id,
+    String? childId,
+    String? questionId,
+    DateTime? weekStart,
+    bool? firstTry,
+    bool? correct,
+    int? reward,
+    DateTime? answeredAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => QuizAttempt(
+    id: id ?? this.id,
+    childId: childId ?? this.childId,
+    questionId: questionId ?? this.questionId,
+    weekStart: weekStart ?? this.weekStart,
+    firstTry: firstTry ?? this.firstTry,
+    correct: correct ?? this.correct,
+    reward: reward ?? this.reward,
+    answeredAt: answeredAt ?? this.answeredAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  QuizAttempt copyWithCompanion(QuizAttemptsCompanion data) {
+    return QuizAttempt(
+      id: data.id.present ? data.id.value : this.id,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      questionId: data.questionId.present
+          ? data.questionId.value
+          : this.questionId,
+      weekStart: data.weekStart.present ? data.weekStart.value : this.weekStart,
+      firstTry: data.firstTry.present ? data.firstTry.value : this.firstTry,
+      correct: data.correct.present ? data.correct.value : this.correct,
+      reward: data.reward.present ? data.reward.value : this.reward,
+      answeredAt: data.answeredAt.present
+          ? data.answeredAt.value
+          : this.answeredAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuizAttempt(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('questionId: $questionId, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('firstTry: $firstTry, ')
+          ..write('correct: $correct, ')
+          ..write('reward: $reward, ')
+          ..write('answeredAt: $answeredAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    childId,
+    questionId,
+    weekStart,
+    firstTry,
+    correct,
+    reward,
+    answeredAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuizAttempt &&
+          other.id == this.id &&
+          other.childId == this.childId &&
+          other.questionId == this.questionId &&
+          other.weekStart == this.weekStart &&
+          other.firstTry == this.firstTry &&
+          other.correct == this.correct &&
+          other.reward == this.reward &&
+          other.answeredAt == this.answeredAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
+  final Value<String> id;
+  final Value<String> childId;
+  final Value<String> questionId;
+  final Value<DateTime> weekStart;
+  final Value<bool> firstTry;
+  final Value<bool> correct;
+  final Value<int> reward;
+  final Value<DateTime> answeredAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const QuizAttemptsCompanion({
+    this.id = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.questionId = const Value.absent(),
+    this.weekStart = const Value.absent(),
+    this.firstTry = const Value.absent(),
+    this.correct = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.answeredAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuizAttemptsCompanion.insert({
+    required String id,
+    required String childId,
+    required String questionId,
+    required DateTime weekStart,
+    this.firstTry = const Value.absent(),
+    this.correct = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.answeredAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       childId = Value(childId),
+       questionId = Value(questionId),
+       weekStart = Value(weekStart);
+  static Insertable<QuizAttempt> custom({
+    Expression<String>? id,
+    Expression<String>? childId,
+    Expression<String>? questionId,
+    Expression<DateTime>? weekStart,
+    Expression<bool>? firstTry,
+    Expression<bool>? correct,
+    Expression<int>? reward,
+    Expression<DateTime>? answeredAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (childId != null) 'child_id': childId,
+      if (questionId != null) 'question_id': questionId,
+      if (weekStart != null) 'week_start': weekStart,
+      if (firstTry != null) 'first_try': firstTry,
+      if (correct != null) 'correct': correct,
+      if (reward != null) 'reward': reward,
+      if (answeredAt != null) 'answered_at': answeredAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuizAttemptsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? childId,
+    Value<String>? questionId,
+    Value<DateTime>? weekStart,
+    Value<bool>? firstTry,
+    Value<bool>? correct,
+    Value<int>? reward,
+    Value<DateTime>? answeredAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return QuizAttemptsCompanion(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      questionId: questionId ?? this.questionId,
+      weekStart: weekStart ?? this.weekStart,
+      firstTry: firstTry ?? this.firstTry,
+      correct: correct ?? this.correct,
+      reward: reward ?? this.reward,
+      answeredAt: answeredAt ?? this.answeredAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (questionId.present) {
+      map['question_id'] = Variable<String>(questionId.value);
+    }
+    if (weekStart.present) {
+      map['week_start'] = Variable<DateTime>(weekStart.value);
+    }
+    if (firstTry.present) {
+      map['first_try'] = Variable<bool>(firstTry.value);
+    }
+    if (correct.present) {
+      map['correct'] = Variable<bool>(correct.value);
+    }
+    if (reward.present) {
+      map['reward'] = Variable<int>(reward.value);
+    }
+    if (answeredAt.present) {
+      map['answered_at'] = Variable<DateTime>(answeredAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuizAttemptsCompanion(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('questionId: $questionId, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('firstTry: $firstTry, ')
+          ..write('correct: $correct, ')
+          ..write('reward: $reward, ')
+          ..write('answeredAt: $answeredAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7022,6 +7633,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PromiseCommentsTable promiseComments = $PromiseCommentsTable(
     this,
   );
+  late final $QuizAttemptsTable quizAttempts = $QuizAttemptsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7038,6 +7650,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tiers,
     promises,
     promiseComments,
+    quizAttempts,
   ];
 }
 
@@ -10449,6 +11062,305 @@ typedef $$PromiseCommentsTableProcessedTableManager =
       PromiseComment,
       PrefetchHooks Function()
     >;
+typedef $$QuizAttemptsTableCreateCompanionBuilder =
+    QuizAttemptsCompanion Function({
+      required String id,
+      required String childId,
+      required String questionId,
+      required DateTime weekStart,
+      Value<bool> firstTry,
+      Value<bool> correct,
+      Value<int> reward,
+      Value<DateTime> answeredAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$QuizAttemptsTableUpdateCompanionBuilder =
+    QuizAttemptsCompanion Function({
+      Value<String> id,
+      Value<String> childId,
+      Value<String> questionId,
+      Value<DateTime> weekStart,
+      Value<bool> firstTry,
+      Value<bool> correct,
+      Value<int> reward,
+      Value<DateTime> answeredAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$QuizAttemptsTableFilterComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get firstTry => $composableBuilder(
+    column: $table.firstTry,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get correct => $composableBuilder(
+    column: $table.correct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QuizAttemptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get firstTry => $composableBuilder(
+    column: $table.firstTry,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get correct => $composableBuilder(
+    column: $table.correct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QuizAttemptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get weekStart =>
+      $composableBuilder(column: $table.weekStart, builder: (column) => column);
+
+  GeneratedColumn<bool> get firstTry =>
+      $composableBuilder(column: $table.firstTry, builder: (column) => column);
+
+  GeneratedColumn<bool> get correct =>
+      $composableBuilder(column: $table.correct, builder: (column) => column);
+
+  GeneratedColumn<int> get reward =>
+      $composableBuilder(column: $table.reward, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$QuizAttemptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $QuizAttemptsTable,
+          QuizAttempt,
+          $$QuizAttemptsTableFilterComposer,
+          $$QuizAttemptsTableOrderingComposer,
+          $$QuizAttemptsTableAnnotationComposer,
+          $$QuizAttemptsTableCreateCompanionBuilder,
+          $$QuizAttemptsTableUpdateCompanionBuilder,
+          (
+            QuizAttempt,
+            BaseReferences<_$AppDatabase, $QuizAttemptsTable, QuizAttempt>,
+          ),
+          QuizAttempt,
+          PrefetchHooks Function()
+        > {
+  $$QuizAttemptsTableTableManager(_$AppDatabase db, $QuizAttemptsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuizAttemptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuizAttemptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuizAttemptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> questionId = const Value.absent(),
+                Value<DateTime> weekStart = const Value.absent(),
+                Value<bool> firstTry = const Value.absent(),
+                Value<bool> correct = const Value.absent(),
+                Value<int> reward = const Value.absent(),
+                Value<DateTime> answeredAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuizAttemptsCompanion(
+                id: id,
+                childId: childId,
+                questionId: questionId,
+                weekStart: weekStart,
+                firstTry: firstTry,
+                correct: correct,
+                reward: reward,
+                answeredAt: answeredAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String childId,
+                required String questionId,
+                required DateTime weekStart,
+                Value<bool> firstTry = const Value.absent(),
+                Value<bool> correct = const Value.absent(),
+                Value<int> reward = const Value.absent(),
+                Value<DateTime> answeredAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuizAttemptsCompanion.insert(
+                id: id,
+                childId: childId,
+                questionId: questionId,
+                weekStart: weekStart,
+                firstTry: firstTry,
+                correct: correct,
+                reward: reward,
+                answeredAt: answeredAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QuizAttemptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $QuizAttemptsTable,
+      QuizAttempt,
+      $$QuizAttemptsTableFilterComposer,
+      $$QuizAttemptsTableOrderingComposer,
+      $$QuizAttemptsTableAnnotationComposer,
+      $$QuizAttemptsTableCreateCompanionBuilder,
+      $$QuizAttemptsTableUpdateCompanionBuilder,
+      (
+        QuizAttempt,
+        BaseReferences<_$AppDatabase, $QuizAttemptsTable, QuizAttempt>,
+      ),
+      QuizAttempt,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10475,4 +11387,6 @@ class $AppDatabaseManager {
       $$PromisesTableTableManager(_db, _db.promises);
   $$PromiseCommentsTableTableManager get promiseComments =>
       $$PromiseCommentsTableTableManager(_db, _db.promiseComments);
+  $$QuizAttemptsTableTableManager get quizAttempts =>
+      $$QuizAttemptsTableTableManager(_db, _db.quizAttempts);
 }

@@ -223,6 +223,26 @@ class PromiseComments extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 경제 퀴즈 응답 기록. 주 1회(3문제) 풀이 이력과 지급한 보상을 남긴다.
+/// 같은 문제를 다시 내지 않기 위한 "이미 푼 문제" 목록 역할도 한다. 가족 동기화 대상.
+class QuizAttempts extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get questionId => text()();
+  /// 그 주의 월요일(주차 식별용).
+  DateTimeColumn get weekStart => dateTime()();
+  /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
+  BoolColumn get firstTry => boolean().withDefault(const Constant(false))();
+  BoolColumn get correct => boolean().withDefault(const Constant(false))();
+  IntColumn get reward => integer().withDefault(const Constant(0))(); // 지급한 원
+  DateTimeColumn get answeredAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -243,6 +263,7 @@ class PastAllowancePayment {
     Tiers,
     Promises,
     PromiseComments,
+    QuizAttempts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -250,7 +271,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -303,6 +324,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 13) {
             await m.createTable(promiseComments);
           }
+          if (from < 14) {
+            await m.createTable(quizAttempts);
+          }
         },
       );
 
@@ -310,6 +334,7 @@ class AppDatabase extends _$AppDatabase {
   static const kRegularAllowance = '정기용돈';
   static const kSavingsBonus = '절약보너스';
   static const kInterest = '이자';
+  static const kQuizReward = '퀴즈보상';
   static const kInitialBalance = '이월잔액';
   /// 앱 사용 전 지출을 한 번에 뭉뚱그린 항목(과거 지출 일괄). 실제 잔액엔 반영되지만
   /// 카테고리가 없는 뭉치라 카테고리/월별/연간 통계에서는 제외한다.
@@ -1106,6 +1131,61 @@ class AppDatabase extends _$AppDatabase {
     ));
   }
 
+  // ---------------- 경제 퀴즈 ----------------
+  /// 이번 주(월요일 기준) 시작일.
+  static DateTime weekStartOf(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    return today.subtract(Duration(days: today.weekday - 1));
+  }
+
+  Stream<List<QuizAttempt>> watchQuizAttempts(String childId) =>
+      (select(quizAttempts)
+            ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.desc(t.answeredAt)]))
+          .watch();
+
+  Future<List<QuizAttempt>> allQuizAttemptsRaw() => select(quizAttempts).get();
+
+  Future<void> upsertQuizAttempt(QuizAttemptsCompanion a) =>
+      into(quizAttempts).insertOnConflictUpdate(a);
+
+  /// 퀴즈 한 문제 결과를 기록하고 보상을 자동 적립한다.
+  /// 보상이 0보다 크면 '퀴즈보상' 수입 내역이 함께 생성된다.
+  Future<void> recordQuizAnswer({
+    required String childId,
+    required String questionId,
+    required bool correct,
+    required bool firstTry,
+    required int reward,
+    required String editedBy,
+  }) async {
+    final now = DateTime.now();
+    await upsertQuizAttempt(QuizAttemptsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: childId,
+      questionId: questionId,
+      weekStart: weekStartOf(now),
+      firstTry: Value(firstTry),
+      correct: Value(correct),
+      reward: Value(reward),
+      answeredAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    if (reward > 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: childId,
+        date: now,
+        flow: 'income',
+        category: kQuizReward,
+        amount: reward,
+        memo: Value(firstTry ? '경제왕 퀴즈 정답' : '경제왕 퀴즈 정답(해설 보고 다시 맞춤)'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+  }
+
   Future<void> softDeletePromiseComment(String id) =>
       (update(promiseComments)..where((t) => t.id.equals(id)))
           .write(PromiseCommentsCompanion(
@@ -1524,7 +1604,9 @@ class AppDatabase extends _$AppDatabase {
           totalRegularIncome += t.amount;
         } else if (t.category == kInitialBalance) {
           initialBalance += t.amount;
-        } else if (t.category == kSavingsBonus || t.category == kInterest) {
+        } else if (t.category == kSavingsBonus ||
+            t.category == kInterest ||
+            t.category == kQuizReward) {
           rewardIncome += t.amount;
         } else {
           totalSpecialIncome += t.amount;
@@ -1569,6 +1651,7 @@ class AppDatabase extends _$AppDatabase {
       category == kRegularAllowance ||
       category == kSavingsBonus ||
       category == kInterest ||
+      category == kQuizReward ||
       category == kInitialBalance;
 
   /// 앱 사용 전 상태를 맞추려고 넣은 "일괄 시딩" 내역인지 여부.

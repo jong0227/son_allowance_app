@@ -44,6 +44,7 @@ class ExportImportService {
     final tierList = await db.allTiersRaw();
     final promiseList = await db.allPromisesRaw();
     final promiseCommentList = await db.allPromiseCommentsRaw();
+    final quizList = await db.allQuizAttemptsRaw();
 
     return {
       'version': dataFormatVersion,
@@ -59,6 +60,7 @@ class ExportImportService {
       'tiers': tierList.map(_tierToJson).toList(),
       'promises': promiseList.map(_promiseToJson).toList(),
       'promiseComments': promiseCommentList.map(_promiseCommentToJson).toList(),
+      'quizAttempts': quizList.map(_quizAttemptToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -180,6 +182,8 @@ class ExportImportService {
     await diff('promises', db.allPromisesRaw, (Promise p) => p.id, (Promise p) => p.updatedAt);
     await diff('promiseComments', db.allPromiseCommentsRaw, (PromiseComment c) => c.id,
         (PromiseComment c) => c.updatedAt);
+    await diff('quizAttempts', db.allQuizAttemptsRaw, (QuizAttempt q) => q.id,
+        (QuizAttempt q) => q.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -236,6 +240,8 @@ class ExportImportService {
         (row) => db.upsertPromise(_promiseFromJson(row)));
     await merge('promiseComments', db.allPromiseCommentsRaw, (PromiseComment c) => c.id,
         (c) => c.updatedAt, (row) => db.upsertPromiseComment(_promiseCommentFromJson(row)));
+    await merge('quizAttempts', db.allQuizAttemptsRaw, (QuizAttempt q) => q.id,
+        (q) => q.updatedAt, (row) => db.upsertQuizAttempt(_quizAttemptFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -547,6 +553,35 @@ class ExportImportService {
       message: Value(_strn(j['message'])),
       statusEnabled: Value(status is bool ? status : null),
       createdAt: Value(_dtOr(j['createdAt'], now)),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _quizAttemptToJson(QuizAttempt q) => {
+        'id': q.id,
+        'childId': q.childId,
+        'questionId': q.questionId,
+        'weekStart': q.weekStart.toIso8601String(),
+        'firstTry': q.firstTry,
+        'correct': q.correct,
+        'reward': q.reward,
+        'answeredAt': q.answeredAt.toIso8601String(),
+        'updatedAt': q.updatedAt.toIso8601String(),
+        'deletedAt': q.deletedAt?.toIso8601String(),
+      };
+
+  QuizAttemptsCompanion _quizAttemptFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return QuizAttemptsCompanion.insert(
+      id: _str(j['id']),
+      childId: _str(j['childId']),
+      questionId: _str(j['questionId']),
+      weekStart: _dtOr(j['weekStart'], now),
+      firstTry: Value(_bool(j['firstTry'])),
+      correct: Value(_bool(j['correct'])),
+      reward: Value(_int(j['reward'])),
+      answeredAt: Value(_dtOr(j['answeredAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
     );
