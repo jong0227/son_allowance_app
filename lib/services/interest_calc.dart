@@ -22,6 +22,16 @@ class InterestBreakdown {
   /// 실제 적용 이자율(1회분 %) = 기본 + 약속 보너스.
   double get totalPercent => basePercent + promiseBonusPercent;
 
+  /// 1년으로 환산한 전체 이자율(%) = 1회분 이자율 × 연간 지급 횟수.
+  /// (단리 환산. 실제로 받는 이자에 또 이자가 붙는 복리 효과는 별도)
+  double get annualPercent => totalPercent * periodsPerYear(period);
+
+  /// 주간으로 환산한 이자율(%).
+  double get weeklyPercent => annualPercent / 52;
+
+  /// 월간으로 환산한 이자율(%).
+  double get monthlyPercent => annualPercent / 12;
+
   /// 이번 회차에 줄 이자(원).
   int get amount => balance <= 0 ? 0 : (balance * totalPercent / 100).round();
 

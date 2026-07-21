@@ -137,7 +137,7 @@ class OverviewScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   const RatesStrip(),
                   _buildBonus(context, ref, isChild),
-                  if (!isChild) _buildInterest(context, ref, balance),
+                  _buildInterest(context, ref, balance, isChild),
                   // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
                   PromisesHomeCard(childId: child.id),
                 ],
@@ -812,15 +812,18 @@ class OverviewScreen extends ConsumerWidget {
     return '위시리스트: ${r.title ?? ''}$price';
   }
 
-  /// 저축 이자 카드 (원버튼 지급). 규칙이 켜져 있을 때만 표시.
-  /// COFIX 금리 안내 + "COFIX 금리란?" 설명 링크 + 약속 보너스가 반영된 실효 이자율을 보여준다.
-  Widget _buildInterest(BuildContext context, WidgetRef ref, int balance) {
+  /// 저축 이자 카드. 규칙이 켜져 있을 때만 표시.
+  /// COFIX 금리 안내 + "이자가 뭐야?" 설명 링크 + 약속 보너스가 반영된 실효 이자율을 보여준다.
+  /// - 부모 모드: 원버튼 지급 버튼(이미 지급했으면 카드 자체가 사라짐)
+  /// - 자녀 모드: 지급 버튼 없이, 지금 적용받는 이자율/금액을 항상 볼 수 있는 정보 카드
+  ///   (예전엔 부모 전용 카드라 자녀 화면엔 아예 안 보였음)
+  Widget _buildInterest(BuildContext context, WidgetRef ref, int balance, bool isChild) {
     if (!child.interestEnabled) return const SizedBox.shrink();
     final given = ref
             .watch(interestGivenProvider((childId: child.id, period: child.interestPeriod)))
             .valueOrNull ??
         false;
-    if (given) return const SizedBox.shrink();
+    if (!isChild && given) return const SizedBox.shrink();
     final bonus = ref.watch(promiseBonusProvider(child.id)).valueOrNull ?? 0.0;
     final bankRate = ref.watch(depositRateProvider).valueOrNull;
     final b = computeInterest(
@@ -852,7 +855,10 @@ class OverviewScreen extends ConsumerWidget {
                 Icon(Icons.savings_outlined, color: pair.fg, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('${b.periodName} 저축 이자 받기',
+                  child: Text(
+                      isChild
+                          ? (given ? '${b.periodName} 이자 받았어요' : '${b.periodName} 이자율')
+                          : '${b.periodName} 저축 이자 받기',
                       style: TextStyle(
                           color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
                 ),
@@ -871,6 +877,13 @@ class OverviewScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // 정확한 이자율(1회분/주/월/년) — "지금 몇 % 받고 있나"에 바로 답한다.
+            Text(
+              '${formatPercent(b.totalPercent)}% (주 ${formatPercent(b.weeklyPercent)}% · '
+              '월 ${formatPercent(b.monthlyPercent)}% · 년 ${formatPercent(b.annualPercent)}%)',
+              style: TextStyle(color: pair.fg, fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
             // 은행보다 얼마나 더 주는지 — 아이가 금리 차이를 체감하는 핵심 줄.
             if (multiple != null) ...[
               Text('은행에 맡기면 ${formatWon(b.bankAmount)}  →  우리집은 ${formatWon(b.amount)}',
@@ -893,13 +906,19 @@ class OverviewScreen extends ConsumerWidget {
               Text('잔액 ${formatWon(balance)}의 ${formatPercent(b.totalPercent)}%',
                   style: TextStyle(color: pair.fg, fontSize: 12.5)),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => _giveInterest(ref, bankRate),
-                child: Text('+${formatWon(b.amount)} 받기'),
+            if (isChild)
+              Text(
+                given ? '다음 지급 때 새로 계산돼요.' : '부모님이 지급하면 +${formatWon(b.amount)} 받아요.',
+                style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => _giveInterest(ref, bankRate),
+                  child: Text('+${formatWon(b.amount)} 받기'),
+                ),
               ),
-            ),
           ],
         ),
       ),

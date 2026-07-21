@@ -81,6 +81,28 @@ void main() {
     expect(b.multipleOfBank!, closeTo(6.0, 0.001));
   });
 
+  test('주간 지급의 주/월/년 환산 이자율이 정확하다', () {
+    final b = weekly(); // 1회분(주간) 0.2965%
+    expect(b.weeklyPercent, closeTo(b.totalPercent, 0.0001));
+    expect(b.monthlyPercent, closeTo(b.totalPercent * 52 / 12, 0.0001));
+    expect(b.annualPercent, closeTo(b.totalPercent * 52, 0.0001));
+  });
+
+  test('월간 지급의 주/월/년 환산 이자율이 정확하다', () {
+    final b = computeInterest(
+      balance: balance,
+      period: 1, // 월간
+      useBankRate: true,
+      multiplier: 6,
+      fixedPercent: 1.0,
+      promiseBonusPercent: 0,
+      bankAnnualPercent: bankAnnual,
+    );
+    expect(b.monthlyPercent, closeTo(b.totalPercent, 0.0001));
+    expect(b.weeklyPercent, closeTo(b.totalPercent * 12 / 52, 0.0001));
+    expect(b.annualPercent, closeTo(b.totalPercent * 12, 0.0001));
+  });
+
   test('잔액이 0이면 이자도 0', () {
     final b = computeInterest(
       balance: 0,

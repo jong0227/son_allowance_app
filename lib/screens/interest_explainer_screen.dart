@@ -234,9 +234,68 @@ class _NowCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text('약속을 더 지키면 이 배수가 더 올라가요 🚀',
                 style: TextStyle(fontSize: 13.5, height: 1.45, color: pair.fg)),
+            const SizedBox(height: 14),
+            _RateTable(pair: pair, b: b),
           ] else
             Text('약속을 지키고 돈을 모을수록 이자가 쑥쑥 올라가요 🚀',
                 style: TextStyle(fontSize: 14, height: 1.5, color: pair.fg)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 지금 적용받는 이자율을 주/월/년 단위로 환산해 보여주는 표.
+/// "정확히 지금 몇 % 받고 있나" 질문에 바로 답할 수 있도록.
+class _RateTable extends StatelessWidget {
+  final PastelPair pair;
+  final InterestBreakdown b;
+  const _RateTable({required this.pair, required this.b});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(String label, String value, {bool bold = false}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: TextStyle(fontSize: 13, color: pair.fg.withValues(alpha: 0.8))),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+                      color: pair.fg)),
+            ],
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: pair.fg.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('지금 적용받는 이자율',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: pair.fg)),
+          const SizedBox(height: 6),
+          row('${b.periodName} 이자율', '${formatPercent(b.totalPercent)}%', bold: true),
+          if (b.promiseBonusPercent > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                  '(기본 ${formatPercent(b.basePercent)}% + 약속보너스 ${formatPercent(b.promiseBonusPercent)}%)',
+                  style: TextStyle(fontSize: 11.5, color: pair.fg.withValues(alpha: 0.7))),
+            ),
+          const Divider(height: 14),
+          row('주(週)로 치면', '${formatPercent(b.weeklyPercent)}%'),
+          row('월(月)로 치면', '${formatPercent(b.monthlyPercent)}%'),
+          row('년(年)으로 치면', '${formatPercent(b.annualPercent)}%'),
+          if (b.hasBankRate) ...[
+            const Divider(height: 14),
+            row('은행 정기예금(연)', '${formatPercent(b.bankAnnualPercent)}%'),
+          ],
         ],
       ),
     );

@@ -22,17 +22,30 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometric());
   }
 
-  Future<void> _tryBiometric() async {
+  /// [manual]이면(버튼으로 직접 눌렀으면) 실패 이유를 스낵바로 보여준다.
+  /// 자동 시도(화면 진입 시)는 조용히 실패하고 PIN 입력으로 넘어간다.
+  Future<void> _tryBiometric({bool manual = false}) async {
     try {
-      final canCheck = await _localAuth.canCheckBiometrics;
-      if (!canCheck) return;
+      final supported = await _localAuth.isDeviceSupported();
+      final canCheck = supported && await _localAuth.canCheckBiometrics;
+      if (!canCheck) {
+        if (manual && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('이 기기에서 생체인증을 쓸 수 없어요. 기기 설정에서 지문/얼굴을 등록해주세요.')));
+        }
+        return;
+      }
       final ok = await _localAuth.authenticate(
         localizedReason: '앱 잠금을 해제하려면 인증해주세요',
         options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
       );
       if (ok) widget.onUnlocked();
-    } catch (_) {
-      // 생체인증 실패/미지원 시 PIN 입력으로 진행
+    } catch (e) {
+      if (manual && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('생체인증 실패: $e')));
+      }
+      // 자동 시도 실패 시엔 조용히 PIN 입력으로 진행
     }
   }
 
@@ -76,7 +89,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 const SizedBox(height: 12),
                 FilledButton(onPressed: _submitPin, child: const Text('확인')),
                 TextButton.icon(
-                  onPressed: _tryBiometric,
+                  onPressed: () => _tryBiometric(manual: true),
                   icon: const Icon(Icons.fingerprint),
                   label: const Text('생체인증으로 잠금 해제'),
                 ),
