@@ -202,6 +202,27 @@ class Promises extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 약속에 달리는 댓글 + 상태변경 기록.
+/// - kind='comment': 아이가 "이렇게 지키고 있어요" 남기거나 부모가 답글을 단다.
+/// - kind='status' : 부모가 ON/OFF로 바꾼 기록(이유를 [text]에 적을 수 있음).
+/// 누가 남겼는지는 [author]에 기기 주인(엄마/아빠/아들)을 저장한다. 가족 동기화 대상.
+class PromiseComments extends Table {
+  TextColumn get id => text()();
+  TextColumn get promiseId => text()();
+  TextColumn get childId => text()();
+  TextColumn get author => text().withDefault(const Constant(''))(); // 엄마/아빠/아들
+  TextColumn get kind => text().withDefault(const Constant('comment'))(); // comment|status
+  // 컬럼명을 text로 두면 drift Table의 text() 빌더와 충돌하므로 message를 쓴다.
+  TextColumn get message => text().nullable()();
+  BoolColumn get statusEnabled => boolean().nullable()(); // kind='status'일 때 바뀐 값
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -221,6 +242,7 @@ class PastAllowancePayment {
     Requests,
     Tiers,
     Promises,
+    PromiseComments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -228,7 +250,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -277,6 +299,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(children, children.interestMultiplier);
             // 이자를 매주 지급으로 전환(부모 요청). 주기는 설정에서 다시 바꿀 수 있다.
             await customStatement('UPDATE children SET interest_period = 0');
+          }
+          if (from < 13) {
+            await m.createTable(promiseComments);
           }
         },
       );
@@ -1017,6 +1042,73 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> softDeletePromise(String id) =>
       (update(promises)..where((t) => t.id.equals(id))).write(PromisesCompanion(
+        deletedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+  /// 부모가 약속을 ON/OFF로 바꾸고, 그 이유를 기록으로 남긴다.
+  /// 상태 변경도 댓글 타임라인에 함께 보여서 아이가 "왜 꺼졌는지" 알 수 있게 한다.
+  Future<void> setPromiseEnabled(
+    Promise promise, {
+    required bool enabled,
+    required String author,
+    String? reason,
+  }) async {
+    await updatePromiseFields(promise.id, enabled: enabled);
+    await addPromiseComment(
+      promiseId: promise.id,
+      childId: promise.childId,
+      author: author,
+      kind: 'status',
+      text: (reason != null && reason.trim().isNotEmpty) ? reason.trim() : null,
+      statusEnabled: enabled,
+    );
+  }
+
+  // ---------------- 약속 댓글 ----------------
+  /// 한 약속의 댓글/상태기록 (오래된 것부터).
+  Stream<List<PromiseComment>> watchPromiseComments(String promiseId) =>
+      (select(promiseComments)
+            ..where((t) => t.promiseId.equals(promiseId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+          .watch();
+
+  /// 자녀의 모든 약속 댓글 (홈 카드에서 개수 표시용).
+  Stream<List<PromiseComment>> watchAllPromiseComments(String childId) =>
+      (select(promiseComments)
+            ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+          .watch();
+
+  Future<List<PromiseComment>> allPromiseCommentsRaw() => select(promiseComments).get();
+
+  Future<void> upsertPromiseComment(PromiseCommentsCompanion c) =>
+      into(promiseComments).insertOnConflictUpdate(c);
+
+  Future<void> addPromiseComment({
+    required String promiseId,
+    required String childId,
+    required String author,
+    String kind = 'comment',
+    String? text,
+    bool? statusEnabled,
+  }) async {
+    final now = DateTime.now();
+    await upsertPromiseComment(PromiseCommentsCompanion.insert(
+      id: const Uuid().v4(),
+      promiseId: promiseId,
+      childId: childId,
+      author: Value(author),
+      kind: Value(kind),
+      message: Value(text),
+      statusEnabled: Value(statusEnabled),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  Future<void> softDeletePromiseComment(String id) =>
+      (update(promiseComments)..where((t) => t.id.equals(id)))
+          .write(PromiseCommentsCompanion(
         deletedAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));

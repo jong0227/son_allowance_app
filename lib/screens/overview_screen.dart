@@ -12,6 +12,7 @@ import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
 import '../widgets/market_index_strip.dart';
+import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
@@ -137,6 +138,8 @@ class OverviewScreen extends ConsumerWidget {
                   const RatesStrip(),
                   _buildBonus(context, ref, balance, isChild),
                   if (!isChild) _buildInterest(context, ref, balance),
+                  // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
+                  PromisesHomeCard(childId: child.id),
                 ],
               );
             },
@@ -566,9 +569,11 @@ class OverviewScreen extends ConsumerWidget {
       bg = palette.allowance.bg;
       fg = palette.allowance.fg;
       icon = Icons.savings_outlined;
-      title = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 유지하기';
-      sub =
-          '지금 ${formatWon(balance)} · 유지하면 보너스 ${formatWon(child.bonusAmount)}';
+      // 제목은 "무엇을 하는 카드인지", 부제는 "조건 → 보상"을 한 문장으로.
+      // (예전엔 제목이 조건으로 시작해 아이가 왜 이 숫자가 있는지 이해하기 어려웠음)
+      title = '이번 주 절약 도전';
+      sub = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 남기면 '
+          '+${formatWon(child.bonusAmount)} · 지금 ${formatWon(balance)}';
     } else {
       bg = scheme.surfaceContainerHighest;
       fg = scheme.onSurfaceVariant;

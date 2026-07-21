@@ -92,6 +92,18 @@ final promiseBonusProvider =
       .fold<double>(0, (sum, p) => sum + p.bonusPercent);
 });
 
+/// 한 약속의 댓글/상태기록 (오래된 것부터).
+final promiseCommentsProvider =
+    StreamProvider.family<List<PromiseComment>, String>((ref, promiseId) {
+  return ref.watch(databaseProvider).watchPromiseComments(promiseId);
+});
+
+/// 자녀의 모든 약속 댓글 (홈 카드에서 약속별 개수 표시용).
+final allPromiseCommentsProvider =
+    StreamProvider.family<List<PromiseComment>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchAllPromiseComments(childId);
+});
+
 /// 이번 주기 이자 지급 여부 (childId, period=0주간/1월간)
 final interestGivenProvider =
     FutureProvider.family<bool, ({String childId, int period})>((ref, args) async {

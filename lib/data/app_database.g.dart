@@ -6395,6 +6395,615 @@ class PromisesCompanion extends UpdateCompanion<Promise> {
   }
 }
 
+class $PromiseCommentsTable extends PromiseComments
+    with TableInfo<$PromiseCommentsTable, PromiseComment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PromiseCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promiseIdMeta = const VerificationMeta(
+    'promiseId',
+  );
+  @override
+  late final GeneratedColumn<String> promiseId = GeneratedColumn<String>(
+    'promise_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('comment'),
+  );
+  static const VerificationMeta _messageMeta = const VerificationMeta(
+    'message',
+  );
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+    'message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusEnabledMeta = const VerificationMeta(
+    'statusEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> statusEnabled = GeneratedColumn<bool>(
+    'status_enabled',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("status_enabled" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    promiseId,
+    childId,
+    author,
+    kind,
+    message,
+    statusEnabled,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'promise_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PromiseComment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('promise_id')) {
+      context.handle(
+        _promiseIdMeta,
+        promiseId.isAcceptableOrUnknown(data['promise_id']!, _promiseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promiseIdMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('message')) {
+      context.handle(
+        _messageMeta,
+        message.isAcceptableOrUnknown(data['message']!, _messageMeta),
+      );
+    }
+    if (data.containsKey('status_enabled')) {
+      context.handle(
+        _statusEnabledMeta,
+        statusEnabled.isAcceptableOrUnknown(
+          data['status_enabled']!,
+          _statusEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PromiseComment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PromiseComment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      promiseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}promise_id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      message: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}message'],
+      ),
+      statusEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}status_enabled'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $PromiseCommentsTable createAlias(String alias) {
+    return $PromiseCommentsTable(attachedDatabase, alias);
+  }
+}
+
+class PromiseComment extends DataClass implements Insertable<PromiseComment> {
+  final String id;
+  final String promiseId;
+  final String childId;
+  final String author;
+  final String kind;
+  final String? message;
+  final bool? statusEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const PromiseComment({
+    required this.id,
+    required this.promiseId,
+    required this.childId,
+    required this.author,
+    required this.kind,
+    this.message,
+    this.statusEnabled,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['promise_id'] = Variable<String>(promiseId);
+    map['child_id'] = Variable<String>(childId);
+    map['author'] = Variable<String>(author);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || message != null) {
+      map['message'] = Variable<String>(message);
+    }
+    if (!nullToAbsent || statusEnabled != null) {
+      map['status_enabled'] = Variable<bool>(statusEnabled);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PromiseCommentsCompanion toCompanion(bool nullToAbsent) {
+    return PromiseCommentsCompanion(
+      id: Value(id),
+      promiseId: Value(promiseId),
+      childId: Value(childId),
+      author: Value(author),
+      kind: Value(kind),
+      message: message == null && nullToAbsent
+          ? const Value.absent()
+          : Value(message),
+      statusEnabled: statusEnabled == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statusEnabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory PromiseComment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PromiseComment(
+      id: serializer.fromJson<String>(json['id']),
+      promiseId: serializer.fromJson<String>(json['promiseId']),
+      childId: serializer.fromJson<String>(json['childId']),
+      author: serializer.fromJson<String>(json['author']),
+      kind: serializer.fromJson<String>(json['kind']),
+      message: serializer.fromJson<String?>(json['message']),
+      statusEnabled: serializer.fromJson<bool?>(json['statusEnabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'promiseId': serializer.toJson<String>(promiseId),
+      'childId': serializer.toJson<String>(childId),
+      'author': serializer.toJson<String>(author),
+      'kind': serializer.toJson<String>(kind),
+      'message': serializer.toJson<String?>(message),
+      'statusEnabled': serializer.toJson<bool?>(statusEnabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  PromiseComment copyWith({
+    String? id,
+    String? promiseId,
+    String? childId,
+    String? author,
+    String? kind,
+    Value<String?> message = const Value.absent(),
+    Value<bool?> statusEnabled = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => PromiseComment(
+    id: id ?? this.id,
+    promiseId: promiseId ?? this.promiseId,
+    childId: childId ?? this.childId,
+    author: author ?? this.author,
+    kind: kind ?? this.kind,
+    message: message.present ? message.value : this.message,
+    statusEnabled: statusEnabled.present
+        ? statusEnabled.value
+        : this.statusEnabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  PromiseComment copyWithCompanion(PromiseCommentsCompanion data) {
+    return PromiseComment(
+      id: data.id.present ? data.id.value : this.id,
+      promiseId: data.promiseId.present ? data.promiseId.value : this.promiseId,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      author: data.author.present ? data.author.value : this.author,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      message: data.message.present ? data.message.value : this.message,
+      statusEnabled: data.statusEnabled.present
+          ? data.statusEnabled.value
+          : this.statusEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromiseComment(')
+          ..write('id: $id, ')
+          ..write('promiseId: $promiseId, ')
+          ..write('childId: $childId, ')
+          ..write('author: $author, ')
+          ..write('kind: $kind, ')
+          ..write('message: $message, ')
+          ..write('statusEnabled: $statusEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    promiseId,
+    childId,
+    author,
+    kind,
+    message,
+    statusEnabled,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromiseComment &&
+          other.id == this.id &&
+          other.promiseId == this.promiseId &&
+          other.childId == this.childId &&
+          other.author == this.author &&
+          other.kind == this.kind &&
+          other.message == this.message &&
+          other.statusEnabled == this.statusEnabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PromiseCommentsCompanion extends UpdateCompanion<PromiseComment> {
+  final Value<String> id;
+  final Value<String> promiseId;
+  final Value<String> childId;
+  final Value<String> author;
+  final Value<String> kind;
+  final Value<String?> message;
+  final Value<bool?> statusEnabled;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PromiseCommentsCompanion({
+    this.id = const Value.absent(),
+    this.promiseId = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.author = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.message = const Value.absent(),
+    this.statusEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PromiseCommentsCompanion.insert({
+    required String id,
+    required String promiseId,
+    required String childId,
+    this.author = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.message = const Value.absent(),
+    this.statusEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       promiseId = Value(promiseId),
+       childId = Value(childId);
+  static Insertable<PromiseComment> custom({
+    Expression<String>? id,
+    Expression<String>? promiseId,
+    Expression<String>? childId,
+    Expression<String>? author,
+    Expression<String>? kind,
+    Expression<String>? message,
+    Expression<bool>? statusEnabled,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (promiseId != null) 'promise_id': promiseId,
+      if (childId != null) 'child_id': childId,
+      if (author != null) 'author': author,
+      if (kind != null) 'kind': kind,
+      if (message != null) 'message': message,
+      if (statusEnabled != null) 'status_enabled': statusEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PromiseCommentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? promiseId,
+    Value<String>? childId,
+    Value<String>? author,
+    Value<String>? kind,
+    Value<String?>? message,
+    Value<bool?>? statusEnabled,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return PromiseCommentsCompanion(
+      id: id ?? this.id,
+      promiseId: promiseId ?? this.promiseId,
+      childId: childId ?? this.childId,
+      author: author ?? this.author,
+      kind: kind ?? this.kind,
+      message: message ?? this.message,
+      statusEnabled: statusEnabled ?? this.statusEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (promiseId.present) {
+      map['promise_id'] = Variable<String>(promiseId.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (statusEnabled.present) {
+      map['status_enabled'] = Variable<bool>(statusEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromiseCommentsCompanion(')
+          ..write('id: $id, ')
+          ..write('promiseId: $promiseId, ')
+          ..write('childId: $childId, ')
+          ..write('author: $author, ')
+          ..write('kind: $kind, ')
+          ..write('message: $message, ')
+          ..write('statusEnabled: $statusEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6410,6 +7019,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RequestsTable requests = $RequestsTable(this);
   late final $TiersTable tiers = $TiersTable(this);
   late final $PromisesTable promises = $PromisesTable(this);
+  late final $PromiseCommentsTable promiseComments = $PromiseCommentsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6425,6 +7037,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     requests,
     tiers,
     promises,
+    promiseComments,
   ];
 }
 
@@ -9533,6 +10146,309 @@ typedef $$PromisesTableProcessedTableManager =
       Promise,
       PrefetchHooks Function()
     >;
+typedef $$PromiseCommentsTableCreateCompanionBuilder =
+    PromiseCommentsCompanion Function({
+      required String id,
+      required String promiseId,
+      required String childId,
+      Value<String> author,
+      Value<String> kind,
+      Value<String?> message,
+      Value<bool?> statusEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PromiseCommentsTableUpdateCompanionBuilder =
+    PromiseCommentsCompanion Function({
+      Value<String> id,
+      Value<String> promiseId,
+      Value<String> childId,
+      Value<String> author,
+      Value<String> kind,
+      Value<String?> message,
+      Value<bool?> statusEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$PromiseCommentsTableFilterComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promiseId => $composableBuilder(
+    column: $table.promiseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PromiseCommentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promiseId => $composableBuilder(
+    column: $table.promiseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PromiseCommentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get promiseId =>
+      $composableBuilder(column: $table.promiseId, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PromiseCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PromiseCommentsTable,
+          PromiseComment,
+          $$PromiseCommentsTableFilterComposer,
+          $$PromiseCommentsTableOrderingComposer,
+          $$PromiseCommentsTableAnnotationComposer,
+          $$PromiseCommentsTableCreateCompanionBuilder,
+          $$PromiseCommentsTableUpdateCompanionBuilder,
+          (
+            PromiseComment,
+            BaseReferences<
+              _$AppDatabase,
+              $PromiseCommentsTable,
+              PromiseComment
+            >,
+          ),
+          PromiseComment,
+          PrefetchHooks Function()
+        > {
+  $$PromiseCommentsTableTableManager(
+    _$AppDatabase db,
+    $PromiseCommentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PromiseCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PromiseCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PromiseCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> promiseId = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<bool?> statusEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromiseCommentsCompanion(
+                id: id,
+                promiseId: promiseId,
+                childId: childId,
+                author: author,
+                kind: kind,
+                message: message,
+                statusEnabled: statusEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String promiseId,
+                required String childId,
+                Value<String> author = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<bool?> statusEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromiseCommentsCompanion.insert(
+                id: id,
+                promiseId: promiseId,
+                childId: childId,
+                author: author,
+                kind: kind,
+                message: message,
+                statusEnabled: statusEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PromiseCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PromiseCommentsTable,
+      PromiseComment,
+      $$PromiseCommentsTableFilterComposer,
+      $$PromiseCommentsTableOrderingComposer,
+      $$PromiseCommentsTableAnnotationComposer,
+      $$PromiseCommentsTableCreateCompanionBuilder,
+      $$PromiseCommentsTableUpdateCompanionBuilder,
+      (
+        PromiseComment,
+        BaseReferences<_$AppDatabase, $PromiseCommentsTable, PromiseComment>,
+      ),
+      PromiseComment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9557,4 +10473,6 @@ class $AppDatabaseManager {
       $$TiersTableTableManager(_db, _db.tiers);
   $$PromisesTableTableManager get promises =>
       $$PromisesTableTableManager(_db, _db.promises);
+  $$PromiseCommentsTableTableManager get promiseComments =>
+      $$PromiseCommentsTableTableManager(_db, _db.promiseComments);
 }

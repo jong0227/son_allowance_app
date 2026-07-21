@@ -43,6 +43,7 @@ class ExportImportService {
     final reqs = await db.allRequestsRaw();
     final tierList = await db.allTiersRaw();
     final promiseList = await db.allPromisesRaw();
+    final promiseCommentList = await db.allPromiseCommentsRaw();
 
     return {
       'version': dataFormatVersion,
@@ -57,6 +58,7 @@ class ExportImportService {
       'requests': reqs.map(_requestToJson).toList(),
       'tiers': tierList.map(_tierToJson).toList(),
       'promises': promiseList.map(_promiseToJson).toList(),
+      'promiseComments': promiseCommentList.map(_promiseCommentToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -176,6 +178,8 @@ class ExportImportService {
         (Request r) => r.updatedAt);
     await diff('tiers', db.allTiersRaw, (Tier t) => t.id, (Tier t) => t.updatedAt);
     await diff('promises', db.allPromisesRaw, (Promise p) => p.id, (Promise p) => p.updatedAt);
+    await diff('promiseComments', db.allPromiseCommentsRaw, (PromiseComment c) => c.id,
+        (PromiseComment c) => c.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -230,6 +234,8 @@ class ExportImportService {
         (row) => db.upsertTier(_tierFromJson(row)));
     await merge('promises', db.allPromisesRaw, (Promise p) => p.id, (p) => p.updatedAt,
         (row) => db.upsertPromise(_promiseFromJson(row)));
+    await merge('promiseComments', db.allPromiseCommentsRaw, (PromiseComment c) => c.id,
+        (c) => c.updatedAt, (row) => db.upsertPromiseComment(_promiseCommentFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -510,6 +516,36 @@ class ExportImportService {
       bonusPercent: Value(_double(j['bonusPercent'], 0.1)),
       enabled: Value(_bool(j['enabled'], true)),
       sortOrder: Value(_int(j['sortOrder'])),
+      createdAt: Value(_dtOr(j['createdAt'], now)),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _promiseCommentToJson(PromiseComment c) => {
+        'id': c.id,
+        'promiseId': c.promiseId,
+        'childId': c.childId,
+        'author': c.author,
+        'kind': c.kind,
+        'message': c.message,
+        'statusEnabled': c.statusEnabled,
+        'createdAt': c.createdAt.toIso8601String(),
+        'updatedAt': c.updatedAt.toIso8601String(),
+        'deletedAt': c.deletedAt?.toIso8601String(),
+      };
+
+  PromiseCommentsCompanion _promiseCommentFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    final status = j['statusEnabled'];
+    return PromiseCommentsCompanion.insert(
+      id: _str(j['id']),
+      promiseId: _str(j['promiseId']),
+      childId: _str(j['childId']),
+      author: Value(_str(j['author'])),
+      kind: Value(_str(j['kind'], 'comment')),
+      message: Value(_strn(j['message'])),
+      statusEnabled: Value(status is bool ? status : null),
       createdAt: Value(_dtOr(j['createdAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
