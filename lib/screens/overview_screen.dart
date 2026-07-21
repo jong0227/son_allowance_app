@@ -136,7 +136,7 @@ class OverviewScreen extends ConsumerWidget {
                       income: income, expense: expense, savings: savings, rate: rate),
                   const SizedBox(height: 8),
                   const RatesStrip(),
-                  _buildBonus(context, ref, balance, isChild),
+                  _buildBonus(context, ref, isChild),
                   if (!isChild) _buildInterest(context, ref, balance),
                   // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
                   PromisesHomeCard(childId: child.id),
@@ -508,7 +508,11 @@ class OverviewScreen extends ConsumerWidget {
   /// - 기준일 당일 이후 + 목표 달성: 축하 + 원버튼 지급
   /// - 기준일 이전: 목표 유지 안내 + 진행바
   /// - 기준일 지남 + 미달: 이번 주 미달 안내
-  Widget _buildBonus(BuildContext context, WidgetRef ref, int balance, bool isChild) {
+  ///
+  /// 판단 기준은 "이번 주 받은 용돈 중 얼마가 남았는지"다(전체 누적 잔액이 아님).
+  /// 누적 잔액으로 비교하면 저축이 쌓일수록 목표가 항상 저절로 달성돼 버려
+  /// 정보로서 의미가 없어진다.
+  Widget _buildBonus(BuildContext context, WidgetRef ref, bool isChild) {
     if (!child.bonusEnabled) return const SizedBox.shrink();
     final palette = appPalette(context);
     final scheme = Theme.of(context).colorScheme;
@@ -521,10 +525,31 @@ class OverviewScreen extends ConsumerWidget {
             .valueOrNull
             ?.any((r) => r.type == 'bonus' && r.status == 'pending') ??
         false;
-    final progress =
-        child.bonusThreshold == 0 ? 1.0 : (balance / child.bonusThreshold).clamp(0.0, 1.0);
+
+    final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
+    final weekStart =
+        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    final weeklyBudget = child.weeklyAllowanceDefault;
+    final weekSpent = txs
+        .where((t) =>
+            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
+        .fold<int>(0, (a, b) => a + b.amount);
+    final weekRemaining = weeklyBudget - weekSpent;
+
+    final progress = child.bonusThreshold == 0
+        ? 1.0
+        : (weekRemaining / child.bonusThreshold).clamp(0.0, 1.0);
     final dayReached = now.weekday >= child.bonusDayOfWeek;
-    final met = balance >= child.bonusThreshold;
+    final met = weekRemaining >= child.bonusThreshold;
+    final daysLeft = child.bonusDayOfWeek - now.weekday; // !dayReached일 때만 유효(항상 ≥1)
+
+    // "이번 주 용돈 3,000원 중 1,200원 썼어요 (1,800원 남음)"
+    String spendLine() => '이번 주 용돈 ${formatWon(weeklyBudget)} 중 ${formatWon(weekSpent)} 썼어요 '
+        '(${formatWon(weekRemaining < 0 ? 0 : weekRemaining)} 남음)';
+    // "내일 목요일까지" / "목요일까지 D-2"
+    String dayLeftText() =>
+        daysLeft == 1 ? '내일 $dayName요일까지' : '$dayName요일까지 D-$daysLeft';
 
     // 공통 진행 바 위젯
     Widget progressBar(Color color) => ClipRRect(
@@ -556,7 +581,7 @@ class OverviewScreen extends ConsumerWidget {
       fg = palette.special.fg;
       icon = Icons.emoji_events;
       title = '절약 목표 달성! 🎉';
-      sub = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 이상 유지했어요.';
+      sub = '${spendLine()}\n$dayName요일까지 ${formatWon(child.bonusThreshold)} 이상 남겼어요.';
       if (isChild) {
         // 자녀: 직접 지급 대신 부모에게 요청
         trailing = pendingBonusReq
@@ -578,14 +603,14 @@ class OverviewScreen extends ConsumerWidget {
       // 제목은 "무엇을 하는 카드인지", 부제는 "조건 → 보상"을 한 문장으로.
       // (예전엔 제목이 조건으로 시작해 아이가 왜 이 숫자가 있는지 이해하기 어려웠음)
       title = '이번 주 절약 도전';
-      sub = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 남기면 '
-          '+${formatWon(child.bonusAmount)} · 지금 ${formatWon(balance)}';
+      sub = '${spendLine()}\n${dayLeftText()} · ${formatWon(child.bonusThreshold)} 이상 남기면 '
+          '+${formatWon(child.bonusAmount)}';
     } else {
       bg = scheme.surfaceContainerHighest;
       fg = scheme.onSurfaceVariant;
       icon = Icons.sentiment_neutral;
       title = '이번 주는 목표에 조금 못 미쳤어요';
-      sub = '현재 ${formatWon(balance)} / 목표 ${formatWon(child.bonusThreshold)}';
+      sub = '${spendLine()}\n목표 ${formatWon(child.bonusThreshold)}엔 못 미쳤어요. 다음 주에 다시 도전!';
     }
 
     return Padding(
