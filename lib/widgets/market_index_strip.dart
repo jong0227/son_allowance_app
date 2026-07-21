@@ -12,7 +12,9 @@ final _indexFormat = NumberFormat('#,##0.##');
 
 /// 홈 상단 + 주식이체 탭에 쓰는 "오늘의 지수" 스트립(코스피/코스닥/나스닥).
 class MarketIndexStrip extends ConsumerWidget {
-  const MarketIndexStrip({super.key});
+  /// 바로 위 카드와 붙여 보이도록 위쪽 마진을 없앤다(홈의 등급 카드 아래).
+  final bool tightTop;
+  const MarketIndexStrip({super.key, this.tightTop = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,6 +24,7 @@ class MarketIndexStrip extends ConsumerWidget {
     final textSecondary = theme.colorScheme.onSurfaceVariant;
 
     return Card(
+      margin: tightTop ? const EdgeInsets.only(bottom: 5) : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         child: Column(

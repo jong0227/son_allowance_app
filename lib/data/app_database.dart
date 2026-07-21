@@ -32,8 +32,8 @@ class Children extends Table {
   /// true면 이자율을 "실제 은행 예금금리 × 배수"로 계산한다(교육 목적: 진짜 금리와 연동).
   /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
   BoolColumn get interestUseBankRate => boolean().withDefault(const Constant(true))();
-  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
-  RealColumn get interestMultiplier => real().withDefault(const Constant(6.0))();
+  /// 은행 예금금리의 몇 배를 줄지. 기본 1배(은행 정기예금과 동일한 현실적 이자율).
+  RealColumn get interestMultiplier => real().withDefault(const Constant(1.0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -184,14 +184,14 @@ class Tiers extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// 부모-자녀 약속. 지키면(enabled=true=ON) 저축 이자율을 bonusPercent 만큼 올려준다.
+/// 부모-자녀 약속. 지키면(enabled=true=ON) 저축 "연" 이자율을 bonusPercent 만큼 올려준다.
 /// 약속 안 지킨 주엔 부모가 OFF(enabled=false)로 돌려 그만큼 낮은 이자를 적용한다.
 /// 가족 동기화(부부 폰) 대상.
 class Promises extends Table {
   TextColumn get id => text()();
   TextColumn get childId => text()();
   TextColumn get title => text()(); // 약속 내용 (예: 매일 이 닦기)
-  RealColumn get bonusPercent => real().withDefault(const Constant(0.1))(); // ON일 때 더할 이자율 %
+  RealColumn get bonusPercent => real().withDefault(const Constant(0.3))(); // ON일 때 더할 "연" 이자율 %p
   BoolColumn get enabled => boolean().withDefault(const Constant(true))(); // true=지킴(ON)
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -503,6 +503,28 @@ class AppDatabase extends _$AppDatabase {
       moved++;
     }
     return moved;
+  }
+
+  /// 이자율을 현실적인 수준(은행 정기예금과 동일 = 배수 1)으로 1회 정규화한다.
+  /// 예전엔 은행의 6배 + 약속 주당 +0.1%p라 연 15%를 훌쩍 넘어 아이 경제관념을
+  /// 왜곡할 수 있었다. 이제 기본은 은행 그대로, 약속은 1개당 연 +0.3%p로 맞춘다.
+  /// (부모가 나중에 설정에서 배수/보너스를 다시 조절할 수 있다)
+  Future<void> normalizeInterestRates(String editedBy) async {
+    final kids = await (select(children)..where((t) => t.deletedAt.isNull())).get();
+    for (final c in kids) {
+      await updateChildPartial(
+        c.id,
+        ChildrenCompanion(
+          interestUseBankRate: const Value(true),
+          interestMultiplier: const Value(1.0),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+    final proms = await (select(promises)..where((t) => t.deletedAt.isNull())).get();
+    for (final p in proms) {
+      await updatePromiseFields(p.id, bonusPercent: 0.3);
+    }
   }
 
   // ---------------- Children ----------------
@@ -997,7 +1019,7 @@ class AppDatabase extends _$AppDatabase {
       useBankRate: child.interestUseBankRate,
       multiplier: child.interestMultiplier,
       fixedPercent: child.interestPercent,
-      promiseBonusPercent: await promiseBonusPercent(child.id),
+      promiseBonusAnnualPercent: await promiseBonusPercent(child.id),
       bankAnnualPercent: bankAnnualPercent,
     );
   }
@@ -1015,10 +1037,10 @@ class AppDatabase extends _$AppDatabase {
     final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
     if (b.amount <= 0) return false;
     final now = DateTime.now();
-    final multiple = b.multipleOfBank;
-    final memo = multiple != null
-        ? '저축 이자 ${_trimPercent(b.totalPercent)}% (은행의 ${_trimPercent(multiple)}배)'
-        : '저축 이자 ${_trimPercent(b.totalPercent)}%';
+    // 메모엔 연이율로 남긴다(은행 정기예금 연이율과 바로 비교되도록).
+    final memo = b.hasBankRate
+        ? '저축 이자 연 ${_trimPercent(b.annualPercent)}% (은행 ${_trimPercent(b.bankAnnualPercent)}%)'
+        : '저축 이자 연 ${_trimPercent(b.annualPercent)}%';
     await upsertTransaction(TransactionEntriesCompanion.insert(
       id: const Uuid().v4(),
       childId: child.id,

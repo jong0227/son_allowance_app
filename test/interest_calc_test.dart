@@ -2,40 +2,54 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:son_allowance_app/services/interest_calc.dart';
 
 void main() {
-  // 설계 기준: 잔액 35,000원 / 정기예금 연 2.57% / 주간 지급 / 은행의 6배
-  //   은행 주간 = 2.57 ÷ 52 = 0.0494%  →  35,000원의 0.0494% = 17원
-  //   우리집    = 0.0494 × 6 = 0.2965% →  35,000원의 0.2965% = 104원
-  // 약속 하나(+0.1%p)는 은행 주간이율의 약 2배라 "약속 1개 = 은행 2배 추가"가 된다.
+  // 새 기준: 이자율 = 은행 정기예금(연 2.57%) × 배수 1 = 연 2.57%.
+  // 약속은 1개당 연 +0.3%p (연이율에 더해짐).
+  //   잔액 35,000원 / 주간 지급이면 회당(주) 이자율 = 2.57 ÷ 52 = 0.0494%
+  //   → 35,000원의 0.0494% ≈ 17원
   const balance = 35000;
   const bankAnnual = 2.57;
 
-  InterestBreakdown weekly({double bonus = 0}) => computeInterest(
+  InterestBreakdown weekly({double bonusAnnual = 0}) => computeInterest(
         balance: balance,
         period: 0, // 주간
         useBankRate: true,
-        multiplier: 6,
+        multiplier: 1,
         fixedPercent: 1.0,
-        promiseBonusPercent: bonus,
+        promiseBonusAnnualPercent: bonusAnnual,
         bankAnnualPercent: bankAnnual,
       );
 
-  test('약속 0개 - 은행의 6배, 주 약 100원', () {
+  test('약속 0개 - 은행과 동일한 연 2.57%', () {
     final b = weekly();
-    expect(b.amount, 104);
+    expect(b.annualPercent, closeTo(2.57, 0.0001));
+    expect(b.baseAnnualPercent, closeTo(2.57, 0.0001));
+    expect(b.amount, 17); // 주간 이자
     expect(b.bankAmount, 17);
-    expect(b.multipleOfBank!, closeTo(6.0, 0.001));
   });
 
-  test('약속을 지킬수록 은행 대비 배수가 2배씩 오른다', () {
-    expect(weekly(bonus: 0.1).multipleOfBank!, closeTo(8.02, 0.05));
-    expect(weekly(bonus: 0.2).multipleOfBank!, closeTo(10.05, 0.05));
-    expect(weekly(bonus: 0.3).multipleOfBank!, closeTo(12.07, 0.05));
+  test('약속을 지키면 연이율이 1개당 +0.3%p씩 오른다', () {
+    expect(weekly(bonusAnnual: 0.3).annualPercent, closeTo(2.87, 0.0001));
+    expect(weekly(bonusAnnual: 0.9).annualPercent, closeTo(3.47, 0.0001));
   });
 
-  test('약속 보너스가 금액에 반영된다', () {
-    expect(weekly(bonus: 0.1).amount, 139);
-    expect(weekly(bonus: 0.2).amount, 174);
-    expect(weekly(bonus: 0.3).amount, 209);
+  test('약속 보너스는 연 단위라 회차 이자율에 52로 나눠 반영된다', () {
+    final b = weekly(bonusAnnual: 0.52); // 연 +0.52%p → 주 +0.01%p
+    expect(b.promiseBonusPeriodPercent, closeTo(0.01, 0.0001));
+    expect(b.totalPercent, closeTo(b.basePercent + 0.01, 0.0001));
+  });
+
+  test('약속 보너스가 이자 금액에도 반영된다', () {
+    // 잔액을 크게 잡아 반올림 영향을 줄인다.
+    final b = computeInterest(
+      balance: 1000000,
+      period: 0,
+      useBankRate: true,
+      multiplier: 1,
+      fixedPercent: 1.0,
+      promiseBonusAnnualPercent: 5.2, // 연 +5.2%p = 주 +0.1%p → 1,000,000의 0.1% = 1,000원
+      bankAnnualPercent: bankAnnual,
+    );
+    expect(b.amount - b.baseAmount, 1000);
   });
 
   test('은행 금리를 못 받아오면 고정 이율로 폴백한다', () {
@@ -43,76 +57,54 @@ void main() {
       balance: balance,
       period: 0,
       useBankRate: true,
-      multiplier: 6,
+      multiplier: 1,
       fixedPercent: 1.0,
-      promiseBonusPercent: 0,
+      promiseBonusAnnualPercent: 0,
       bankAnnualPercent: null,
     );
     expect(b.hasBankRate, isFalse);
-    expect(b.multipleOfBank, isNull);
     expect(b.amount, 350); // 35,000원의 1%
   });
 
-  test('은행연동을 끄면 고정 이율을 쓴다', () {
+  test('은행연동을 끄면 고정 이율(회차 %)을 쓴다', () {
     final b = computeInterest(
       balance: balance,
       period: 0,
       useBankRate: false,
-      multiplier: 6,
+      multiplier: 1,
       fixedPercent: 0.5,
-      promiseBonusPercent: 0,
+      promiseBonusAnnualPercent: 0,
       bankAnnualPercent: bankAnnual,
     );
     expect(b.amount, 175); // 35,000원의 0.5%
   });
 
-  test('월간 지급은 12로 나눈다', () {
+  test('월간 지급은 연이율을 12로 나눈다', () {
     final b = computeInterest(
-      balance: balance,
+      balance: 1000000,
       period: 1, // 월간
       useBankRate: true,
-      multiplier: 6,
+      multiplier: 1,
       fixedPercent: 1.0,
-      promiseBonusPercent: 0,
-      bankAnnualPercent: bankAnnual,
+      promiseBonusAnnualPercent: 0,
+      bankAnnualPercent: 12.0, // 연 12% → 월 1%
     );
-    // 2.57 ÷ 12 × 6 = 1.285% → 35,000원의 1.285% = 450원
-    expect(b.amount, 450);
-    expect(b.multipleOfBank!, closeTo(6.0, 0.001));
-  });
-
-  test('주간 지급의 주/월/년 환산 이자율이 정확하다', () {
-    final b = weekly(); // 1회분(주간) 0.2965%
-    expect(b.weeklyPercent, closeTo(b.totalPercent, 0.0001));
-    expect(b.monthlyPercent, closeTo(b.totalPercent * 52 / 12, 0.0001));
-    expect(b.annualPercent, closeTo(b.totalPercent * 52, 0.0001));
-  });
-
-  test('월간 지급의 주/월/년 환산 이자율이 정확하다', () {
-    final b = computeInterest(
-      balance: balance,
-      period: 1, // 월간
-      useBankRate: true,
-      multiplier: 6,
-      fixedPercent: 1.0,
-      promiseBonusPercent: 0,
-      bankAnnualPercent: bankAnnual,
-    );
-    expect(b.monthlyPercent, closeTo(b.totalPercent, 0.0001));
-    expect(b.weeklyPercent, closeTo(b.totalPercent * 12 / 52, 0.0001));
-    expect(b.annualPercent, closeTo(b.totalPercent * 12, 0.0001));
+    expect(b.annualPercent, closeTo(12.0, 0.0001));
+    expect(b.amount, 10000); // 1,000,000의 1%
   });
 
   test('잔액이 0이면 이자도 0', () {
-    final b = computeInterest(
+    final b = weekly(bonusAnnual: 0.9);
+    expect(b.amount, isNot(0));
+    final zero = computeInterest(
       balance: 0,
       period: 0,
       useBankRate: true,
-      multiplier: 6,
+      multiplier: 1,
       fixedPercent: 1.0,
-      promiseBonusPercent: 0.3,
+      promiseBonusAnnualPercent: 0.9,
       bankAnnualPercent: bankAnnual,
     );
-    expect(b.amount, 0);
+    expect(zero.amount, 0);
   });
 }

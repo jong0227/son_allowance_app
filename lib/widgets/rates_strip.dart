@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/rates_provider.dart';
-import '../screens/cofix_explainer_screen.dart';
+import '../screens/rates_explainer_screen.dart';
 import '../services/rates_service.dart';
 import '../utils/formatters.dart';
 
@@ -32,11 +32,11 @@ class RatesStrip extends ConsumerWidget {
                 const Spacer(),
                 InkWell(
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CofixExplainerScreen()),
+                    MaterialPageRoute(builder: (_) => const RatesExplainerScreen()),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Text('COFIX 금리란?',
+                    child: Text('금리란?',
                         style: TextStyle(
                           fontSize: 11.5,
                           color: theme.colorScheme.primary,

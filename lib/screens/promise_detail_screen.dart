@@ -86,7 +86,7 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
                               color: pair.fg, fontSize: 12, fontWeight: FontWeight.w800)),
                     ),
                     const SizedBox(width: 8),
-                    Text('이자 +${formatPercent(promise.bonusPercent)}%',
+                    Text('연 이자 +${formatPercent(promise.bonusPercent)}%p',
                         style: TextStyle(color: pair.fg, fontSize: 12.5)),
                   ],
                 ),
@@ -190,7 +190,7 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
           children: [
             Text(
               enable
-                  ? '약속을 잘 지켰다는 뜻이에요. 이자율이 +${formatPercent(promise.bonusPercent)}% 올라가요.'
+                  ? '약속을 잘 지켰다는 뜻이에요. 연 이자율이 +${formatPercent(promise.bonusPercent)}%p 올라가요.'
                   : '이번엔 약속을 못 지켰다는 뜻이에요. 그만큼 이자가 낮아져요.',
               style: const TextStyle(fontSize: 13.5, height: 1.4),
             ),

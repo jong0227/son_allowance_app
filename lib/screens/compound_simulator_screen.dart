@@ -37,19 +37,23 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
       _initialized = true;
     }
 
-    // 한 주당 이자율(약속 보너스 포함). 월간 설정이면 주간으로 환산해 그래프를 그린다.
+    // 한 주당 이자율. 월간 설정이면 주간으로 환산해 그래프를 그린다.
+    // 약속을 다 지켰을 때(총 이자율)와 안 지켰을 때(기본 이자율) 둘 다 계산해 비교한다.
     final b = computeInterest(
       balance: balance,
       period: child.interestPeriod,
       useBankRate: child.interestUseBankRate,
       multiplier: child.interestMultiplier,
       fixedPercent: child.interestPercent,
-      promiseBonusPercent: bonus,
+      promiseBonusAnnualPercent: bonus,
       bankAnnualPercent: bankRate,
     );
-    final weeklyRate = child.interestPeriod == 0
-        ? b.totalPercent / 100
-        : b.totalPercent / 100 / 4.345; // 월 → 주 근사
+    double toWeekly(double periodPercent) => child.interestPeriod == 0
+        ? periodPercent / 100
+        : periodPercent / 100 / 4.345; // 월 → 주 근사
+    final weeklyRate = toWeekly(b.totalPercent); // 약속 지킴(현재)
+    final weeklyRateBase = toWeekly(b.basePercent); // 약속 안 지킴(기본만)
+    final hasPromise = b.promiseBonusAnnualPercent > 0;
 
     final weeks = _weeks.round();
     final series = _simulate(
@@ -58,9 +62,17 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
       weeklyRate: weeklyRate,
       weeks: weeks,
     );
+    final baseSeries = _simulate(
+      start: balance.toDouble(),
+      weeklySave: _weeklySave,
+      weeklyRate: weeklyRateBase,
+      weeks: weeks,
+    );
     final finalAmount = series.last.round();
+    final finalBase = baseSeries.last.round();
     final deposited = balance + (_weeklySave * weeks).round();
     final interestEarned = finalAmount - deposited;
+    final promiseGain = finalAmount - finalBase; // 약속 지켜서 더 번 돈
     final palette = appPalette(context);
     final theme = Theme.of(context);
 
@@ -69,6 +81,33 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
+          // 지금 적용받는 이자율 안내
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+                color: palette.income.bg, borderRadius: BorderRadius.circular(14)),
+            child: Row(
+              children: [
+                Icon(Icons.percent, size: 18, color: palette.income.fg),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    hasPromise
+                        ? '지금 이자: 연 ${formatPercent(b.annualPercent)}% '
+                            '(기본 ${formatPercent(b.baseAnnualPercent)}% + 약속 ${formatPercent(b.promiseBonusAnnualPercent)}%p)'
+                        : '지금 이자: 연 ${formatPercent(b.annualPercent)}%',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w700,
+                        color: palette.income.fg),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -102,6 +141,11 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
                         label: '이자로 번 돈',
                         value: '+${formatWon(interestEarned)}',
                         pair: palette.income),
+                    if (hasPromise)
+                      _Pill(
+                          label: '약속 지켜서 더',
+                          value: '+${formatWon(promiseGain)}',
+                          pair: palette.special),
                   ],
                 ),
               ],
@@ -117,19 +161,21 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
                 borderData: FlBorderData(show: false),
                 lineTouchData: const LineTouchData(enabled: false),
                 lineBarsData: [
-                  // 이자 없이 그냥 모으기만 했을 때(비교용)
+                  // 점선 = 약속 안 지켰을 때(기본 이자만). 약속이 없으면 이자 없이 모으기만.
                   LineChartBarData(
                     spots: [
-                      for (var i = 0; i <= weeks; i++)
-                        FlSpot(i.toDouble(), balance + _weeklySave * i),
+                      for (var i = 0; i < baseSeries.length; i++)
+                        FlSpot(
+                            i.toDouble(),
+                            hasPromise ? baseSeries[i] : balance + _weeklySave * i),
                     ],
-                    isCurved: false,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                    isCurved: hasPromise,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     barWidth: 2,
                     dashArray: [5, 4],
                     dotData: const FlDotData(show: false),
                   ),
-                  // 이자가 붙었을 때
+                  // 실선 = 지금 이자로(약속 지킴 포함) 불어났을 때
                   LineChartBarData(
                     spots: [
                       for (var i = 0; i < series.length; i++)
@@ -148,7 +194,10 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
           ),
           const SizedBox(height: 6),
           Center(
-            child: Text('점선 = 이자 없이 모으기만 했을 때',
+            child: Text(
+                hasPromise
+                    ? '실선 = 약속 지켰을 때 · 점선 = 약속 안 지켰을 때'
+                    : '점선 = 이자 없이 모으기만 했을 때',
                 style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
           ),
           const SizedBox(height: 20),
@@ -169,8 +218,8 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
             slider: Slider(
               value: _weeks,
               min: 4,
-              max: 156,
-              divisions: 38,
+              max: 260, // 최대 5년
+              divisions: 64,
               onChanged: (v) => setState(() => _weeks = v),
             ),
           ),

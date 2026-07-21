@@ -306,7 +306,7 @@ class ExportImportService {
       interestPercent: Value(_double(j['interestPercent'], 1.0)),
       interestPeriod: Value(_int(j['interestPeriod'], 0)),
       interestUseBankRate: Value(_bool(j['interestUseBankRate'], true)),
-      interestMultiplier: Value(_double(j['interestMultiplier'], 6.0)),
+      interestMultiplier: Value(_double(j['interestMultiplier'], 1.0)),
       createdAt: Value(_dtOr(j['createdAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),

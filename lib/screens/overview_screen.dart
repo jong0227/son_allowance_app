@@ -47,7 +47,7 @@ class OverviewScreen extends ConsumerWidget {
         children: [
           _buildLevelUpBanner(context, ref),
           _buildTierCard(ref),
-          const MarketIndexStrip(),
+          const MarketIndexStrip(tightTop: true),
           if (!isChild) _buildBackupReminder(context, ref),
           _buildRequestsSection(context, ref, isChild),
           summaryAsync.when(
@@ -86,7 +86,10 @@ class OverviewScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _BalanceMiniCard(
-                              childName: child.name, balance: balance, rate: rate),
+                              childName: child.name,
+                              balance: balance,
+                              rate: rate,
+                              interestAnnualPercent: _currentInterestAnnual(ref, balance)),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -832,16 +835,11 @@ class OverviewScreen extends ConsumerWidget {
       useBankRate: child.interestUseBankRate,
       multiplier: child.interestMultiplier,
       fixedPercent: child.interestPercent,
-      promiseBonusPercent: bonus,
+      promiseBonusAnnualPercent: bonus,
       bankAnnualPercent: bankRate,
     );
     if (b.amount <= 0) return const SizedBox.shrink();
     final pair = appPalette(context).savings;
-    final multiple = b.multipleOfBank;
-    final promiseCount =
-        (ref.watch(promisesProvider(child.id)).valueOrNull ?? const [])
-            .where((p) => p.enabled)
-            .length;
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
@@ -857,7 +855,7 @@ class OverviewScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                       isChild
-                          ? (given ? '${b.periodName} 이자 받았어요' : '${b.periodName} 이자율')
+                          ? (given ? '${b.periodName} 이자 받았어요' : '${b.periodName} 저축 이자')
                           : '${b.periodName} 저축 이자 받기',
                       style: TextStyle(
                           color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
@@ -877,38 +875,24 @@ class OverviewScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // 정확한 이자율(1회분/주/월/년) — "지금 몇 % 받고 있나"에 바로 답한다.
-            Text(
-              '${formatPercent(b.totalPercent)}% (주 ${formatPercent(b.weeklyPercent)}% · '
-              '월 ${formatPercent(b.monthlyPercent)}% · 년 ${formatPercent(b.annualPercent)}%)',
-              style: TextStyle(color: pair.fg, fontSize: 12, fontWeight: FontWeight.w700),
-            ),
+            // 연 이자율 대표 + 이번 주(회차) 이자 금액. 스스로 은행과 비교하도록
+            // 은행 정기예금 연이율을 나란히 보여준다.
+            Text('연 ${formatPercent(b.annualPercent)}%',
+                style: TextStyle(
+                    color: pair.fg, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+            if (b.hasBankRate)
+              Text('은행 정기예금은 연 ${formatPercent(b.bankAnnualPercent)}%',
+                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12)),
             const SizedBox(height: 6),
-            // 은행보다 얼마나 더 주는지 — 아이가 금리 차이를 체감하는 핵심 줄.
-            if (multiple != null) ...[
-              Text('은행에 맡기면 ${formatWon(b.bankAmount)}  →  우리집은 ${formatWon(b.amount)}',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                    color: pair.fg.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text(
-                  promiseCount > 0
-                      ? '약속 $promiseCount개 지킴 · 은행의 ${formatPercent(multiple)}배!'
-                      : '은행의 ${formatPercent(multiple)}배!',
-                  style: TextStyle(
-                      color: pair.fg, fontSize: 12, fontWeight: FontWeight.w800),
-                ),
-              ),
-            ] else
-              Text('잔액 ${formatWon(balance)}의 ${formatPercent(b.totalPercent)}%',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
+            Text('${b.periodName} 이자 ${formatWon(b.amount)}',
+                style: TextStyle(color: pair.fg, fontSize: 13, fontWeight: FontWeight.w700)),
+            if (bonus > 0)
+              Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
+                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
             const SizedBox(height: 10),
             if (isChild)
               Text(
-                given ? '다음 지급 때 새로 계산돼요.' : '부모님이 지급하면 +${formatWon(b.amount)} 받아요.',
+                given ? '다음 지급 때 새로 계산돼요.' : '부모님이 지급하면 ${formatWon(b.amount)} 받아요.',
                 style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12),
               )
             else
@@ -923,6 +907,23 @@ class OverviewScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// 지금 적용받는 연 이자율(%). 이자 규칙이 꺼져 있으면 null.
+  double? _currentInterestAnnual(WidgetRef ref, int balance) {
+    if (!child.interestEnabled) return null;
+    final bonus = ref.watch(promiseBonusProvider(child.id)).valueOrNull ?? 0.0;
+    final bankRate = ref.watch(depositRateProvider).valueOrNull;
+    final b = computeInterest(
+      balance: balance,
+      period: child.interestPeriod,
+      useBankRate: child.interestUseBankRate,
+      multiplier: child.interestMultiplier,
+      fixedPercent: child.interestPercent,
+      promiseBonusAnnualPercent: bonus,
+      bankAnnualPercent: bankRate,
+    );
+    return b.annualPercent;
   }
 
   Future<void> _giveInterest(WidgetRef ref, double? bankRate) async {
@@ -1134,8 +1135,12 @@ class _BalanceMiniCard extends StatelessWidget {
   final String childName;
   final int balance;
   final double rate;
+  final double? interestAnnualPercent; // 지금 적용받는 연 이자율(없으면 미표시)
   const _BalanceMiniCard(
-      {required this.childName, required this.balance, required this.rate});
+      {required this.childName,
+      required this.balance,
+      required this.rate,
+      this.interestAnnualPercent});
 
   @override
   Widget build(BuildContext context) {
@@ -1180,6 +1185,15 @@ class _BalanceMiniCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1.1)),
           ),
+          if (interestAnnualPercent != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('저축 이자 연 ${formatPercent(interestAnnualPercent!)}%',
+                  style: TextStyle(
+                      color: palette.heroText.withValues(alpha: 0.8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600)),
+            ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

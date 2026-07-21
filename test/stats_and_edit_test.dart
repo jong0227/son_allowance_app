@@ -18,6 +18,27 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
+  test('이자율 정규화: 배수 1 + 약속 보너스 연 0.3%로 맞춘다', () async {
+    await db.upsertChild(ChildrenCompanion.insert(
+      id: 'kid1',
+      name: '테스트',
+      weeklyAllowanceDefault: const Value(3000),
+      interestMultiplier: const Value(6.0),
+      interestUseBankRate: const Value(false),
+    ));
+    await db.upsertPromise(PromisesCompanion.insert(
+      id: 'p1', childId: 'kid1', title: '이 닦기',
+      bonusPercent: const Value(0.1)));
+
+    await db.normalizeInterestRates('아빠');
+
+    final child = (await db.allChildrenRaw()).first;
+    expect(child.interestMultiplier, 1.0);
+    expect(child.interestUseBankRate, true);
+    final promise = (await db.allPromisesRaw()).first;
+    expect(promise.bonusPercent, 0.3);
+  });
+
   test('시작 잔액은 잔액엔 포함되지만 총수입/월별수입 통계에선 제외된다', () async {
     final child = await makeChild();
     // 시작 잔액(이월잔액) 50000

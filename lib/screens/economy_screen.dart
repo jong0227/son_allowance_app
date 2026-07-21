@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../data/economy_topics.dart';
+import '../data/quiz_bank.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
-import 'cofix_explainer_screen.dart';
 import 'compound_simulator_screen.dart';
 import 'interest_explainer_screen.dart';
+import 'quiz_history_screen.dart';
 import 'quiz_screen.dart';
+import 'rates_explainer_screen.dart';
 import 'topic_explainer_screen.dart';
 
 /// "경제왕" 탭 — 주 1회 퀴즈 + 경제상식 읽을거리 + 복리 시뮬레이터.
@@ -41,6 +43,18 @@ class EconomyScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   _LowBankNotice(remaining: state.remainingInBank),
                 ],
+                const SizedBox(height: 8),
+                // 준비된 문제 / 푼 문제 + 기록 보기 (부모가 아이 풀이 내역 확인)
+                _NavCard(
+                  emoji: '📋',
+                  title: '퀴즈 기록 보기',
+                  subtitle:
+                      '준비된 문제 ${kQuizBank.length}개 · 푼 문제 ${state.answeredIds.length}개',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => QuizHistoryScreen(
+                        childId: child.id, childName: child.name),
+                  )),
+                ),
               ],
             ),
           ),
@@ -72,10 +86,10 @@ class EconomyScreen extends ConsumerWidget {
             ),
           _NavCard(
             emoji: '🏛️',
-            title: 'COFIX 금리란?',
-            subtitle: '은행이 돈을 빌려올 때 내는 값 (대출의 기준)',
+            title: '금리란?',
+            subtitle: '기준금리·정기예금·COFIX 한 번에 알아보기',
             onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const CofixExplainerScreen())),
+                .push(MaterialPageRoute(builder: (_) => const RatesExplainerScreen())),
           ),
         ],
       ),

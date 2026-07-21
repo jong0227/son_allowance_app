@@ -679,7 +679,7 @@ class SettingsScreen extends ConsumerWidget {
             useBankRate: useBank,
             multiplier: double.tryParse(multiplierController.text) ?? child.interestMultiplier,
             fixedPercent: double.tryParse(percentController.text) ?? child.interestPercent,
-            promiseBonusPercent: 0,
+            promiseBonusAnnualPercent: 0,
             bankAnnualPercent: bankRate,
           );
           final muted = Theme.of(context).colorScheme.onSurfaceVariant;
@@ -714,7 +714,9 @@ class SettingsScreen extends ConsumerWidget {
                       controller: multiplierController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
-                          labelText: '은행 금리의 몇 배?', hintText: '예: 6'),
+                          labelText: '은행 금리의 몇 배?',
+                          hintText: '예: 1 (은행과 동일)',
+                          helperText: '1이면 진짜 은행 정기예금과 똑같은 이자율이에요'),
                       onChanged: (_) => setState(() {}),
                     )
                   else
@@ -740,16 +742,15 @@ class SettingsScreen extends ConsumerWidget {
                             style: TextStyle(fontSize: 12, color: muted)),
                         const SizedBox(height: 4),
                         Text(
-                            '${period == 0 ? '매주' : '매월'} ${formatWon(preview.amount)}'
-                            ' (${formatPercent(preview.totalPercent)}%)',
+                            '연 ${formatPercent(preview.annualPercent)}%'
+                            ' · ${period == 0 ? '이번 주' : '이번 달'} ${formatWon(preview.amount)}',
                             style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w800)),
-                        if (preview.multipleOfBank != null)
-                          Text('은행이면 ${formatWon(preview.bankAmount)} · '
-                              '은행의 ${formatPercent(preview.multipleOfBank!)}배',
+                        if (preview.hasBankRate)
+                          Text('은행 정기예금은 연 ${formatPercent(preview.bankAnnualPercent)}%',
                               style: TextStyle(fontSize: 12, color: muted)),
                         const SizedBox(height: 4),
-                        Text('약속을 지키면 여기에 약속 보너스가 더해져요',
+                        Text('약속을 지키면 약속 1개당 연 +0.3%p가 더해져요',
                             style: TextStyle(fontSize: 11.5, color: muted)),
                       ],
                     ),
@@ -814,7 +815,7 @@ class SettingsScreen extends ConsumerWidget {
                       value: p.enabled,
                       onChanged: (v) => db.updatePromiseFields(p.id, enabled: v),
                       title: Text(p.title),
-                      subtitle: Text('지키면 +${formatPercent(p.bonusPercent)}%'),
+                      subtitle: Text('지키면 연 +${formatPercent(p.bonusPercent)}%p'),
                       secondary: IconButton(
                         icon: const Icon(Icons.more_horiz),
                         tooltip: '수정/삭제',
@@ -839,7 +840,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showPromiseDialog(BuildContext context, WidgetRef ref, {Promise? existing}) {
     final titleController = TextEditingController(text: existing?.title ?? '');
     final bonusController =
-        TextEditingController(text: formatPercent(existing?.bonusPercent ?? 0.1));
+        TextEditingController(text: formatPercent(existing?.bonusPercent ?? 0.3));
     final db = ref.read(databaseProvider);
     showDialog(
       context: context,
@@ -857,8 +858,10 @@ class SettingsScreen extends ConsumerWidget {
             TextField(
               controller: bonusController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration:
-                  const InputDecoration(labelText: '지키면 올려줄 이자율(%)', hintText: '예: 0.1'),
+              decoration: const InputDecoration(
+                  labelText: '지키면 올려줄 연 이자율(%p)',
+                  hintText: '예: 0.3',
+                  helperText: '은행 정기예금(연 %)에 이만큼 더해줘요'),
             ),
           ],
         ),
@@ -877,7 +880,7 @@ class SettingsScreen extends ConsumerWidget {
             onPressed: () async {
               final title = titleController.text.trim();
               if (title.isEmpty) return;
-              final bonus = double.tryParse(bonusController.text.trim()) ?? 0.1;
+              final bonus = double.tryParse(bonusController.text.trim()) ?? 0.3;
               if (existing == null) {
                 await db.upsertPromise(PromisesCompanion.insert(
                   id: const Uuid().v4(),

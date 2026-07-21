@@ -46,6 +46,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         await db.reclassifyPastExpense(owner);
         await prefs.setBool('pastExpenseReclassified', true);
       }
+      // 이자율을 현실적인 수준(은행 = 배수 1, 약속 연 +0.3%p)으로 1회 정규화
+      if (!(prefs.getBool('interestNormalizedV1') ?? false)) {
+        await db.normalizeInterestRates(owner);
+        await prefs.setBool('interestNormalizedV1', true);
+      }
       // 앱 시작 시 중복 프로필 정리 + 데이터 있는 프로필 자동 선택(동기화 후 self-heal)
       final primary = await db.reconcileToSingleChild(owner);
       if (primary != null && primary != widget.child.id) {

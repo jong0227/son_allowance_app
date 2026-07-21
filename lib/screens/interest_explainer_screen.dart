@@ -44,7 +44,7 @@ class InterestExplainerScreen extends StatelessWidget {
             emoji: '💝',
             title: '우리집은 왜 이자를 줄까?',
             body: '서원이가 용돈을 아껴서 모으는 습관을 응원하려고요! '
-                '그래서 엄마아빠는 진짜 은행보다 훨씬 많이 준답니다.',
+                '진짜 은행 정기예금과 똑같은 이자를 주고, 약속을 지키면 조금 더 얹어줘요.',
           ),
           const SizedBox(height: 22),
           Text('이자를 더 많이 받는 3가지 방법',
@@ -64,8 +64,8 @@ class InterestExplainerScreen extends StatelessWidget {
             pair: palette.savings,
             emoji: '🤝',
             title: '2. 약속 지키기',
-            body: '부모님과의 약속을 지키면 이자율이 올라가요. '
-                '약속 하나를 지킬 때마다 은행보다 2배씩 더 받을 수 있어요!',
+            body: '부모님과의 약속을 지키면 이자율이 조금씩 올라가요. '
+                '약속 하나를 지킬 때마다 연 이자가 0.3%씩 더 붙어요!',
           ),
           const SizedBox(height: 8),
           _Tip(
@@ -194,7 +194,8 @@ class _Arrow extends StatelessWidget {
       );
 }
 
-/// 지금 실제로 은행보다 몇 배 받고 있는지 보여주는 마무리 카드.
+/// 지금 우리 이자율과 은행 이자율을 나란히 보여주는 마무리 카드.
+/// "은행의 N배" 대신 두 이자율을 그대로 보여줘 아이가 스스로 비교하게 한다.
 class _NowCard extends StatelessWidget {
   final PastelPair pair;
   final InterestBreakdown? breakdown;
@@ -203,7 +204,6 @@ class _NowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = breakdown;
-    final multiple = b?.multipleOfBank;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -223,19 +223,11 @@ class _NowCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (b != null && multiple != null) ...[
-            Text('은행에 맡기면 ${formatWon(b.bankAmount)}',
-                style: TextStyle(fontSize: 14, color: pair.fg)),
-            Text('우리집은 ${formatWon(b.amount)}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: pair.fg)),
-            const SizedBox(height: 6),
-            Text('은행의 ${formatPercent(multiple)}배!',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: pair.fg)),
-            const SizedBox(height: 8),
-            Text('약속을 더 지키면 이 배수가 더 올라가요 🚀',
-                style: TextStyle(fontSize: 13.5, height: 1.45, color: pair.fg)),
-            const SizedBox(height: 14),
+          if (b != null) ...[
             _RateTable(pair: pair, b: b),
+            const SizedBox(height: 10),
+            Text('약속을 지키면 우리 이자율이 조금씩 올라가요 🚀',
+                style: TextStyle(fontSize: 13.5, height: 1.45, color: pair.fg)),
           ] else
             Text('약속을 지키고 돈을 모을수록 이자가 쑥쑥 올라가요 🚀',
                 style: TextStyle(fontSize: 14, height: 1.5, color: pair.fg)),
@@ -245,8 +237,7 @@ class _NowCard extends StatelessWidget {
   }
 }
 
-/// 지금 적용받는 이자율을 주/월/년 단위로 환산해 보여주는 표.
-/// "정확히 지금 몇 % 받고 있나" 질문에 바로 답할 수 있도록.
+/// 우리 연이율 vs 은행 연이율 + 이번 회차 이자 금액을 보여주는 표.
 class _RateTable extends StatelessWidget {
   final PastelPair pair;
   final InterestBreakdown b;
@@ -277,25 +268,17 @@ class _RateTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('지금 적용받는 이자율',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: pair.fg)),
-          const SizedBox(height: 6),
-          row('${b.periodName} 이자율', '${formatPercent(b.totalPercent)}%', bold: true),
-          if (b.promiseBonusPercent > 0)
+          row('우리 이자율 (연)', '${formatPercent(b.annualPercent)}%', bold: true),
+          if (b.promiseBonusAnnualPercent > 0)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                  '(기본 ${formatPercent(b.basePercent)}% + 약속보너스 ${formatPercent(b.promiseBonusPercent)}%)',
+                  '(기본 ${formatPercent(b.baseAnnualPercent)}% + 약속 ${formatPercent(b.promiseBonusAnnualPercent)}%p)',
                   style: TextStyle(fontSize: 11.5, color: pair.fg.withValues(alpha: 0.7))),
             ),
+          if (b.hasBankRate) row('은행 정기예금 (연)', '${formatPercent(b.bankAnnualPercent)}%'),
           const Divider(height: 14),
-          row('주(週)로 치면', '${formatPercent(b.weeklyPercent)}%'),
-          row('월(月)로 치면', '${formatPercent(b.monthlyPercent)}%'),
-          row('년(年)으로 치면', '${formatPercent(b.annualPercent)}%'),
-          if (b.hasBankRate) ...[
-            const Divider(height: 14),
-            row('은행 정기예금(연)', '${formatPercent(b.bankAnnualPercent)}%'),
-          ],
+          row('${b.periodName} 받는 이자', formatWon(b.amount), bold: true),
         ],
       ),
     );
