@@ -1195,48 +1195,61 @@ class AppDatabase extends _$AppDatabase {
 
   // ---------------- 연간 통계 ----------------
   /// 연도별 집계. key: 연도, value: {regular, special, bonus, interest, expense, transfer}
-  Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) async {
+  Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) =>
+      _breakdownBy<int>(childId, (d) => d.year);
+
+  /// 월별 집계. key: 'YYYY-MM', value: yearlyBreakdown과 같은 항목들.
+  Future<Map<String, Map<String, int>>> monthlyBreakdown(String childId) =>
+      _breakdownBy<String>(
+          childId, (d) => '${d.year}-${d.month.toString().padLeft(2, '0')}');
+
+  /// 기간 키를 만드는 함수([keyOf])만 바꿔 연간/월별 집계를 공유한다.
+  Future<Map<K, Map<String, int>>> _breakdownBy<K>(
+      String childId, K Function(DateTime) keyOf) async {
     final txs = await (select(transactionEntries)
           ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
         .get();
     final transfers = await (select(stockTransfers)
           ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
         .get();
-    final map = <int, Map<String, int>>{};
-    Map<String, int> yearOf(int y) => map.putIfAbsent(
-        y,
+    final map = <K, Map<String, int>>{};
+    Map<String, int> bucketOf(DateTime d) => map.putIfAbsent(
+        keyOf(d),
         () => {
               'regular': 0,
               'special': 0,
               'bonus': 0,
               'interest': 0,
+              'quiz': 0,
               'expense': 0,
               'transfer': 0,
             });
     for (final t in txs) {
-      // 시작 잔액(이월잔액)은 연간 수입 통계에서 제외
+      // 시작 잔액(이월잔액)은 수입 통계에서 제외
       if (t.flow == 'income' && t.category == kInitialBalance) continue;
       // 과거 일괄 시딩(정기용돈/지출)은 한 날짜에 뭉쳐 추세를 왜곡 → 제외
       if (isPastSeedTx(t)) continue;
-      final y = yearOf(t.date.year);
+      final b = bucketOf(t.date);
       if (t.flow == 'expense') {
-        y['expense'] = y['expense']! + t.amount;
+        b['expense'] = b['expense']! + t.amount;
       } else {
         switch (t.category) {
           case kRegularAllowance:
-            y['regular'] = y['regular']! + t.amount;
+            b['regular'] = b['regular']! + t.amount;
           case kSavingsBonus:
-            y['bonus'] = y['bonus']! + t.amount;
+            b['bonus'] = b['bonus']! + t.amount;
           case kInterest:
-            y['interest'] = y['interest']! + t.amount;
+            b['interest'] = b['interest']! + t.amount;
+          case kQuizReward:
+            b['quiz'] = b['quiz']! + t.amount;
           default:
-            y['special'] = y['special']! + t.amount;
+            b['special'] = b['special']! + t.amount;
         }
       }
     }
     for (final s in transfers) {
-      final y = yearOf(s.date.year);
-      y['transfer'] = y['transfer']! + s.amount;
+      final b = bucketOf(s.date);
+      b['transfer'] = b['transfer']! + s.amount;
     }
     return map;
   }

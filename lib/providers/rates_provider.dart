@@ -11,6 +11,12 @@ final ratesProvider = FutureProvider<List<RateInfo>>((ref) async {
   return const RatesService().fetchAll(config.effectiveEcosKey);
 });
 
+/// 경제왕 탭의 생활 경제지표 (물가 상승률 + 원/달러 환율).
+final economyIndicatorsProvider = FutureProvider<EconomyIndicators>((ref) async {
+  final config = ref.watch(cofixConfigProvider);
+  return const RatesService().fetchIndicators(config.effectiveEcosKey);
+});
+
 /// 저축 이자 계산의 기준이 되는 실제 예금금리(정기예금 1년, 연 %).
 /// 조회에 성공하면 값을 기기에 캐시해 두고, 실패(오프라인 등)하면 마지막 캐시값을 쓴다.
 /// 한 번도 못 받아왔으면 null → 이자는 고정 이율로 폴백된다.

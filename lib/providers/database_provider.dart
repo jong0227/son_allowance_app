@@ -135,3 +135,11 @@ final yearlyStatsProvider =
   ref.watch(stockTransfersProvider(childId));
   return ref.watch(databaseProvider).yearlyBreakdown(childId);
 });
+
+/// 월별 항목별 집계 (key: 'YYYY-MM').
+final monthlyBreakdownProvider =
+    FutureProvider.family<Map<String, Map<String, int>>, String>((ref, childId) async {
+  ref.watch(transactionsProvider(childId));
+  ref.watch(stockTransfersProvider(childId));
+  return ref.watch(databaseProvider).monthlyBreakdown(childId);
+});

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../data/economy_topics.dart';
 import '../providers/quiz_provider.dart';
+import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -43,6 +44,8 @@ class EconomyScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SectionHeader('우리 동네 경제'),
+          const _IndicatorsCard(),
           const SectionHeader('돈이 불어나는 걸 보자'),
           _NavCard(
             emoji: '📈',
@@ -205,6 +208,119 @@ class _LowBankNotice extends StatelessWidget {
               style: TextStyle(color: pair.fg, fontSize: 13, height: 1.4),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 물가 상승률 + 원/달러 환율. 아이가 "요즘 물건값이 얼마나 올랐나"를 체감하도록.
+class _IndicatorsCard extends ConsumerWidget {
+  const _IndicatorsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(economyIndicatorsProvider);
+    final theme = Theme.of(context);
+    final palette = appPalette(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.public, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text('물가와 환율',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  tooltip: '새로고침',
+                  onPressed: () => ref.invalidate(economyIndicatorsProvider),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+            async.when(
+              loading: () => const SizedBox(
+                  height: 44,
+                  child: Center(
+                      child: SizedBox(
+                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))),
+              error: (_, __) => _msg('불러오지 못했어요. 새로고침을 눌러보세요.', theme),
+              data: (d) {
+                if (d.isEmpty) return _msg('불러오지 못했어요. 잠시 후 새로고침해 주세요.', theme);
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _Cell(
+                        label: '물가 (1년 전보다)',
+                        value: d.inflationYoY == null
+                            ? '-'
+                            : '${formatPercent(d.inflationYoY!)}% ↑',
+                        hint: '작년보다 물건값이 이만큼 올랐어요',
+                        pair: palette.expense,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Cell(
+                        label: '1달러',
+                        value: d.usdKrw == null ? '-' : '${d.usdKrw!.round()}원',
+                        hint: '미국 주식 살 때 쓰는 값',
+                        pair: palette.savings,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _msg(String text, ThemeData theme) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Text(text,
+            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+      );
+}
+
+class _Cell extends StatelessWidget {
+  final String label;
+  final String value;
+  final String hint;
+  final PastelPair pair;
+  const _Cell(
+      {required this.label, required this.value, required this.hint, required this.pair});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 11.5, color: pair.fg)),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w900, color: pair.fg)),
+          ),
+          const SizedBox(height: 3),
+          Text(hint, style: TextStyle(fontSize: 10.5, height: 1.3, color: pair.fg)),
         ],
       ),
     );
