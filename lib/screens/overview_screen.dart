@@ -4,17 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
-import '../providers/cofix_provider.dart';
 import '../providers/database_provider.dart';
+import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/tier_provider.dart';
+import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
 import '../widgets/market_index_strip.dart';
+import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
-import 'cofix_explainer_screen.dart';
+import 'interest_explainer_screen.dart';
 import 'main_shell.dart';
 
 /// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
@@ -136,6 +138,8 @@ class OverviewScreen extends ConsumerWidget {
                   const RatesStrip(),
                   _buildBonus(context, ref, balance, isChild),
                   if (!isChild) _buildInterest(context, ref, balance),
+                  // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
+                  PromisesHomeCard(childId: child.id),
                 ],
               );
             },
@@ -404,6 +408,12 @@ class OverviewScreen extends ConsumerWidget {
             error: (e, _) => Text('오류: $e'),
             data: (map) => _MonthSummaryCard(monthly: map),
           ),
+          const SectionHeader('월별 요약'),
+          ref.watch(monthlyBreakdownProvider(child.id)).when(
+                loading: () => const _LoadingBox(height: 120),
+                error: (e, _) => Text('오류: $e'),
+                data: (byMonth) => _MonthlyBreakdownCard(byMonth: byMonth),
+              ),
           const SectionHeader('올해 요약'),
           ref.watch(yearlyStatsProvider(child.id)).when(
                 loading: () => const _LoadingBox(height: 120),
@@ -565,9 +575,11 @@ class OverviewScreen extends ConsumerWidget {
       bg = palette.allowance.bg;
       fg = palette.allowance.fg;
       icon = Icons.savings_outlined;
-      title = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 유지하기';
-      sub =
-          '지금 ${formatWon(balance)} · 유지하면 보너스 ${formatWon(child.bonusAmount)}';
+      // 제목은 "무엇을 하는 카드인지", 부제는 "조건 → 보상"을 한 문장으로.
+      // (예전엔 제목이 조건으로 시작해 아이가 왜 이 숫자가 있는지 이해하기 어려웠음)
+      title = '이번 주 절약 도전';
+      sub = '$dayName요일까지 ${formatWon(child.bonusThreshold)} 남기면 '
+          '+${formatWon(child.bonusAmount)} · 지금 ${formatWon(balance)}';
     } else {
       bg = scheme.surfaceContainerHighest;
       fg = scheme.onSurfaceVariant;
@@ -785,12 +797,23 @@ class OverviewScreen extends ConsumerWidget {
         false;
     if (given) return const SizedBox.shrink();
     final bonus = ref.watch(promiseBonusProvider(child.id)).valueOrNull ?? 0.0;
-    final percent = child.interestPercent + bonus;
-    final amount = (balance * percent / 100).round();
-    if (amount <= 0) return const SizedBox.shrink();
+    final bankRate = ref.watch(depositRateProvider).valueOrNull;
+    final b = computeInterest(
+      balance: balance,
+      period: child.interestPeriod,
+      useBankRate: child.interestUseBankRate,
+      multiplier: child.interestMultiplier,
+      fixedPercent: child.interestPercent,
+      promiseBonusPercent: bonus,
+      bankAnnualPercent: bankRate,
+    );
+    if (b.amount <= 0) return const SizedBox.shrink();
     final pair = appPalette(context).savings;
-    final periodName = child.interestPeriod == 0 ? '이번 주' : '이번 달';
-    final cofix = ref.watch(cofixProvider).valueOrNull;
+    final multiple = b.multipleOfBank;
+    final promiseCount =
+        (ref.watch(promisesProvider(child.id)).valueOrNull ?? const [])
+            .where((p) => p.enabled)
+            .length;
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
@@ -799,21 +822,21 @@ class OverviewScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // COFIX 안내 줄 + "COFIX 금리란?" 링크
             Row(
               children: [
-                Icon(Icons.account_balance_outlined, size: 15, color: pair.fg),
-                const SizedBox(width: 5),
-                Text(
-                  cofix != null ? '오늘 COFIX 금리 ${formatPercent(cofix.rate)}%' : 'COFIX 금리',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5, fontWeight: FontWeight.w700),
+                Icon(Icons.savings_outlined, color: pair.fg, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('${b.periodName} 저축 이자 받기',
+                      style: TextStyle(
+                          color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
                 ),
-                const SizedBox(width: 6),
                 InkWell(
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CofixExplainerScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => InterestExplainerScreen(breakdown: b)),
                   ),
-                  child: Text('COFIX 금리란?',
+                  child: Text('이자가 뭐야?',
                       style: TextStyle(
                         color: pair.fg,
                         fontSize: 11.5,
@@ -822,34 +845,35 @@ class OverviewScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            Divider(height: 18, color: pair.fg.withValues(alpha: 0.18)),
-            Row(
-              children: [
-                Icon(Icons.percent, color: pair.fg, size: 24),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('$periodName 저축 이자',
-                          style: TextStyle(
-                              color: pair.fg, fontWeight: FontWeight.w800, fontSize: 14.5)),
-                      Text('잔액 ${formatWon(balance)}의 ${formatPercent(percent)}%',
-                          style: TextStyle(color: pair.fg, fontSize: 12.5)),
-                      if (bonus > 0)
-                        Text(
-                            '기본 ${formatPercent(child.interestPercent)}% + 약속 ${formatPercent(bonus)}%',
-                            style: TextStyle(
-                                color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
-                    ],
-                  ),
+            const SizedBox(height: 8),
+            // 은행보다 얼마나 더 주는지 — 아이가 금리 차이를 체감하는 핵심 줄.
+            if (multiple != null) ...[
+              Text('은행에 맡기면 ${formatWon(b.bankAmount)}  →  우리집은 ${formatWon(b.amount)}',
+                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                    color: pair.fg.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20)),
+                child: Text(
+                  promiseCount > 0
+                      ? '약속 $promiseCount개 지킴 · 은행의 ${formatPercent(multiple)}배!'
+                      : '은행의 ${formatPercent(multiple)}배!',
+                  style: TextStyle(
+                      color: pair.fg, fontSize: 12, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => _giveInterest(ref),
-                  child: Text('+${formatWon(amount)}'),
-                ),
-              ],
+              ),
+            ] else
+              Text('잔액 ${formatWon(balance)}의 ${formatPercent(b.totalPercent)}%',
+                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => _giveInterest(ref, bankRate),
+                child: Text('+${formatWon(b.amount)} 받기'),
+              ),
             ),
           ],
         ),
@@ -857,9 +881,11 @@ class OverviewScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _giveInterest(WidgetRef ref) async {
+  Future<void> _giveInterest(WidgetRef ref, double? bankRate) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref.read(databaseProvider).giveInterest(child, owner);
+    await ref
+        .read(databaseProvider)
+        .giveInterest(child, owner, bankAnnualPercent: bankRate);
   }
 
   /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.
@@ -882,26 +908,25 @@ class OverviewScreen extends ConsumerWidget {
         .fold<int>(0, (a, b) => a + b.amount);
     final savePct = budget == 0 ? 0 : (((budget - spent) / budget) * 100).clamp(0, 100).round();
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: TierSummaryCard(
-                  label: '부자 등급', tiers: savingsTiers, value: tierScore),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: TierSummaryCard(
-                  label: '주간 저축률',
-                  tiers: weeklyTiers,
-                  value: savePct,
-                  isPercent: true),
-            ),
-          ],
-        ),
+    // 카드 자체에 상하 5px 마진이 있으므로 추가 패딩을 두지 않는다.
+    // (예전엔 bottom 8이 더 붙어 아래 카드와 간격이 18px로 벌어져 보였음)
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: TierSummaryCard(
+                label: '부자 등급', tiers: savingsTiers, value: tierScore),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: TierSummaryCard(
+                label: '주간 저축률',
+                tiers: weeklyTiers,
+                value: savePct,
+                isPercent: true),
+          ),
+        ],
       ),
     );
   }
@@ -1486,6 +1511,102 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
+/// 월별 항목별 요약 (올해 요약과 같은 구성, 달 단위로 넘겨보기).
+class _MonthlyBreakdownCard extends StatefulWidget {
+  final Map<String, Map<String, int>> byMonth;
+  const _MonthlyBreakdownCard({required this.byMonth});
+
+  @override
+  State<_MonthlyBreakdownCard> createState() => _MonthlyBreakdownCardState();
+}
+
+class _MonthlyBreakdownCardState extends State<_MonthlyBreakdownCard> {
+  String? _month;
+
+  @override
+  Widget build(BuildContext context) {
+    final months = widget.byMonth.keys.toList()..sort();
+    if (months.isEmpty) return const _MutedCard(text: '아직 월별 데이터가 없어요.');
+    var month = _month;
+    if (month == null || !widget.byMonth.containsKey(month)) month = months.last;
+    final d = widget.byMonth[month]!;
+    final palette = appPalette(context);
+    final regular = d['regular'] ?? 0;
+    final special = d['special'] ?? 0;
+    final bonus = d['bonus'] ?? 0;
+    final interest = d['interest'] ?? 0;
+    final quiz = d['quiz'] ?? 0;
+    final expense = d['expense'] ?? 0;
+    final transfer = d['transfer'] ?? 0;
+    final income = regular + special + bonus + interest + quiz;
+    final idx = months.indexOf(month);
+    final parts = month.split('-');
+    final label = '${parts[0]}년 ${int.parse(parts[1])}월';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed:
+                      idx > 0 ? () => setState(() => _month = months[idx - 1]) : null,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(label,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: idx < months.length - 1
+                      ? () => setState(() => _month = months[idx + 1])
+                      : null,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _row('총 수입', formatWon(income), palette.income.fg, true),
+            const Divider(height: 18),
+            _row('정기 용돈', formatWon(regular), null, false),
+            _row('특별 수입', formatWon(special), null, false),
+            if (bonus > 0) _row('절약 보너스', formatWon(bonus), null, false),
+            if (interest > 0) _row('저축 이자', formatWon(interest), null, false),
+            if (quiz > 0) _row('퀴즈 보상', formatWon(quiz), null, false),
+            const Divider(height: 18),
+            _row('총 소비', formatWon(expense), palette.expense.fg, true),
+            _row('주식계좌 저축', formatWon(transfer), palette.savings.fg, true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String label, String value, Color? color, bool big) => Padding(
+        padding: EdgeInsets.symmetric(vertical: big ? 3 : 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    fontSize: big ? 14 : 13,
+                    fontWeight: big ? FontWeight.w600 : FontWeight.normal,
+                    color: big ? null : Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(value,
+                style: TextStyle(
+                    fontSize: big ? 15 : 13,
+                    fontWeight: big ? FontWeight.w800 : FontWeight.w600,
+                    letterSpacing: big ? -0.4 : 0,
+                    color: color)),
+          ],
+        ),
+      );
+}
+
 class _YearSummaryCard extends StatefulWidget {
   final Map<int, Map<String, int>> byYear;
   const _YearSummaryCard({required this.byYear});
@@ -1516,9 +1637,10 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
     final special = d['special'] ?? 0;
     final bonus = d['bonus'] ?? 0;
     final interest = d['interest'] ?? 0;
+    final quiz = d['quiz'] ?? 0;
     final expense = d['expense'] ?? 0;
     final transfer = d['transfer'] ?? 0;
-    final income = regular + special + bonus + interest;
+    final income = regular + special + bonus + interest + quiz;
     final saved = transfer; // 주식계좌로 보낸 저축액
 
     final idx = years.indexOf(_year);
@@ -1554,6 +1676,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
             _sub(context, '특별 수입', formatWon(special)),
             if (bonus > 0) _sub(context, '절약 보너스', formatWon(bonus)),
             if (interest > 0) _sub(context, '저축 이자', formatWon(interest)),
+            if (quiz > 0) _sub(context, '퀴즈 보상', formatWon(quiz)),
             const Divider(height: 18),
             _bigRow(context, '총 소비', formatWon(expense), palette.expense.fg),
             _bigRow(context, '주식계좌 저축', formatWon(saved), palette.savings.fg),

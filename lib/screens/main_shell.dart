@@ -9,6 +9,7 @@ import '../services/backup_service.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/responsive_scaffold.dart';
 import '../widgets/tier_widgets.dart';
+import 'economy_screen.dart';
 import 'ledger_screen.dart';
 import 'overview_screen.dart';
 import 'settings_screen.dart';
@@ -112,15 +113,19 @@ class _MainShellState extends ConsumerState<MainShell> {
         OverviewScreen(child: child),
         LedgerScreen(child: child),
         StockTransferScreen(child: child),
+        EconomyScreen(child: child),
         SettingsScreen(child: child),
       ],
+      // 탭이 5개라 라벨을 짧게 유지한다(폴드/플립에서 잘리지 않도록).
       destinations: const [
         NavigationDestination(
             icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: '홈'),
         NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: '내역'),
         NavigationDestination(
-            icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: '주식이체'),
+            icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: '주식'),
+        NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: '경제왕'),
         NavigationDestination(
             icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '설정'),
       ],

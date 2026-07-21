@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../services/interest_calc.dart';
 
 part 'app_database.g.dart';
 
@@ -26,8 +27,13 @@ class Children extends Table {
   IntColumn get bonusAmount => integer().withDefault(const Constant(500))();
   // 저축 이자 규칙 (잔액에 주기적으로 이자를 붙여 저축 장려)
   BoolColumn get interestEnabled => boolean().withDefault(const Constant(false))();
-  RealColumn get interestPercent => real().withDefault(const Constant(1.0))(); // 회당 %
-  IntColumn get interestPeriod => integer().withDefault(const Constant(1))(); // 0=주간,1=월간
+  RealColumn get interestPercent => real().withDefault(const Constant(1.0))(); // 회당 % (은행연동 안 쓸 때)
+  IntColumn get interestPeriod => integer().withDefault(const Constant(0))(); // 0=주간,1=월간
+  /// true면 이자율을 "실제 은행 예금금리 × 배수"로 계산한다(교육 목적: 진짜 금리와 연동).
+  /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
+  BoolColumn get interestUseBankRate => boolean().withDefault(const Constant(true))();
+  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
+  RealColumn get interestMultiplier => real().withDefault(const Constant(6.0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -196,6 +202,47 @@ class Promises extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 약속에 달리는 댓글 + 상태변경 기록.
+/// - kind='comment': 아이가 "이렇게 지키고 있어요" 남기거나 부모가 답글을 단다.
+/// - kind='status' : 부모가 ON/OFF로 바꾼 기록(이유를 [text]에 적을 수 있음).
+/// 누가 남겼는지는 [author]에 기기 주인(엄마/아빠/아들)을 저장한다. 가족 동기화 대상.
+class PromiseComments extends Table {
+  TextColumn get id => text()();
+  TextColumn get promiseId => text()();
+  TextColumn get childId => text()();
+  TextColumn get author => text().withDefault(const Constant(''))(); // 엄마/아빠/아들
+  TextColumn get kind => text().withDefault(const Constant('comment'))(); // comment|status
+  // 컬럼명을 text로 두면 drift Table의 text() 빌더와 충돌하므로 message를 쓴다.
+  TextColumn get message => text().nullable()();
+  BoolColumn get statusEnabled => boolean().nullable()(); // kind='status'일 때 바뀐 값
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// 경제 퀴즈 응답 기록. 주 1회(3문제) 풀이 이력과 지급한 보상을 남긴다.
+/// 같은 문제를 다시 내지 않기 위한 "이미 푼 문제" 목록 역할도 한다. 가족 동기화 대상.
+class QuizAttempts extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get questionId => text()();
+  /// 그 주의 월요일(주차 식별용).
+  DateTimeColumn get weekStart => dateTime()();
+  /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
+  BoolColumn get firstTry => boolean().withDefault(const Constant(false))();
+  BoolColumn get correct => boolean().withDefault(const Constant(false))();
+  IntColumn get reward => integer().withDefault(const Constant(0))(); // 지급한 원
+  DateTimeColumn get answeredAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -215,6 +262,8 @@ class PastAllowancePayment {
     Requests,
     Tiers,
     Promises,
+    PromiseComments,
+    QuizAttempts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -222,7 +271,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -266,6 +315,18 @@ class AppDatabase extends _$AppDatabase {
           if (from < 11) {
             await m.createTable(promises);
           }
+          if (from < 12) {
+            await m.addColumn(children, children.interestUseBankRate);
+            await m.addColumn(children, children.interestMultiplier);
+            // 이자를 매주 지급으로 전환(부모 요청). 주기는 설정에서 다시 바꿀 수 있다.
+            await customStatement('UPDATE children SET interest_period = 0');
+          }
+          if (from < 13) {
+            await m.createTable(promiseComments);
+          }
+          if (from < 14) {
+            await m.createTable(quizAttempts);
+          }
         },
       );
 
@@ -273,6 +334,7 @@ class AppDatabase extends _$AppDatabase {
   static const kRegularAllowance = '정기용돈';
   static const kSavingsBonus = '절약보너스';
   static const kInterest = '이자';
+  static const kQuizReward = '퀴즈보상';
   static const kInitialBalance = '이월잔액';
   /// 앱 사용 전 지출을 한 번에 뭉뚱그린 항목(과거 지출 일괄). 실제 잔액엔 반영되지만
   /// 카테고리가 없는 뭉치라 카테고리/월별/연간 통계에서는 제외한다.
@@ -923,35 +985,48 @@ class AppDatabase extends _$AppDatabase {
     return rows.fold<double>(0, (sum, p) => sum + p.bonusPercent);
   }
 
-  /// 실제 적용 이자율 = 기본 이자율 + 켜진 약속 보너스 합계.
-  Future<double> effectiveInterestPercent(Child child) async {
-    return child.interestPercent + await promiseBonusPercent(child.id);
+  /// 이자 계산 내역(은행 대비 비교 포함).
+  /// [bankAnnualPercent]는 실제 예금금리(연 %)로, 네트워크를 모르는 DB 대신
+  /// 화면(프로바이더)에서 넘겨준다. 없으면 고정 이율로 폴백한다.
+  Future<InterestBreakdown> interestBreakdown(Child child,
+      {double? bankAnnualPercent}) async {
+    final summary = await computeSummary(child.id);
+    return computeInterest(
+      balance: summary['balance'] ?? 0,
+      period: child.interestPeriod,
+      useBankRate: child.interestUseBankRate,
+      multiplier: child.interestMultiplier,
+      fixedPercent: child.interestPercent,
+      promiseBonusPercent: await promiseBonusPercent(child.id),
+      bankAnnualPercent: bankAnnualPercent,
+    );
   }
 
-  /// 이번 주기에 지급 가능한 이자 금액(현재 잔액 × 실효 이율). 원 단위 반올림.
-  Future<int> pendingInterestAmount(Child child) async {
-    final summary = await computeSummary(child.id);
-    final balance = summary['balance'] ?? 0;
-    if (balance <= 0) return 0;
-    final percent = await effectiveInterestPercent(child);
-    return (balance * percent / 100).round();
+  /// 이번 주기에 지급 가능한 이자 금액. 원 단위 반올림.
+  Future<int> pendingInterestAmount(Child child, {double? bankAnnualPercent}) async {
+    final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
+    return b.amount;
   }
 
   /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
-  Future<bool> giveInterest(Child child, String editedBy) async {
+  Future<bool> giveInterest(Child child, String editedBy,
+      {double? bankAnnualPercent}) async {
     if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return false;
-    final amount = await pendingInterestAmount(child);
-    if (amount <= 0) return false;
-    final percent = await effectiveInterestPercent(child);
+    final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
+    if (b.amount <= 0) return false;
     final now = DateTime.now();
+    final multiple = b.multipleOfBank;
+    final memo = multiple != null
+        ? '저축 이자 ${_trimPercent(b.totalPercent)}% (은행의 ${_trimPercent(multiple)}배)'
+        : '저축 이자 ${_trimPercent(b.totalPercent)}%';
     await upsertTransaction(TransactionEntriesCompanion.insert(
       id: const Uuid().v4(),
       childId: child.id,
       date: now,
       flow: 'income',
       category: kInterest,
-      amount: amount,
-      memo: Value('저축 이자 ${_trimPercent(percent)}%'),
+      amount: b.amount,
+      memo: Value(memo),
       editedBy: Value(editedBy),
       updatedAt: Value(now),
     ));
@@ -996,50 +1071,185 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(DateTime.now()),
       ));
 
+  /// 부모가 약속을 ON/OFF로 바꾸고, 그 이유를 기록으로 남긴다.
+  /// 상태 변경도 댓글 타임라인에 함께 보여서 아이가 "왜 꺼졌는지" 알 수 있게 한다.
+  Future<void> setPromiseEnabled(
+    Promise promise, {
+    required bool enabled,
+    required String author,
+    String? reason,
+  }) async {
+    await updatePromiseFields(promise.id, enabled: enabled);
+    await addPromiseComment(
+      promiseId: promise.id,
+      childId: promise.childId,
+      author: author,
+      kind: 'status',
+      text: (reason != null && reason.trim().isNotEmpty) ? reason.trim() : null,
+      statusEnabled: enabled,
+    );
+  }
+
+  // ---------------- 약속 댓글 ----------------
+  /// 한 약속의 댓글/상태기록 (오래된 것부터).
+  Stream<List<PromiseComment>> watchPromiseComments(String promiseId) =>
+      (select(promiseComments)
+            ..where((t) => t.promiseId.equals(promiseId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+          .watch();
+
+  /// 자녀의 모든 약속 댓글 (홈 카드에서 개수 표시용).
+  Stream<List<PromiseComment>> watchAllPromiseComments(String childId) =>
+      (select(promiseComments)
+            ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+          .watch();
+
+  Future<List<PromiseComment>> allPromiseCommentsRaw() => select(promiseComments).get();
+
+  Future<void> upsertPromiseComment(PromiseCommentsCompanion c) =>
+      into(promiseComments).insertOnConflictUpdate(c);
+
+  Future<void> addPromiseComment({
+    required String promiseId,
+    required String childId,
+    required String author,
+    String kind = 'comment',
+    String? text,
+    bool? statusEnabled,
+  }) async {
+    final now = DateTime.now();
+    await upsertPromiseComment(PromiseCommentsCompanion.insert(
+      id: const Uuid().v4(),
+      promiseId: promiseId,
+      childId: childId,
+      author: Value(author),
+      kind: Value(kind),
+      message: Value(text),
+      statusEnabled: Value(statusEnabled),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  // ---------------- 경제 퀴즈 ----------------
+  /// 이번 주(월요일 기준) 시작일.
+  static DateTime weekStartOf(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    return today.subtract(Duration(days: today.weekday - 1));
+  }
+
+  Stream<List<QuizAttempt>> watchQuizAttempts(String childId) =>
+      (select(quizAttempts)
+            ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.desc(t.answeredAt)]))
+          .watch();
+
+  Future<List<QuizAttempt>> allQuizAttemptsRaw() => select(quizAttempts).get();
+
+  Future<void> upsertQuizAttempt(QuizAttemptsCompanion a) =>
+      into(quizAttempts).insertOnConflictUpdate(a);
+
+  /// 퀴즈 한 문제 결과를 기록하고 보상을 자동 적립한다.
+  /// 보상이 0보다 크면 '퀴즈보상' 수입 내역이 함께 생성된다.
+  Future<void> recordQuizAnswer({
+    required String childId,
+    required String questionId,
+    required bool correct,
+    required bool firstTry,
+    required int reward,
+    required String editedBy,
+  }) async {
+    final now = DateTime.now();
+    await upsertQuizAttempt(QuizAttemptsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: childId,
+      questionId: questionId,
+      weekStart: weekStartOf(now),
+      firstTry: Value(firstTry),
+      correct: Value(correct),
+      reward: Value(reward),
+      answeredAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    if (reward > 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: childId,
+        date: now,
+        flow: 'income',
+        category: kQuizReward,
+        amount: reward,
+        memo: Value(firstTry ? '경제왕 퀴즈 정답' : '경제왕 퀴즈 정답(해설 보고 다시 맞춤)'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+  }
+
+  Future<void> softDeletePromiseComment(String id) =>
+      (update(promiseComments)..where((t) => t.id.equals(id)))
+          .write(PromiseCommentsCompanion(
+        deletedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
+
   // ---------------- 연간 통계 ----------------
   /// 연도별 집계. key: 연도, value: {regular, special, bonus, interest, expense, transfer}
-  Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) async {
+  Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) =>
+      _breakdownBy<int>(childId, (d) => d.year);
+
+  /// 월별 집계. key: 'YYYY-MM', value: yearlyBreakdown과 같은 항목들.
+  Future<Map<String, Map<String, int>>> monthlyBreakdown(String childId) =>
+      _breakdownBy<String>(
+          childId, (d) => '${d.year}-${d.month.toString().padLeft(2, '0')}');
+
+  /// 기간 키를 만드는 함수([keyOf])만 바꿔 연간/월별 집계를 공유한다.
+  Future<Map<K, Map<String, int>>> _breakdownBy<K>(
+      String childId, K Function(DateTime) keyOf) async {
     final txs = await (select(transactionEntries)
           ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
         .get();
     final transfers = await (select(stockTransfers)
           ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
         .get();
-    final map = <int, Map<String, int>>{};
-    Map<String, int> yearOf(int y) => map.putIfAbsent(
-        y,
+    final map = <K, Map<String, int>>{};
+    Map<String, int> bucketOf(DateTime d) => map.putIfAbsent(
+        keyOf(d),
         () => {
               'regular': 0,
               'special': 0,
               'bonus': 0,
               'interest': 0,
+              'quiz': 0,
               'expense': 0,
               'transfer': 0,
             });
     for (final t in txs) {
-      // 시작 잔액(이월잔액)은 연간 수입 통계에서 제외
+      // 시작 잔액(이월잔액)은 수입 통계에서 제외
       if (t.flow == 'income' && t.category == kInitialBalance) continue;
       // 과거 일괄 시딩(정기용돈/지출)은 한 날짜에 뭉쳐 추세를 왜곡 → 제외
       if (isPastSeedTx(t)) continue;
-      final y = yearOf(t.date.year);
+      final b = bucketOf(t.date);
       if (t.flow == 'expense') {
-        y['expense'] = y['expense']! + t.amount;
+        b['expense'] = b['expense']! + t.amount;
       } else {
         switch (t.category) {
           case kRegularAllowance:
-            y['regular'] = y['regular']! + t.amount;
+            b['regular'] = b['regular']! + t.amount;
           case kSavingsBonus:
-            y['bonus'] = y['bonus']! + t.amount;
+            b['bonus'] = b['bonus']! + t.amount;
           case kInterest:
-            y['interest'] = y['interest']! + t.amount;
+            b['interest'] = b['interest']! + t.amount;
+          case kQuizReward:
+            b['quiz'] = b['quiz']! + t.amount;
           default:
-            y['special'] = y['special']! + t.amount;
+            b['special'] = b['special']! + t.amount;
         }
       }
     }
     for (final s in transfers) {
-      final y = yearOf(s.date.year);
-      y['transfer'] = y['transfer']! + s.amount;
+      final b = bucketOf(s.date);
+      b['transfer'] = b['transfer']! + s.amount;
     }
     return map;
   }
@@ -1407,7 +1617,9 @@ class AppDatabase extends _$AppDatabase {
           totalRegularIncome += t.amount;
         } else if (t.category == kInitialBalance) {
           initialBalance += t.amount;
-        } else if (t.category == kSavingsBonus || t.category == kInterest) {
+        } else if (t.category == kSavingsBonus ||
+            t.category == kInterest ||
+            t.category == kQuizReward) {
           rewardIncome += t.amount;
         } else {
           totalSpecialIncome += t.amount;
@@ -1452,6 +1664,7 @@ class AppDatabase extends _$AppDatabase {
       category == kRegularAllowance ||
       category == kSavingsBonus ||
       category == kInterest ||
+      category == kQuizReward ||
       category == kInitialBalance;
 
   /// 앱 사용 전 상태를 맞추려고 넣은 "일괄 시딩" 내역인지 여부.

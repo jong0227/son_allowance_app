@@ -171,8 +171,34 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(1),
+    defaultValue: const Constant(0),
   );
+  static const VerificationMeta _interestUseBankRateMeta =
+      const VerificationMeta('interestUseBankRate');
+  @override
+  late final GeneratedColumn<bool> interestUseBankRate = GeneratedColumn<bool>(
+    'interest_use_bank_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("interest_use_bank_rate" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _interestMultiplierMeta =
+      const VerificationMeta('interestMultiplier');
+  @override
+  late final GeneratedColumn<double> interestMultiplier =
+      GeneratedColumn<double>(
+        'interest_multiplier',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(6.0),
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -224,6 +250,8 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     interestEnabled,
     interestPercent,
     interestPeriod,
+    interestUseBankRate,
+    interestMultiplier,
     createdAt,
     updatedAt,
     deletedAt,
@@ -358,6 +386,24 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         ),
       );
     }
+    if (data.containsKey('interest_use_bank_rate')) {
+      context.handle(
+        _interestUseBankRateMeta,
+        interestUseBankRate.isAcceptableOrUnknown(
+          data['interest_use_bank_rate']!,
+          _interestUseBankRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_multiplier')) {
+      context.handle(
+        _interestMultiplierMeta,
+        interestMultiplier.isAcceptableOrUnknown(
+          data['interest_multiplier']!,
+          _interestMultiplierMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -441,6 +487,14 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         DriftSqlType.int,
         data['${effectivePrefix}interest_period'],
       )!,
+      interestUseBankRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}interest_use_bank_rate'],
+      )!,
+      interestMultiplier: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}interest_multiplier'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -479,6 +533,13 @@ class Child extends DataClass implements Insertable<Child> {
   final bool interestEnabled;
   final double interestPercent;
   final int interestPeriod;
+
+  /// true면 이자율을 "실제 은행 예금금리 × 배수"로 계산한다(교육 목적: 진짜 금리와 연동).
+  /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
+  final bool interestUseBankRate;
+
+  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
+  final double interestMultiplier;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -497,6 +558,8 @@ class Child extends DataClass implements Insertable<Child> {
     required this.interestEnabled,
     required this.interestPercent,
     required this.interestPeriod,
+    required this.interestUseBankRate,
+    required this.interestMultiplier,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -522,6 +585,8 @@ class Child extends DataClass implements Insertable<Child> {
     map['interest_enabled'] = Variable<bool>(interestEnabled);
     map['interest_percent'] = Variable<double>(interestPercent);
     map['interest_period'] = Variable<int>(interestPeriod);
+    map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate);
+    map['interest_multiplier'] = Variable<double>(interestMultiplier);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -550,6 +615,8 @@ class Child extends DataClass implements Insertable<Child> {
       interestEnabled: Value(interestEnabled),
       interestPercent: Value(interestPercent),
       interestPeriod: Value(interestPeriod),
+      interestUseBankRate: Value(interestUseBankRate),
+      interestMultiplier: Value(interestMultiplier),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -584,6 +651,12 @@ class Child extends DataClass implements Insertable<Child> {
       interestEnabled: serializer.fromJson<bool>(json['interestEnabled']),
       interestPercent: serializer.fromJson<double>(json['interestPercent']),
       interestPeriod: serializer.fromJson<int>(json['interestPeriod']),
+      interestUseBankRate: serializer.fromJson<bool>(
+        json['interestUseBankRate'],
+      ),
+      interestMultiplier: serializer.fromJson<double>(
+        json['interestMultiplier'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -607,6 +680,8 @@ class Child extends DataClass implements Insertable<Child> {
       'interestEnabled': serializer.toJson<bool>(interestEnabled),
       'interestPercent': serializer.toJson<double>(interestPercent),
       'interestPeriod': serializer.toJson<int>(interestPeriod),
+      'interestUseBankRate': serializer.toJson<bool>(interestUseBankRate),
+      'interestMultiplier': serializer.toJson<double>(interestMultiplier),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -628,6 +703,8 @@ class Child extends DataClass implements Insertable<Child> {
     bool? interestEnabled,
     double? interestPercent,
     int? interestPeriod,
+    bool? interestUseBankRate,
+    double? interestMultiplier,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -649,6 +726,8 @@ class Child extends DataClass implements Insertable<Child> {
     interestEnabled: interestEnabled ?? this.interestEnabled,
     interestPercent: interestPercent ?? this.interestPercent,
     interestPeriod: interestPeriod ?? this.interestPeriod,
+    interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
+    interestMultiplier: interestMultiplier ?? this.interestMultiplier,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -693,6 +772,12 @@ class Child extends DataClass implements Insertable<Child> {
       interestPeriod: data.interestPeriod.present
           ? data.interestPeriod.value
           : this.interestPeriod,
+      interestUseBankRate: data.interestUseBankRate.present
+          ? data.interestUseBankRate.value
+          : this.interestUseBankRate,
+      interestMultiplier: data.interestMultiplier.present
+          ? data.interestMultiplier.value
+          : this.interestMultiplier,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -716,6 +801,8 @@ class Child extends DataClass implements Insertable<Child> {
           ..write('interestEnabled: $interestEnabled, ')
           ..write('interestPercent: $interestPercent, ')
           ..write('interestPeriod: $interestPeriod, ')
+          ..write('interestUseBankRate: $interestUseBankRate, ')
+          ..write('interestMultiplier: $interestMultiplier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -739,6 +826,8 @@ class Child extends DataClass implements Insertable<Child> {
     interestEnabled,
     interestPercent,
     interestPeriod,
+    interestUseBankRate,
+    interestMultiplier,
     createdAt,
     updatedAt,
     deletedAt,
@@ -761,6 +850,8 @@ class Child extends DataClass implements Insertable<Child> {
           other.interestEnabled == this.interestEnabled &&
           other.interestPercent == this.interestPercent &&
           other.interestPeriod == this.interestPeriod &&
+          other.interestUseBankRate == this.interestUseBankRate &&
+          other.interestMultiplier == this.interestMultiplier &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -781,6 +872,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
   final Value<bool> interestEnabled;
   final Value<double> interestPercent;
   final Value<int> interestPeriod;
+  final Value<bool> interestUseBankRate;
+  final Value<double> interestMultiplier;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -800,6 +893,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestEnabled = const Value.absent(),
     this.interestPercent = const Value.absent(),
     this.interestPeriod = const Value.absent(),
+    this.interestUseBankRate = const Value.absent(),
+    this.interestMultiplier = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -820,6 +915,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestEnabled = const Value.absent(),
     this.interestPercent = const Value.absent(),
     this.interestPeriod = const Value.absent(),
+    this.interestUseBankRate = const Value.absent(),
+    this.interestMultiplier = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -841,6 +938,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Expression<bool>? interestEnabled,
     Expression<double>? interestPercent,
     Expression<int>? interestPeriod,
+    Expression<bool>? interestUseBankRate,
+    Expression<double>? interestMultiplier,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -863,6 +962,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       if (interestEnabled != null) 'interest_enabled': interestEnabled,
       if (interestPercent != null) 'interest_percent': interestPercent,
       if (interestPeriod != null) 'interest_period': interestPeriod,
+      if (interestUseBankRate != null)
+        'interest_use_bank_rate': interestUseBankRate,
+      if (interestMultiplier != null) 'interest_multiplier': interestMultiplier,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -885,6 +987,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Value<bool>? interestEnabled,
     Value<double>? interestPercent,
     Value<int>? interestPeriod,
+    Value<bool>? interestUseBankRate,
+    Value<double>? interestMultiplier,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -907,6 +1011,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       interestEnabled: interestEnabled ?? this.interestEnabled,
       interestPercent: interestPercent ?? this.interestPercent,
       interestPeriod: interestPeriod ?? this.interestPeriod,
+      interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
+      interestMultiplier: interestMultiplier ?? this.interestMultiplier,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -963,6 +1069,12 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     if (interestPeriod.present) {
       map['interest_period'] = Variable<int>(interestPeriod.value);
     }
+    if (interestUseBankRate.present) {
+      map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate.value);
+    }
+    if (interestMultiplier.present) {
+      map['interest_multiplier'] = Variable<double>(interestMultiplier.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -995,6 +1107,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
           ..write('interestEnabled: $interestEnabled, ')
           ..write('interestPercent: $interestPercent, ')
           ..write('interestPeriod: $interestPeriod, ')
+          ..write('interestUseBankRate: $interestUseBankRate, ')
+          ..write('interestMultiplier: $interestMultiplier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6281,6 +6395,1226 @@ class PromisesCompanion extends UpdateCompanion<Promise> {
   }
 }
 
+class $PromiseCommentsTable extends PromiseComments
+    with TableInfo<$PromiseCommentsTable, PromiseComment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PromiseCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promiseIdMeta = const VerificationMeta(
+    'promiseId',
+  );
+  @override
+  late final GeneratedColumn<String> promiseId = GeneratedColumn<String>(
+    'promise_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('comment'),
+  );
+  static const VerificationMeta _messageMeta = const VerificationMeta(
+    'message',
+  );
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+    'message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusEnabledMeta = const VerificationMeta(
+    'statusEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> statusEnabled = GeneratedColumn<bool>(
+    'status_enabled',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("status_enabled" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    promiseId,
+    childId,
+    author,
+    kind,
+    message,
+    statusEnabled,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'promise_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PromiseComment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('promise_id')) {
+      context.handle(
+        _promiseIdMeta,
+        promiseId.isAcceptableOrUnknown(data['promise_id']!, _promiseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promiseIdMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('message')) {
+      context.handle(
+        _messageMeta,
+        message.isAcceptableOrUnknown(data['message']!, _messageMeta),
+      );
+    }
+    if (data.containsKey('status_enabled')) {
+      context.handle(
+        _statusEnabledMeta,
+        statusEnabled.isAcceptableOrUnknown(
+          data['status_enabled']!,
+          _statusEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PromiseComment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PromiseComment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      promiseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}promise_id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      message: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}message'],
+      ),
+      statusEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}status_enabled'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $PromiseCommentsTable createAlias(String alias) {
+    return $PromiseCommentsTable(attachedDatabase, alias);
+  }
+}
+
+class PromiseComment extends DataClass implements Insertable<PromiseComment> {
+  final String id;
+  final String promiseId;
+  final String childId;
+  final String author;
+  final String kind;
+  final String? message;
+  final bool? statusEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const PromiseComment({
+    required this.id,
+    required this.promiseId,
+    required this.childId,
+    required this.author,
+    required this.kind,
+    this.message,
+    this.statusEnabled,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['promise_id'] = Variable<String>(promiseId);
+    map['child_id'] = Variable<String>(childId);
+    map['author'] = Variable<String>(author);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || message != null) {
+      map['message'] = Variable<String>(message);
+    }
+    if (!nullToAbsent || statusEnabled != null) {
+      map['status_enabled'] = Variable<bool>(statusEnabled);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PromiseCommentsCompanion toCompanion(bool nullToAbsent) {
+    return PromiseCommentsCompanion(
+      id: Value(id),
+      promiseId: Value(promiseId),
+      childId: Value(childId),
+      author: Value(author),
+      kind: Value(kind),
+      message: message == null && nullToAbsent
+          ? const Value.absent()
+          : Value(message),
+      statusEnabled: statusEnabled == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statusEnabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory PromiseComment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PromiseComment(
+      id: serializer.fromJson<String>(json['id']),
+      promiseId: serializer.fromJson<String>(json['promiseId']),
+      childId: serializer.fromJson<String>(json['childId']),
+      author: serializer.fromJson<String>(json['author']),
+      kind: serializer.fromJson<String>(json['kind']),
+      message: serializer.fromJson<String?>(json['message']),
+      statusEnabled: serializer.fromJson<bool?>(json['statusEnabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'promiseId': serializer.toJson<String>(promiseId),
+      'childId': serializer.toJson<String>(childId),
+      'author': serializer.toJson<String>(author),
+      'kind': serializer.toJson<String>(kind),
+      'message': serializer.toJson<String?>(message),
+      'statusEnabled': serializer.toJson<bool?>(statusEnabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  PromiseComment copyWith({
+    String? id,
+    String? promiseId,
+    String? childId,
+    String? author,
+    String? kind,
+    Value<String?> message = const Value.absent(),
+    Value<bool?> statusEnabled = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => PromiseComment(
+    id: id ?? this.id,
+    promiseId: promiseId ?? this.promiseId,
+    childId: childId ?? this.childId,
+    author: author ?? this.author,
+    kind: kind ?? this.kind,
+    message: message.present ? message.value : this.message,
+    statusEnabled: statusEnabled.present
+        ? statusEnabled.value
+        : this.statusEnabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  PromiseComment copyWithCompanion(PromiseCommentsCompanion data) {
+    return PromiseComment(
+      id: data.id.present ? data.id.value : this.id,
+      promiseId: data.promiseId.present ? data.promiseId.value : this.promiseId,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      author: data.author.present ? data.author.value : this.author,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      message: data.message.present ? data.message.value : this.message,
+      statusEnabled: data.statusEnabled.present
+          ? data.statusEnabled.value
+          : this.statusEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromiseComment(')
+          ..write('id: $id, ')
+          ..write('promiseId: $promiseId, ')
+          ..write('childId: $childId, ')
+          ..write('author: $author, ')
+          ..write('kind: $kind, ')
+          ..write('message: $message, ')
+          ..write('statusEnabled: $statusEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    promiseId,
+    childId,
+    author,
+    kind,
+    message,
+    statusEnabled,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromiseComment &&
+          other.id == this.id &&
+          other.promiseId == this.promiseId &&
+          other.childId == this.childId &&
+          other.author == this.author &&
+          other.kind == this.kind &&
+          other.message == this.message &&
+          other.statusEnabled == this.statusEnabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PromiseCommentsCompanion extends UpdateCompanion<PromiseComment> {
+  final Value<String> id;
+  final Value<String> promiseId;
+  final Value<String> childId;
+  final Value<String> author;
+  final Value<String> kind;
+  final Value<String?> message;
+  final Value<bool?> statusEnabled;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PromiseCommentsCompanion({
+    this.id = const Value.absent(),
+    this.promiseId = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.author = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.message = const Value.absent(),
+    this.statusEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PromiseCommentsCompanion.insert({
+    required String id,
+    required String promiseId,
+    required String childId,
+    this.author = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.message = const Value.absent(),
+    this.statusEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       promiseId = Value(promiseId),
+       childId = Value(childId);
+  static Insertable<PromiseComment> custom({
+    Expression<String>? id,
+    Expression<String>? promiseId,
+    Expression<String>? childId,
+    Expression<String>? author,
+    Expression<String>? kind,
+    Expression<String>? message,
+    Expression<bool>? statusEnabled,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (promiseId != null) 'promise_id': promiseId,
+      if (childId != null) 'child_id': childId,
+      if (author != null) 'author': author,
+      if (kind != null) 'kind': kind,
+      if (message != null) 'message': message,
+      if (statusEnabled != null) 'status_enabled': statusEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PromiseCommentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? promiseId,
+    Value<String>? childId,
+    Value<String>? author,
+    Value<String>? kind,
+    Value<String?>? message,
+    Value<bool?>? statusEnabled,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return PromiseCommentsCompanion(
+      id: id ?? this.id,
+      promiseId: promiseId ?? this.promiseId,
+      childId: childId ?? this.childId,
+      author: author ?? this.author,
+      kind: kind ?? this.kind,
+      message: message ?? this.message,
+      statusEnabled: statusEnabled ?? this.statusEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (promiseId.present) {
+      map['promise_id'] = Variable<String>(promiseId.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (statusEnabled.present) {
+      map['status_enabled'] = Variable<bool>(statusEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PromiseCommentsCompanion(')
+          ..write('id: $id, ')
+          ..write('promiseId: $promiseId, ')
+          ..write('childId: $childId, ')
+          ..write('author: $author, ')
+          ..write('kind: $kind, ')
+          ..write('message: $message, ')
+          ..write('statusEnabled: $statusEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $QuizAttemptsTable extends QuizAttempts
+    with TableInfo<$QuizAttemptsTable, QuizAttempt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuizAttemptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _questionIdMeta = const VerificationMeta(
+    'questionId',
+  );
+  @override
+  late final GeneratedColumn<String> questionId = GeneratedColumn<String>(
+    'question_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekStartMeta = const VerificationMeta(
+    'weekStart',
+  );
+  @override
+  late final GeneratedColumn<DateTime> weekStart = GeneratedColumn<DateTime>(
+    'week_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstTryMeta = const VerificationMeta(
+    'firstTry',
+  );
+  @override
+  late final GeneratedColumn<bool> firstTry = GeneratedColumn<bool>(
+    'first_try',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("first_try" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _correctMeta = const VerificationMeta(
+    'correct',
+  );
+  @override
+  late final GeneratedColumn<bool> correct = GeneratedColumn<bool>(
+    'correct',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("correct" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _rewardMeta = const VerificationMeta('reward');
+  @override
+  late final GeneratedColumn<int> reward = GeneratedColumn<int>(
+    'reward',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _answeredAtMeta = const VerificationMeta(
+    'answeredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> answeredAt = GeneratedColumn<DateTime>(
+    'answered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    childId,
+    questionId,
+    weekStart,
+    firstTry,
+    correct,
+    reward,
+    answeredAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quiz_attempts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QuizAttempt> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('question_id')) {
+      context.handle(
+        _questionIdMeta,
+        questionId.isAcceptableOrUnknown(data['question_id']!, _questionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_questionIdMeta);
+    }
+    if (data.containsKey('week_start')) {
+      context.handle(
+        _weekStartMeta,
+        weekStart.isAcceptableOrUnknown(data['week_start']!, _weekStartMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekStartMeta);
+    }
+    if (data.containsKey('first_try')) {
+      context.handle(
+        _firstTryMeta,
+        firstTry.isAcceptableOrUnknown(data['first_try']!, _firstTryMeta),
+      );
+    }
+    if (data.containsKey('correct')) {
+      context.handle(
+        _correctMeta,
+        correct.isAcceptableOrUnknown(data['correct']!, _correctMeta),
+      );
+    }
+    if (data.containsKey('reward')) {
+      context.handle(
+        _rewardMeta,
+        reward.isAcceptableOrUnknown(data['reward']!, _rewardMeta),
+      );
+    }
+    if (data.containsKey('answered_at')) {
+      context.handle(
+        _answeredAtMeta,
+        answeredAt.isAcceptableOrUnknown(data['answered_at']!, _answeredAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuizAttempt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuizAttempt(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      questionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}question_id'],
+      )!,
+      weekStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}week_start'],
+      )!,
+      firstTry: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}first_try'],
+      )!,
+      correct: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}correct'],
+      )!,
+      reward: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reward'],
+      )!,
+      answeredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}answered_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $QuizAttemptsTable createAlias(String alias) {
+    return $QuizAttemptsTable(attachedDatabase, alias);
+  }
+}
+
+class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
+  final String id;
+  final String childId;
+  final String questionId;
+
+  /// 그 주의 월요일(주차 식별용).
+  final DateTime weekStart;
+
+  /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
+  final bool firstTry;
+  final bool correct;
+  final int reward;
+  final DateTime answeredAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const QuizAttempt({
+    required this.id,
+    required this.childId,
+    required this.questionId,
+    required this.weekStart,
+    required this.firstTry,
+    required this.correct,
+    required this.reward,
+    required this.answeredAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['child_id'] = Variable<String>(childId);
+    map['question_id'] = Variable<String>(questionId);
+    map['week_start'] = Variable<DateTime>(weekStart);
+    map['first_try'] = Variable<bool>(firstTry);
+    map['correct'] = Variable<bool>(correct);
+    map['reward'] = Variable<int>(reward);
+    map['answered_at'] = Variable<DateTime>(answeredAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  QuizAttemptsCompanion toCompanion(bool nullToAbsent) {
+    return QuizAttemptsCompanion(
+      id: Value(id),
+      childId: Value(childId),
+      questionId: Value(questionId),
+      weekStart: Value(weekStart),
+      firstTry: Value(firstTry),
+      correct: Value(correct),
+      reward: Value(reward),
+      answeredAt: Value(answeredAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory QuizAttempt.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuizAttempt(
+      id: serializer.fromJson<String>(json['id']),
+      childId: serializer.fromJson<String>(json['childId']),
+      questionId: serializer.fromJson<String>(json['questionId']),
+      weekStart: serializer.fromJson<DateTime>(json['weekStart']),
+      firstTry: serializer.fromJson<bool>(json['firstTry']),
+      correct: serializer.fromJson<bool>(json['correct']),
+      reward: serializer.fromJson<int>(json['reward']),
+      answeredAt: serializer.fromJson<DateTime>(json['answeredAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'childId': serializer.toJson<String>(childId),
+      'questionId': serializer.toJson<String>(questionId),
+      'weekStart': serializer.toJson<DateTime>(weekStart),
+      'firstTry': serializer.toJson<bool>(firstTry),
+      'correct': serializer.toJson<bool>(correct),
+      'reward': serializer.toJson<int>(reward),
+      'answeredAt': serializer.toJson<DateTime>(answeredAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  QuizAttempt copyWith({
+    String? id,
+    String? childId,
+    String? questionId,
+    DateTime? weekStart,
+    bool? firstTry,
+    bool? correct,
+    int? reward,
+    DateTime? answeredAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => QuizAttempt(
+    id: id ?? this.id,
+    childId: childId ?? this.childId,
+    questionId: questionId ?? this.questionId,
+    weekStart: weekStart ?? this.weekStart,
+    firstTry: firstTry ?? this.firstTry,
+    correct: correct ?? this.correct,
+    reward: reward ?? this.reward,
+    answeredAt: answeredAt ?? this.answeredAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  QuizAttempt copyWithCompanion(QuizAttemptsCompanion data) {
+    return QuizAttempt(
+      id: data.id.present ? data.id.value : this.id,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      questionId: data.questionId.present
+          ? data.questionId.value
+          : this.questionId,
+      weekStart: data.weekStart.present ? data.weekStart.value : this.weekStart,
+      firstTry: data.firstTry.present ? data.firstTry.value : this.firstTry,
+      correct: data.correct.present ? data.correct.value : this.correct,
+      reward: data.reward.present ? data.reward.value : this.reward,
+      answeredAt: data.answeredAt.present
+          ? data.answeredAt.value
+          : this.answeredAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuizAttempt(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('questionId: $questionId, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('firstTry: $firstTry, ')
+          ..write('correct: $correct, ')
+          ..write('reward: $reward, ')
+          ..write('answeredAt: $answeredAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    childId,
+    questionId,
+    weekStart,
+    firstTry,
+    correct,
+    reward,
+    answeredAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuizAttempt &&
+          other.id == this.id &&
+          other.childId == this.childId &&
+          other.questionId == this.questionId &&
+          other.weekStart == this.weekStart &&
+          other.firstTry == this.firstTry &&
+          other.correct == this.correct &&
+          other.reward == this.reward &&
+          other.answeredAt == this.answeredAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
+  final Value<String> id;
+  final Value<String> childId;
+  final Value<String> questionId;
+  final Value<DateTime> weekStart;
+  final Value<bool> firstTry;
+  final Value<bool> correct;
+  final Value<int> reward;
+  final Value<DateTime> answeredAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const QuizAttemptsCompanion({
+    this.id = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.questionId = const Value.absent(),
+    this.weekStart = const Value.absent(),
+    this.firstTry = const Value.absent(),
+    this.correct = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.answeredAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuizAttemptsCompanion.insert({
+    required String id,
+    required String childId,
+    required String questionId,
+    required DateTime weekStart,
+    this.firstTry = const Value.absent(),
+    this.correct = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.answeredAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       childId = Value(childId),
+       questionId = Value(questionId),
+       weekStart = Value(weekStart);
+  static Insertable<QuizAttempt> custom({
+    Expression<String>? id,
+    Expression<String>? childId,
+    Expression<String>? questionId,
+    Expression<DateTime>? weekStart,
+    Expression<bool>? firstTry,
+    Expression<bool>? correct,
+    Expression<int>? reward,
+    Expression<DateTime>? answeredAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (childId != null) 'child_id': childId,
+      if (questionId != null) 'question_id': questionId,
+      if (weekStart != null) 'week_start': weekStart,
+      if (firstTry != null) 'first_try': firstTry,
+      if (correct != null) 'correct': correct,
+      if (reward != null) 'reward': reward,
+      if (answeredAt != null) 'answered_at': answeredAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuizAttemptsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? childId,
+    Value<String>? questionId,
+    Value<DateTime>? weekStart,
+    Value<bool>? firstTry,
+    Value<bool>? correct,
+    Value<int>? reward,
+    Value<DateTime>? answeredAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return QuizAttemptsCompanion(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      questionId: questionId ?? this.questionId,
+      weekStart: weekStart ?? this.weekStart,
+      firstTry: firstTry ?? this.firstTry,
+      correct: correct ?? this.correct,
+      reward: reward ?? this.reward,
+      answeredAt: answeredAt ?? this.answeredAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (questionId.present) {
+      map['question_id'] = Variable<String>(questionId.value);
+    }
+    if (weekStart.present) {
+      map['week_start'] = Variable<DateTime>(weekStart.value);
+    }
+    if (firstTry.present) {
+      map['first_try'] = Variable<bool>(firstTry.value);
+    }
+    if (correct.present) {
+      map['correct'] = Variable<bool>(correct.value);
+    }
+    if (reward.present) {
+      map['reward'] = Variable<int>(reward.value);
+    }
+    if (answeredAt.present) {
+      map['answered_at'] = Variable<DateTime>(answeredAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuizAttemptsCompanion(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('questionId: $questionId, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('firstTry: $firstTry, ')
+          ..write('correct: $correct, ')
+          ..write('reward: $reward, ')
+          ..write('answeredAt: $answeredAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6296,6 +7630,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RequestsTable requests = $RequestsTable(this);
   late final $TiersTable tiers = $TiersTable(this);
   late final $PromisesTable promises = $PromisesTable(this);
+  late final $PromiseCommentsTable promiseComments = $PromiseCommentsTable(
+    this,
+  );
+  late final $QuizAttemptsTable quizAttempts = $QuizAttemptsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6311,6 +7649,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     requests,
     tiers,
     promises,
+    promiseComments,
+    quizAttempts,
   ];
 }
 
@@ -6330,6 +7670,8 @@ typedef $$ChildrenTableCreateCompanionBuilder =
       Value<bool> interestEnabled,
       Value<double> interestPercent,
       Value<int> interestPeriod,
+      Value<bool> interestUseBankRate,
+      Value<double> interestMultiplier,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6351,6 +7693,8 @@ typedef $$ChildrenTableUpdateCompanionBuilder =
       Value<bool> interestEnabled,
       Value<double> interestPercent,
       Value<int> interestPeriod,
+      Value<bool> interestUseBankRate,
+      Value<double> interestMultiplier,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6433,6 +7777,16 @@ class $$ChildrenTableFilterComposer
 
   ColumnFilters<int> get interestPeriod => $composableBuilder(
     column: $table.interestPeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6531,6 +7885,16 @@ class $$ChildrenTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6622,6 +7986,16 @@ class $$ChildrenTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6674,6 +8048,8 @@ class $$ChildrenTableTableManager
                 Value<bool> interestEnabled = const Value.absent(),
                 Value<double> interestPercent = const Value.absent(),
                 Value<int> interestPeriod = const Value.absent(),
+                Value<bool> interestUseBankRate = const Value.absent(),
+                Value<double> interestMultiplier = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6693,6 +8069,8 @@ class $$ChildrenTableTableManager
                 interestEnabled: interestEnabled,
                 interestPercent: interestPercent,
                 interestPeriod: interestPeriod,
+                interestUseBankRate: interestUseBankRate,
+                interestMultiplier: interestMultiplier,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -6714,6 +8092,8 @@ class $$ChildrenTableTableManager
                 Value<bool> interestEnabled = const Value.absent(),
                 Value<double> interestPercent = const Value.absent(),
                 Value<int> interestPeriod = const Value.absent(),
+                Value<bool> interestUseBankRate = const Value.absent(),
+                Value<double> interestMultiplier = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6733,6 +8113,8 @@ class $$ChildrenTableTableManager
                 interestEnabled: interestEnabled,
                 interestPercent: interestPercent,
                 interestPeriod: interestPeriod,
+                interestUseBankRate: interestUseBankRate,
+                interestMultiplier: interestMultiplier,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -9377,6 +10759,608 @@ typedef $$PromisesTableProcessedTableManager =
       Promise,
       PrefetchHooks Function()
     >;
+typedef $$PromiseCommentsTableCreateCompanionBuilder =
+    PromiseCommentsCompanion Function({
+      required String id,
+      required String promiseId,
+      required String childId,
+      Value<String> author,
+      Value<String> kind,
+      Value<String?> message,
+      Value<bool?> statusEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PromiseCommentsTableUpdateCompanionBuilder =
+    PromiseCommentsCompanion Function({
+      Value<String> id,
+      Value<String> promiseId,
+      Value<String> childId,
+      Value<String> author,
+      Value<String> kind,
+      Value<String?> message,
+      Value<bool?> statusEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$PromiseCommentsTableFilterComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promiseId => $composableBuilder(
+    column: $table.promiseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PromiseCommentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promiseId => $composableBuilder(
+    column: $table.promiseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PromiseCommentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PromiseCommentsTable> {
+  $$PromiseCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get promiseId =>
+      $composableBuilder(column: $table.promiseId, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<bool> get statusEnabled => $composableBuilder(
+    column: $table.statusEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PromiseCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PromiseCommentsTable,
+          PromiseComment,
+          $$PromiseCommentsTableFilterComposer,
+          $$PromiseCommentsTableOrderingComposer,
+          $$PromiseCommentsTableAnnotationComposer,
+          $$PromiseCommentsTableCreateCompanionBuilder,
+          $$PromiseCommentsTableUpdateCompanionBuilder,
+          (
+            PromiseComment,
+            BaseReferences<
+              _$AppDatabase,
+              $PromiseCommentsTable,
+              PromiseComment
+            >,
+          ),
+          PromiseComment,
+          PrefetchHooks Function()
+        > {
+  $$PromiseCommentsTableTableManager(
+    _$AppDatabase db,
+    $PromiseCommentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PromiseCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PromiseCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PromiseCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> promiseId = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<bool?> statusEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromiseCommentsCompanion(
+                id: id,
+                promiseId: promiseId,
+                childId: childId,
+                author: author,
+                kind: kind,
+                message: message,
+                statusEnabled: statusEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String promiseId,
+                required String childId,
+                Value<String> author = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<bool?> statusEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PromiseCommentsCompanion.insert(
+                id: id,
+                promiseId: promiseId,
+                childId: childId,
+                author: author,
+                kind: kind,
+                message: message,
+                statusEnabled: statusEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PromiseCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PromiseCommentsTable,
+      PromiseComment,
+      $$PromiseCommentsTableFilterComposer,
+      $$PromiseCommentsTableOrderingComposer,
+      $$PromiseCommentsTableAnnotationComposer,
+      $$PromiseCommentsTableCreateCompanionBuilder,
+      $$PromiseCommentsTableUpdateCompanionBuilder,
+      (
+        PromiseComment,
+        BaseReferences<_$AppDatabase, $PromiseCommentsTable, PromiseComment>,
+      ),
+      PromiseComment,
+      PrefetchHooks Function()
+    >;
+typedef $$QuizAttemptsTableCreateCompanionBuilder =
+    QuizAttemptsCompanion Function({
+      required String id,
+      required String childId,
+      required String questionId,
+      required DateTime weekStart,
+      Value<bool> firstTry,
+      Value<bool> correct,
+      Value<int> reward,
+      Value<DateTime> answeredAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$QuizAttemptsTableUpdateCompanionBuilder =
+    QuizAttemptsCompanion Function({
+      Value<String> id,
+      Value<String> childId,
+      Value<String> questionId,
+      Value<DateTime> weekStart,
+      Value<bool> firstTry,
+      Value<bool> correct,
+      Value<int> reward,
+      Value<DateTime> answeredAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$QuizAttemptsTableFilterComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get firstTry => $composableBuilder(
+    column: $table.firstTry,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get correct => $composableBuilder(
+    column: $table.correct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QuizAttemptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get firstTry => $composableBuilder(
+    column: $table.firstTry,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get correct => $composableBuilder(
+    column: $table.correct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QuizAttemptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuizAttemptsTable> {
+  $$QuizAttemptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get questionId => $composableBuilder(
+    column: $table.questionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get weekStart =>
+      $composableBuilder(column: $table.weekStart, builder: (column) => column);
+
+  GeneratedColumn<bool> get firstTry =>
+      $composableBuilder(column: $table.firstTry, builder: (column) => column);
+
+  GeneratedColumn<bool> get correct =>
+      $composableBuilder(column: $table.correct, builder: (column) => column);
+
+  GeneratedColumn<int> get reward =>
+      $composableBuilder(column: $table.reward, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$QuizAttemptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $QuizAttemptsTable,
+          QuizAttempt,
+          $$QuizAttemptsTableFilterComposer,
+          $$QuizAttemptsTableOrderingComposer,
+          $$QuizAttemptsTableAnnotationComposer,
+          $$QuizAttemptsTableCreateCompanionBuilder,
+          $$QuizAttemptsTableUpdateCompanionBuilder,
+          (
+            QuizAttempt,
+            BaseReferences<_$AppDatabase, $QuizAttemptsTable, QuizAttempt>,
+          ),
+          QuizAttempt,
+          PrefetchHooks Function()
+        > {
+  $$QuizAttemptsTableTableManager(_$AppDatabase db, $QuizAttemptsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuizAttemptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuizAttemptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuizAttemptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> questionId = const Value.absent(),
+                Value<DateTime> weekStart = const Value.absent(),
+                Value<bool> firstTry = const Value.absent(),
+                Value<bool> correct = const Value.absent(),
+                Value<int> reward = const Value.absent(),
+                Value<DateTime> answeredAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuizAttemptsCompanion(
+                id: id,
+                childId: childId,
+                questionId: questionId,
+                weekStart: weekStart,
+                firstTry: firstTry,
+                correct: correct,
+                reward: reward,
+                answeredAt: answeredAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String childId,
+                required String questionId,
+                required DateTime weekStart,
+                Value<bool> firstTry = const Value.absent(),
+                Value<bool> correct = const Value.absent(),
+                Value<int> reward = const Value.absent(),
+                Value<DateTime> answeredAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuizAttemptsCompanion.insert(
+                id: id,
+                childId: childId,
+                questionId: questionId,
+                weekStart: weekStart,
+                firstTry: firstTry,
+                correct: correct,
+                reward: reward,
+                answeredAt: answeredAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QuizAttemptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $QuizAttemptsTable,
+      QuizAttempt,
+      $$QuizAttemptsTableFilterComposer,
+      $$QuizAttemptsTableOrderingComposer,
+      $$QuizAttemptsTableAnnotationComposer,
+      $$QuizAttemptsTableCreateCompanionBuilder,
+      $$QuizAttemptsTableUpdateCompanionBuilder,
+      (
+        QuizAttempt,
+        BaseReferences<_$AppDatabase, $QuizAttemptsTable, QuizAttempt>,
+      ),
+      QuizAttempt,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9401,4 +11385,8 @@ class $AppDatabaseManager {
       $$TiersTableTableManager(_db, _db.tiers);
   $$PromisesTableTableManager get promises =>
       $$PromisesTableTableManager(_db, _db.promises);
+  $$PromiseCommentsTableTableManager get promiseComments =>
+      $$PromiseCommentsTableTableManager(_db, _db.promiseComments);
+  $$QuizAttemptsTableTableManager get quizAttempts =>
+      $$QuizAttemptsTableTableManager(_db, _db.quizAttempts);
 }
