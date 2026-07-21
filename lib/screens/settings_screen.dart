@@ -10,9 +10,11 @@ import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
 import '../providers/cofix_provider.dart';
 import '../providers/database_provider.dart';
+import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
 import '../services/export_import_service.dart';
+import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/update_service.dart';
@@ -165,9 +167,12 @@ class SettingsScreen extends ConsumerWidget {
                 if (child.interestEnabled)
                   ListTile(
                     leading: const Icon(Icons.percent),
-                    title: Text(
-                        '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${child.interestPercent}% 이자'),
-                    subtitle: const Text('홈에서 원버튼으로 지급'),
+                    title: Text(child.interestUseBankRate
+                        ? '${child.interestPeriod == 0 ? '매주' : '매월'} · 은행 예금금리의 ${formatPercent(child.interestMultiplier)}배'
+                        : '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${formatPercent(child.interestPercent)}% 이자'),
+                    subtitle: Text(child.interestUseBankRate
+                        ? '진짜 금리가 오르내리면 이자도 같이 움직여요'
+                        : '고정 이율 · 홈에서 원버튼으로 지급'),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: () => _showInterestDialog(context, ref),
                   ),
@@ -655,54 +660,127 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showInterestDialog(BuildContext context, WidgetRef ref) {
-    final percentController = TextEditingController(text: '${child.interestPercent}');
+    final percentController = TextEditingController(text: formatPercent(child.interestPercent));
+    final multiplierController =
+        TextEditingController(text: formatPercent(child.interestMultiplier));
     int period = child.interestPeriod;
+    bool useBank = child.interestUseBankRate;
+    final bankRate = ref.read(depositRateProvider).valueOrNull;
+    final balance = ref.read(summaryProvider(child.id)).valueOrNull?['balance'] ?? 0;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('저축 이자 규칙'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('매주')),
-                  ButtonSegment(value: 1, label: Text('매월')),
+        builder: (context, setState) {
+          // 지금 설정으로 얼마가 나가는지 미리보기(약속 보너스는 뺀 기본 이자만).
+          final preview = computeInterest(
+            balance: balance,
+            period: period,
+            useBankRate: useBank,
+            multiplier: double.tryParse(multiplierController.text) ?? child.interestMultiplier,
+            fixedPercent: double.tryParse(percentController.text) ?? child.interestPercent,
+            promiseBonusPercent: 0,
+            bankAnnualPercent: bankRate,
+          );
+          final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+          return AlertDialog(
+            title: const Text('저축 이자 규칙'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('매주')),
+                      ButtonSegment(value: 1, label: Text('매월')),
+                    ],
+                    selected: {period},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (s) => setState(() => period = s.first),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('진짜 은행 금리에 연동'),
+                    subtitle: Text(bankRate == null
+                        ? '예금금리를 아직 못 받아왔어요 (연결되면 적용)'
+                        : '현재 정기예금 ${formatPercent(bankRate)}% 기준'),
+                    value: useBank,
+                    onChanged: (v) => setState(() => useBank = v),
+                  ),
+                  if (useBank)
+                    TextField(
+                      controller: multiplierController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                          labelText: '은행 금리의 몇 배?', hintText: '예: 6'),
+                      onChanged: (_) => setState(() {}),
+                    )
+                  else
+                    TextField(
+                      controller: percentController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                          labelText: '고정 이율(%)', hintText: '예: 1 또는 0.5'),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('미리보기 (잔액 ${formatWon(balance)})',
+                            style: TextStyle(fontSize: 12, color: muted)),
+                        const SizedBox(height: 4),
+                        Text(
+                            '${period == 0 ? '매주' : '매월'} ${formatWon(preview.amount)}'
+                            ' (${formatPercent(preview.totalPercent)}%)',
+                            style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w800)),
+                        if (preview.multipleOfBank != null)
+                          Text('은행이면 ${formatWon(preview.bankAmount)} · '
+                              '은행의 ${formatPercent(preview.multipleOfBank!)}배',
+                              style: TextStyle(fontSize: 12, color: muted)),
+                        const SizedBox(height: 4),
+                        Text('약속을 지키면 여기에 약속 보너스가 더해져요',
+                            style: TextStyle(fontSize: 11.5, color: muted)),
+                      ],
+                    ),
+                  ),
                 ],
-                selected: {period},
-                showSelectedIcon: false,
-                onSelectionChanged: (s) => setState(() => period = s.first),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: percentController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: '이율(%)', hintText: '예: 1 또는 0.5'),
-              ),
-              const SizedBox(height: 8),
-              Text('예: 매월 잔액의 1% 이자 → 잔액 10,000원이면 100원 지급',
-                  style: TextStyle(
-                      fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-            FilledButton(
-              onPressed: () async {
-                final pct = double.tryParse(percentController.text) ?? child.interestPercent;
-                await ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
-                      interestPercent: Value(pct),
-                      interestPeriod: Value(period),
-                      updatedAt: Value(DateTime.now()),
-                    ));
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('저장'),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+              FilledButton(
+                onPressed: () async {
+                  final pct = double.tryParse(percentController.text) ?? child.interestPercent;
+                  final mul =
+                      double.tryParse(multiplierController.text) ?? child.interestMultiplier;
+                  await ref.read(databaseProvider).updateChildPartial(
+                        child.id,
+                        ChildrenCompanion(
+                          interestPercent: Value(pct),
+                          interestPeriod: Value(period),
+                          interestUseBankRate: Value(useBank),
+                          interestMultiplier: Value(mul),
+                          updatedAt: Value(DateTime.now()),
+                        ),
+                      );
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('저장'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

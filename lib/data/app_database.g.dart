@@ -171,8 +171,34 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(1),
+    defaultValue: const Constant(0),
   );
+  static const VerificationMeta _interestUseBankRateMeta =
+      const VerificationMeta('interestUseBankRate');
+  @override
+  late final GeneratedColumn<bool> interestUseBankRate = GeneratedColumn<bool>(
+    'interest_use_bank_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("interest_use_bank_rate" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _interestMultiplierMeta =
+      const VerificationMeta('interestMultiplier');
+  @override
+  late final GeneratedColumn<double> interestMultiplier =
+      GeneratedColumn<double>(
+        'interest_multiplier',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(6.0),
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -224,6 +250,8 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     interestEnabled,
     interestPercent,
     interestPeriod,
+    interestUseBankRate,
+    interestMultiplier,
     createdAt,
     updatedAt,
     deletedAt,
@@ -358,6 +386,24 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         ),
       );
     }
+    if (data.containsKey('interest_use_bank_rate')) {
+      context.handle(
+        _interestUseBankRateMeta,
+        interestUseBankRate.isAcceptableOrUnknown(
+          data['interest_use_bank_rate']!,
+          _interestUseBankRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_multiplier')) {
+      context.handle(
+        _interestMultiplierMeta,
+        interestMultiplier.isAcceptableOrUnknown(
+          data['interest_multiplier']!,
+          _interestMultiplierMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -441,6 +487,14 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         DriftSqlType.int,
         data['${effectivePrefix}interest_period'],
       )!,
+      interestUseBankRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}interest_use_bank_rate'],
+      )!,
+      interestMultiplier: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}interest_multiplier'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -479,6 +533,13 @@ class Child extends DataClass implements Insertable<Child> {
   final bool interestEnabled;
   final double interestPercent;
   final int interestPeriod;
+
+  /// true면 이자율을 "실제 은행 예금금리 × 배수"로 계산한다(교육 목적: 진짜 금리와 연동).
+  /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
+  final bool interestUseBankRate;
+
+  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
+  final double interestMultiplier;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -497,6 +558,8 @@ class Child extends DataClass implements Insertable<Child> {
     required this.interestEnabled,
     required this.interestPercent,
     required this.interestPeriod,
+    required this.interestUseBankRate,
+    required this.interestMultiplier,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -522,6 +585,8 @@ class Child extends DataClass implements Insertable<Child> {
     map['interest_enabled'] = Variable<bool>(interestEnabled);
     map['interest_percent'] = Variable<double>(interestPercent);
     map['interest_period'] = Variable<int>(interestPeriod);
+    map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate);
+    map['interest_multiplier'] = Variable<double>(interestMultiplier);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -550,6 +615,8 @@ class Child extends DataClass implements Insertable<Child> {
       interestEnabled: Value(interestEnabled),
       interestPercent: Value(interestPercent),
       interestPeriod: Value(interestPeriod),
+      interestUseBankRate: Value(interestUseBankRate),
+      interestMultiplier: Value(interestMultiplier),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -584,6 +651,12 @@ class Child extends DataClass implements Insertable<Child> {
       interestEnabled: serializer.fromJson<bool>(json['interestEnabled']),
       interestPercent: serializer.fromJson<double>(json['interestPercent']),
       interestPeriod: serializer.fromJson<int>(json['interestPeriod']),
+      interestUseBankRate: serializer.fromJson<bool>(
+        json['interestUseBankRate'],
+      ),
+      interestMultiplier: serializer.fromJson<double>(
+        json['interestMultiplier'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -607,6 +680,8 @@ class Child extends DataClass implements Insertable<Child> {
       'interestEnabled': serializer.toJson<bool>(interestEnabled),
       'interestPercent': serializer.toJson<double>(interestPercent),
       'interestPeriod': serializer.toJson<int>(interestPeriod),
+      'interestUseBankRate': serializer.toJson<bool>(interestUseBankRate),
+      'interestMultiplier': serializer.toJson<double>(interestMultiplier),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -628,6 +703,8 @@ class Child extends DataClass implements Insertable<Child> {
     bool? interestEnabled,
     double? interestPercent,
     int? interestPeriod,
+    bool? interestUseBankRate,
+    double? interestMultiplier,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -649,6 +726,8 @@ class Child extends DataClass implements Insertable<Child> {
     interestEnabled: interestEnabled ?? this.interestEnabled,
     interestPercent: interestPercent ?? this.interestPercent,
     interestPeriod: interestPeriod ?? this.interestPeriod,
+    interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
+    interestMultiplier: interestMultiplier ?? this.interestMultiplier,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -693,6 +772,12 @@ class Child extends DataClass implements Insertable<Child> {
       interestPeriod: data.interestPeriod.present
           ? data.interestPeriod.value
           : this.interestPeriod,
+      interestUseBankRate: data.interestUseBankRate.present
+          ? data.interestUseBankRate.value
+          : this.interestUseBankRate,
+      interestMultiplier: data.interestMultiplier.present
+          ? data.interestMultiplier.value
+          : this.interestMultiplier,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -716,6 +801,8 @@ class Child extends DataClass implements Insertable<Child> {
           ..write('interestEnabled: $interestEnabled, ')
           ..write('interestPercent: $interestPercent, ')
           ..write('interestPeriod: $interestPeriod, ')
+          ..write('interestUseBankRate: $interestUseBankRate, ')
+          ..write('interestMultiplier: $interestMultiplier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -739,6 +826,8 @@ class Child extends DataClass implements Insertable<Child> {
     interestEnabled,
     interestPercent,
     interestPeriod,
+    interestUseBankRate,
+    interestMultiplier,
     createdAt,
     updatedAt,
     deletedAt,
@@ -761,6 +850,8 @@ class Child extends DataClass implements Insertable<Child> {
           other.interestEnabled == this.interestEnabled &&
           other.interestPercent == this.interestPercent &&
           other.interestPeriod == this.interestPeriod &&
+          other.interestUseBankRate == this.interestUseBankRate &&
+          other.interestMultiplier == this.interestMultiplier &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -781,6 +872,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
   final Value<bool> interestEnabled;
   final Value<double> interestPercent;
   final Value<int> interestPeriod;
+  final Value<bool> interestUseBankRate;
+  final Value<double> interestMultiplier;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -800,6 +893,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestEnabled = const Value.absent(),
     this.interestPercent = const Value.absent(),
     this.interestPeriod = const Value.absent(),
+    this.interestUseBankRate = const Value.absent(),
+    this.interestMultiplier = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -820,6 +915,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestEnabled = const Value.absent(),
     this.interestPercent = const Value.absent(),
     this.interestPeriod = const Value.absent(),
+    this.interestUseBankRate = const Value.absent(),
+    this.interestMultiplier = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -841,6 +938,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Expression<bool>? interestEnabled,
     Expression<double>? interestPercent,
     Expression<int>? interestPeriod,
+    Expression<bool>? interestUseBankRate,
+    Expression<double>? interestMultiplier,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -863,6 +962,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       if (interestEnabled != null) 'interest_enabled': interestEnabled,
       if (interestPercent != null) 'interest_percent': interestPercent,
       if (interestPeriod != null) 'interest_period': interestPeriod,
+      if (interestUseBankRate != null)
+        'interest_use_bank_rate': interestUseBankRate,
+      if (interestMultiplier != null) 'interest_multiplier': interestMultiplier,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -885,6 +987,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Value<bool>? interestEnabled,
     Value<double>? interestPercent,
     Value<int>? interestPeriod,
+    Value<bool>? interestUseBankRate,
+    Value<double>? interestMultiplier,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -907,6 +1011,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       interestEnabled: interestEnabled ?? this.interestEnabled,
       interestPercent: interestPercent ?? this.interestPercent,
       interestPeriod: interestPeriod ?? this.interestPeriod,
+      interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
+      interestMultiplier: interestMultiplier ?? this.interestMultiplier,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -963,6 +1069,12 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     if (interestPeriod.present) {
       map['interest_period'] = Variable<int>(interestPeriod.value);
     }
+    if (interestUseBankRate.present) {
+      map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate.value);
+    }
+    if (interestMultiplier.present) {
+      map['interest_multiplier'] = Variable<double>(interestMultiplier.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -995,6 +1107,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
           ..write('interestEnabled: $interestEnabled, ')
           ..write('interestPercent: $interestPercent, ')
           ..write('interestPeriod: $interestPeriod, ')
+          ..write('interestUseBankRate: $interestUseBankRate, ')
+          ..write('interestMultiplier: $interestMultiplier, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6330,6 +6444,8 @@ typedef $$ChildrenTableCreateCompanionBuilder =
       Value<bool> interestEnabled,
       Value<double> interestPercent,
       Value<int> interestPeriod,
+      Value<bool> interestUseBankRate,
+      Value<double> interestMultiplier,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6351,6 +6467,8 @@ typedef $$ChildrenTableUpdateCompanionBuilder =
       Value<bool> interestEnabled,
       Value<double> interestPercent,
       Value<int> interestPeriod,
+      Value<bool> interestUseBankRate,
+      Value<double> interestMultiplier,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -6433,6 +6551,16 @@ class $$ChildrenTableFilterComposer
 
   ColumnFilters<int> get interestPeriod => $composableBuilder(
     column: $table.interestPeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6531,6 +6659,16 @@ class $$ChildrenTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6622,6 +6760,16 @@ class $$ChildrenTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get interestUseBankRate => $composableBuilder(
+    column: $table.interestUseBankRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get interestMultiplier => $composableBuilder(
+    column: $table.interestMultiplier,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6674,6 +6822,8 @@ class $$ChildrenTableTableManager
                 Value<bool> interestEnabled = const Value.absent(),
                 Value<double> interestPercent = const Value.absent(),
                 Value<int> interestPeriod = const Value.absent(),
+                Value<bool> interestUseBankRate = const Value.absent(),
+                Value<double> interestMultiplier = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6693,6 +6843,8 @@ class $$ChildrenTableTableManager
                 interestEnabled: interestEnabled,
                 interestPercent: interestPercent,
                 interestPeriod: interestPeriod,
+                interestUseBankRate: interestUseBankRate,
+                interestMultiplier: interestMultiplier,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -6714,6 +6866,8 @@ class $$ChildrenTableTableManager
                 Value<bool> interestEnabled = const Value.absent(),
                 Value<double> interestPercent = const Value.absent(),
                 Value<int> interestPeriod = const Value.absent(),
+                Value<bool> interestUseBankRate = const Value.absent(),
+                Value<double> interestMultiplier = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6733,6 +6887,8 @@ class $$ChildrenTableTableManager
                 interestEnabled: interestEnabled,
                 interestPercent: interestPercent,
                 interestPeriod: interestPeriod,
+                interestUseBankRate: interestUseBankRate,
+                interestMultiplier: interestMultiplier,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../services/interest_calc.dart';
 
 part 'app_database.g.dart';
 
@@ -26,8 +27,13 @@ class Children extends Table {
   IntColumn get bonusAmount => integer().withDefault(const Constant(500))();
   // 저축 이자 규칙 (잔액에 주기적으로 이자를 붙여 저축 장려)
   BoolColumn get interestEnabled => boolean().withDefault(const Constant(false))();
-  RealColumn get interestPercent => real().withDefault(const Constant(1.0))(); // 회당 %
-  IntColumn get interestPeriod => integer().withDefault(const Constant(1))(); // 0=주간,1=월간
+  RealColumn get interestPercent => real().withDefault(const Constant(1.0))(); // 회당 % (은행연동 안 쓸 때)
+  IntColumn get interestPeriod => integer().withDefault(const Constant(0))(); // 0=주간,1=월간
+  /// true면 이자율을 "실제 은행 예금금리 × 배수"로 계산한다(교육 목적: 진짜 금리와 연동).
+  /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
+  BoolColumn get interestUseBankRate => boolean().withDefault(const Constant(true))();
+  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
+  RealColumn get interestMultiplier => real().withDefault(const Constant(6.0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -222,7 +228,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -265,6 +271,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 11) {
             await m.createTable(promises);
+          }
+          if (from < 12) {
+            await m.addColumn(children, children.interestUseBankRate);
+            await m.addColumn(children, children.interestMultiplier);
+            // 이자를 매주 지급으로 전환(부모 요청). 주기는 설정에서 다시 바꿀 수 있다.
+            await customStatement('UPDATE children SET interest_period = 0');
           }
         },
       );
@@ -923,35 +935,48 @@ class AppDatabase extends _$AppDatabase {
     return rows.fold<double>(0, (sum, p) => sum + p.bonusPercent);
   }
 
-  /// 실제 적용 이자율 = 기본 이자율 + 켜진 약속 보너스 합계.
-  Future<double> effectiveInterestPercent(Child child) async {
-    return child.interestPercent + await promiseBonusPercent(child.id);
+  /// 이자 계산 내역(은행 대비 비교 포함).
+  /// [bankAnnualPercent]는 실제 예금금리(연 %)로, 네트워크를 모르는 DB 대신
+  /// 화면(프로바이더)에서 넘겨준다. 없으면 고정 이율로 폴백한다.
+  Future<InterestBreakdown> interestBreakdown(Child child,
+      {double? bankAnnualPercent}) async {
+    final summary = await computeSummary(child.id);
+    return computeInterest(
+      balance: summary['balance'] ?? 0,
+      period: child.interestPeriod,
+      useBankRate: child.interestUseBankRate,
+      multiplier: child.interestMultiplier,
+      fixedPercent: child.interestPercent,
+      promiseBonusPercent: await promiseBonusPercent(child.id),
+      bankAnnualPercent: bankAnnualPercent,
+    );
   }
 
-  /// 이번 주기에 지급 가능한 이자 금액(현재 잔액 × 실효 이율). 원 단위 반올림.
-  Future<int> pendingInterestAmount(Child child) async {
-    final summary = await computeSummary(child.id);
-    final balance = summary['balance'] ?? 0;
-    if (balance <= 0) return 0;
-    final percent = await effectiveInterestPercent(child);
-    return (balance * percent / 100).round();
+  /// 이번 주기에 지급 가능한 이자 금액. 원 단위 반올림.
+  Future<int> pendingInterestAmount(Child child, {double? bankAnnualPercent}) async {
+    final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
+    return b.amount;
   }
 
   /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
-  Future<bool> giveInterest(Child child, String editedBy) async {
+  Future<bool> giveInterest(Child child, String editedBy,
+      {double? bankAnnualPercent}) async {
     if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return false;
-    final amount = await pendingInterestAmount(child);
-    if (amount <= 0) return false;
-    final percent = await effectiveInterestPercent(child);
+    final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
+    if (b.amount <= 0) return false;
     final now = DateTime.now();
+    final multiple = b.multipleOfBank;
+    final memo = multiple != null
+        ? '저축 이자 ${_trimPercent(b.totalPercent)}% (은행의 ${_trimPercent(multiple)}배)'
+        : '저축 이자 ${_trimPercent(b.totalPercent)}%';
     await upsertTransaction(TransactionEntriesCompanion.insert(
       id: const Uuid().v4(),
       childId: child.id,
       date: now,
       flow: 'income',
       category: kInterest,
-      amount: amount,
-      memo: Value('저축 이자 ${_trimPercent(percent)}%'),
+      amount: b.amount,
+      memo: Value(memo),
       editedBy: Value(editedBy),
       updatedAt: Value(now),
     ));
