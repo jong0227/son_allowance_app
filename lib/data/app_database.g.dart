@@ -197,8 +197,20 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         false,
         type: DriftSqlType.double,
         requiredDuringInsert: false,
-        defaultValue: const Constant(6.0),
+        defaultValue: const Constant(1.0),
       );
+  static const VerificationMeta _quizRewardMeta = const VerificationMeta(
+    'quizReward',
+  );
+  @override
+  late final GeneratedColumn<int> quizReward = GeneratedColumn<int>(
+    'quiz_reward',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(10),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -252,6 +264,7 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     interestPeriod,
     interestUseBankRate,
     interestMultiplier,
+    quizReward,
     createdAt,
     updatedAt,
     deletedAt,
@@ -404,6 +417,12 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         ),
       );
     }
+    if (data.containsKey('quiz_reward')) {
+      context.handle(
+        _quizRewardMeta,
+        quizReward.isAcceptableOrUnknown(data['quiz_reward']!, _quizRewardMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -495,6 +514,10 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         DriftSqlType.double,
         data['${effectivePrefix}interest_multiplier'],
       )!,
+      quizReward: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quiz_reward'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -538,8 +561,11 @@ class Child extends DataClass implements Insertable<Child> {
   /// 은행 금리를 못 가져온 경우엔 interestPercent로 폴백.
   final bool interestUseBankRate;
 
-  /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
+  /// 은행 예금금리의 몇 배를 줄지. 기본 1배(은행 정기예금과 동일한 현실적 이자율).
   final double interestMultiplier;
+
+  /// 경제왕 퀴즈 정답 1문제당 보상(원). 해설 보고 다시 맞히면 이 금액의 절반.
+  final int quizReward;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -560,6 +586,7 @@ class Child extends DataClass implements Insertable<Child> {
     required this.interestPeriod,
     required this.interestUseBankRate,
     required this.interestMultiplier,
+    required this.quizReward,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -587,6 +614,7 @@ class Child extends DataClass implements Insertable<Child> {
     map['interest_period'] = Variable<int>(interestPeriod);
     map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate);
     map['interest_multiplier'] = Variable<double>(interestMultiplier);
+    map['quiz_reward'] = Variable<int>(quizReward);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -617,6 +645,7 @@ class Child extends DataClass implements Insertable<Child> {
       interestPeriod: Value(interestPeriod),
       interestUseBankRate: Value(interestUseBankRate),
       interestMultiplier: Value(interestMultiplier),
+      quizReward: Value(quizReward),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -657,6 +686,7 @@ class Child extends DataClass implements Insertable<Child> {
       interestMultiplier: serializer.fromJson<double>(
         json['interestMultiplier'],
       ),
+      quizReward: serializer.fromJson<int>(json['quizReward']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -682,6 +712,7 @@ class Child extends DataClass implements Insertable<Child> {
       'interestPeriod': serializer.toJson<int>(interestPeriod),
       'interestUseBankRate': serializer.toJson<bool>(interestUseBankRate),
       'interestMultiplier': serializer.toJson<double>(interestMultiplier),
+      'quizReward': serializer.toJson<int>(quizReward),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -705,6 +736,7 @@ class Child extends DataClass implements Insertable<Child> {
     int? interestPeriod,
     bool? interestUseBankRate,
     double? interestMultiplier,
+    int? quizReward,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -728,6 +760,7 @@ class Child extends DataClass implements Insertable<Child> {
     interestPeriod: interestPeriod ?? this.interestPeriod,
     interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
     interestMultiplier: interestMultiplier ?? this.interestMultiplier,
+    quizReward: quizReward ?? this.quizReward,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -778,6 +811,9 @@ class Child extends DataClass implements Insertable<Child> {
       interestMultiplier: data.interestMultiplier.present
           ? data.interestMultiplier.value
           : this.interestMultiplier,
+      quizReward: data.quizReward.present
+          ? data.quizReward.value
+          : this.quizReward,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -803,6 +839,7 @@ class Child extends DataClass implements Insertable<Child> {
           ..write('interestPeriod: $interestPeriod, ')
           ..write('interestUseBankRate: $interestUseBankRate, ')
           ..write('interestMultiplier: $interestMultiplier, ')
+          ..write('quizReward: $quizReward, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -828,6 +865,7 @@ class Child extends DataClass implements Insertable<Child> {
     interestPeriod,
     interestUseBankRate,
     interestMultiplier,
+    quizReward,
     createdAt,
     updatedAt,
     deletedAt,
@@ -852,6 +890,7 @@ class Child extends DataClass implements Insertable<Child> {
           other.interestPeriod == this.interestPeriod &&
           other.interestUseBankRate == this.interestUseBankRate &&
           other.interestMultiplier == this.interestMultiplier &&
+          other.quizReward == this.quizReward &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -874,6 +913,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
   final Value<int> interestPeriod;
   final Value<bool> interestUseBankRate;
   final Value<double> interestMultiplier;
+  final Value<int> quizReward;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -895,6 +935,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestPeriod = const Value.absent(),
     this.interestUseBankRate = const Value.absent(),
     this.interestMultiplier = const Value.absent(),
+    this.quizReward = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -917,6 +958,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestPeriod = const Value.absent(),
     this.interestUseBankRate = const Value.absent(),
     this.interestMultiplier = const Value.absent(),
+    this.quizReward = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -940,6 +982,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Expression<int>? interestPeriod,
     Expression<bool>? interestUseBankRate,
     Expression<double>? interestMultiplier,
+    Expression<int>? quizReward,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -965,6 +1008,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       if (interestUseBankRate != null)
         'interest_use_bank_rate': interestUseBankRate,
       if (interestMultiplier != null) 'interest_multiplier': interestMultiplier,
+      if (quizReward != null) 'quiz_reward': quizReward,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -989,6 +1033,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Value<int>? interestPeriod,
     Value<bool>? interestUseBankRate,
     Value<double>? interestMultiplier,
+    Value<int>? quizReward,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -1013,6 +1058,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       interestPeriod: interestPeriod ?? this.interestPeriod,
       interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
       interestMultiplier: interestMultiplier ?? this.interestMultiplier,
+      quizReward: quizReward ?? this.quizReward,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1075,6 +1121,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     if (interestMultiplier.present) {
       map['interest_multiplier'] = Variable<double>(interestMultiplier.value);
     }
+    if (quizReward.present) {
+      map['quiz_reward'] = Variable<int>(quizReward.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1109,6 +1158,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
           ..write('interestPeriod: $interestPeriod, ')
           ..write('interestUseBankRate: $interestUseBankRate, ')
           ..write('interestMultiplier: $interestMultiplier, ')
+          ..write('quizReward: $quizReward, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5883,7 +5933,7 @@ class $PromisesTable extends Promises with TableInfo<$PromisesTable, Promise> {
     false,
     type: DriftSqlType.double,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0.1),
+    defaultValue: const Constant(0.3),
   );
   static const VerificationMeta _enabledMeta = const VerificationMeta(
     'enabled',
@@ -7082,6 +7132,17 @@ class $QuizAttemptsTable extends QuizAttempts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _pickedIndexMeta = const VerificationMeta(
+    'pickedIndex',
+  );
+  @override
+  late final GeneratedColumn<int> pickedIndex = GeneratedColumn<int>(
+    'picked_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _rewardMeta = const VerificationMeta('reward');
   @override
   late final GeneratedColumn<int> reward = GeneratedColumn<int>(
@@ -7135,6 +7196,7 @@ class $QuizAttemptsTable extends QuizAttempts
     weekStart,
     firstTry,
     correct,
+    pickedIndex,
     reward,
     answeredAt,
     updatedAt,
@@ -7191,6 +7253,15 @@ class $QuizAttemptsTable extends QuizAttempts
       context.handle(
         _correctMeta,
         correct.isAcceptableOrUnknown(data['correct']!, _correctMeta),
+      );
+    }
+    if (data.containsKey('picked_index')) {
+      context.handle(
+        _pickedIndexMeta,
+        pickedIndex.isAcceptableOrUnknown(
+          data['picked_index']!,
+          _pickedIndexMeta,
+        ),
       );
     }
     if (data.containsKey('reward')) {
@@ -7250,6 +7321,10 @@ class $QuizAttemptsTable extends QuizAttempts
         DriftSqlType.bool,
         data['${effectivePrefix}correct'],
       )!,
+      pickedIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}picked_index'],
+      ),
       reward: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}reward'],
@@ -7286,6 +7361,9 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
   /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
   final bool firstTry;
   final bool correct;
+
+  /// 마지막으로 고른 보기 번호(기록 화면에서 "내가 뭘 골랐는지" 보여주려고 저장).
+  final int? pickedIndex;
   final int reward;
   final DateTime answeredAt;
   final DateTime updatedAt;
@@ -7297,6 +7375,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
     required this.weekStart,
     required this.firstTry,
     required this.correct,
+    this.pickedIndex,
     required this.reward,
     required this.answeredAt,
     required this.updatedAt,
@@ -7311,6 +7390,9 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
     map['week_start'] = Variable<DateTime>(weekStart);
     map['first_try'] = Variable<bool>(firstTry);
     map['correct'] = Variable<bool>(correct);
+    if (!nullToAbsent || pickedIndex != null) {
+      map['picked_index'] = Variable<int>(pickedIndex);
+    }
     map['reward'] = Variable<int>(reward);
     map['answered_at'] = Variable<DateTime>(answeredAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -7328,6 +7410,9 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
       weekStart: Value(weekStart),
       firstTry: Value(firstTry),
       correct: Value(correct),
+      pickedIndex: pickedIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pickedIndex),
       reward: Value(reward),
       answeredAt: Value(answeredAt),
       updatedAt: Value(updatedAt),
@@ -7349,6 +7434,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
       weekStart: serializer.fromJson<DateTime>(json['weekStart']),
       firstTry: serializer.fromJson<bool>(json['firstTry']),
       correct: serializer.fromJson<bool>(json['correct']),
+      pickedIndex: serializer.fromJson<int?>(json['pickedIndex']),
       reward: serializer.fromJson<int>(json['reward']),
       answeredAt: serializer.fromJson<DateTime>(json['answeredAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -7365,6 +7451,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
       'weekStart': serializer.toJson<DateTime>(weekStart),
       'firstTry': serializer.toJson<bool>(firstTry),
       'correct': serializer.toJson<bool>(correct),
+      'pickedIndex': serializer.toJson<int?>(pickedIndex),
       'reward': serializer.toJson<int>(reward),
       'answeredAt': serializer.toJson<DateTime>(answeredAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -7379,6 +7466,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
     DateTime? weekStart,
     bool? firstTry,
     bool? correct,
+    Value<int?> pickedIndex = const Value.absent(),
     int? reward,
     DateTime? answeredAt,
     DateTime? updatedAt,
@@ -7390,6 +7478,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
     weekStart: weekStart ?? this.weekStart,
     firstTry: firstTry ?? this.firstTry,
     correct: correct ?? this.correct,
+    pickedIndex: pickedIndex.present ? pickedIndex.value : this.pickedIndex,
     reward: reward ?? this.reward,
     answeredAt: answeredAt ?? this.answeredAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -7405,6 +7494,9 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
       weekStart: data.weekStart.present ? data.weekStart.value : this.weekStart,
       firstTry: data.firstTry.present ? data.firstTry.value : this.firstTry,
       correct: data.correct.present ? data.correct.value : this.correct,
+      pickedIndex: data.pickedIndex.present
+          ? data.pickedIndex.value
+          : this.pickedIndex,
       reward: data.reward.present ? data.reward.value : this.reward,
       answeredAt: data.answeredAt.present
           ? data.answeredAt.value
@@ -7423,6 +7515,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
           ..write('weekStart: $weekStart, ')
           ..write('firstTry: $firstTry, ')
           ..write('correct: $correct, ')
+          ..write('pickedIndex: $pickedIndex, ')
           ..write('reward: $reward, ')
           ..write('answeredAt: $answeredAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7439,6 +7532,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
     weekStart,
     firstTry,
     correct,
+    pickedIndex,
     reward,
     answeredAt,
     updatedAt,
@@ -7454,6 +7548,7 @@ class QuizAttempt extends DataClass implements Insertable<QuizAttempt> {
           other.weekStart == this.weekStart &&
           other.firstTry == this.firstTry &&
           other.correct == this.correct &&
+          other.pickedIndex == this.pickedIndex &&
           other.reward == this.reward &&
           other.answeredAt == this.answeredAt &&
           other.updatedAt == this.updatedAt &&
@@ -7467,6 +7562,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
   final Value<DateTime> weekStart;
   final Value<bool> firstTry;
   final Value<bool> correct;
+  final Value<int?> pickedIndex;
   final Value<int> reward;
   final Value<DateTime> answeredAt;
   final Value<DateTime> updatedAt;
@@ -7479,6 +7575,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
     this.weekStart = const Value.absent(),
     this.firstTry = const Value.absent(),
     this.correct = const Value.absent(),
+    this.pickedIndex = const Value.absent(),
     this.reward = const Value.absent(),
     this.answeredAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7492,6 +7589,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
     required DateTime weekStart,
     this.firstTry = const Value.absent(),
     this.correct = const Value.absent(),
+    this.pickedIndex = const Value.absent(),
     this.reward = const Value.absent(),
     this.answeredAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7508,6 +7606,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
     Expression<DateTime>? weekStart,
     Expression<bool>? firstTry,
     Expression<bool>? correct,
+    Expression<int>? pickedIndex,
     Expression<int>? reward,
     Expression<DateTime>? answeredAt,
     Expression<DateTime>? updatedAt,
@@ -7521,6 +7620,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
       if (weekStart != null) 'week_start': weekStart,
       if (firstTry != null) 'first_try': firstTry,
       if (correct != null) 'correct': correct,
+      if (pickedIndex != null) 'picked_index': pickedIndex,
       if (reward != null) 'reward': reward,
       if (answeredAt != null) 'answered_at': answeredAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -7536,6 +7636,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
     Value<DateTime>? weekStart,
     Value<bool>? firstTry,
     Value<bool>? correct,
+    Value<int?>? pickedIndex,
     Value<int>? reward,
     Value<DateTime>? answeredAt,
     Value<DateTime>? updatedAt,
@@ -7549,6 +7650,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
       weekStart: weekStart ?? this.weekStart,
       firstTry: firstTry ?? this.firstTry,
       correct: correct ?? this.correct,
+      pickedIndex: pickedIndex ?? this.pickedIndex,
       reward: reward ?? this.reward,
       answeredAt: answeredAt ?? this.answeredAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -7578,6 +7680,9 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
     if (correct.present) {
       map['correct'] = Variable<bool>(correct.value);
     }
+    if (pickedIndex.present) {
+      map['picked_index'] = Variable<int>(pickedIndex.value);
+    }
     if (reward.present) {
       map['reward'] = Variable<int>(reward.value);
     }
@@ -7605,6 +7710,7 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
           ..write('weekStart: $weekStart, ')
           ..write('firstTry: $firstTry, ')
           ..write('correct: $correct, ')
+          ..write('pickedIndex: $pickedIndex, ')
           ..write('reward: $reward, ')
           ..write('answeredAt: $answeredAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7672,6 +7778,7 @@ typedef $$ChildrenTableCreateCompanionBuilder =
       Value<int> interestPeriod,
       Value<bool> interestUseBankRate,
       Value<double> interestMultiplier,
+      Value<int> quizReward,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -7695,6 +7802,7 @@ typedef $$ChildrenTableUpdateCompanionBuilder =
       Value<int> interestPeriod,
       Value<bool> interestUseBankRate,
       Value<double> interestMultiplier,
+      Value<int> quizReward,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -7787,6 +7895,11 @@ class $$ChildrenTableFilterComposer
 
   ColumnFilters<double> get interestMultiplier => $composableBuilder(
     column: $table.interestMultiplier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quizReward => $composableBuilder(
+    column: $table.quizReward,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7895,6 +8008,11 @@ class $$ChildrenTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get quizReward => $composableBuilder(
+    column: $table.quizReward,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7996,6 +8114,11 @@ class $$ChildrenTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get quizReward => $composableBuilder(
+    column: $table.quizReward,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -8050,6 +8173,7 @@ class $$ChildrenTableTableManager
                 Value<int> interestPeriod = const Value.absent(),
                 Value<bool> interestUseBankRate = const Value.absent(),
                 Value<double> interestMultiplier = const Value.absent(),
+                Value<int> quizReward = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -8071,6 +8195,7 @@ class $$ChildrenTableTableManager
                 interestPeriod: interestPeriod,
                 interestUseBankRate: interestUseBankRate,
                 interestMultiplier: interestMultiplier,
+                quizReward: quizReward,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -8094,6 +8219,7 @@ class $$ChildrenTableTableManager
                 Value<int> interestPeriod = const Value.absent(),
                 Value<bool> interestUseBankRate = const Value.absent(),
                 Value<double> interestMultiplier = const Value.absent(),
+                Value<int> quizReward = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -8115,6 +8241,7 @@ class $$ChildrenTableTableManager
                 interestPeriod: interestPeriod,
                 interestUseBankRate: interestUseBankRate,
                 interestMultiplier: interestMultiplier,
+                quizReward: quizReward,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -11070,6 +11197,7 @@ typedef $$QuizAttemptsTableCreateCompanionBuilder =
       required DateTime weekStart,
       Value<bool> firstTry,
       Value<bool> correct,
+      Value<int?> pickedIndex,
       Value<int> reward,
       Value<DateTime> answeredAt,
       Value<DateTime> updatedAt,
@@ -11084,6 +11212,7 @@ typedef $$QuizAttemptsTableUpdateCompanionBuilder =
       Value<DateTime> weekStart,
       Value<bool> firstTry,
       Value<bool> correct,
+      Value<int?> pickedIndex,
       Value<int> reward,
       Value<DateTime> answeredAt,
       Value<DateTime> updatedAt,
@@ -11127,6 +11256,11 @@ class $$QuizAttemptsTableFilterComposer
 
   ColumnFilters<bool> get correct => $composableBuilder(
     column: $table.correct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pickedIndex => $composableBuilder(
+    column: $table.pickedIndex,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11190,6 +11324,11 @@ class $$QuizAttemptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get pickedIndex => $composableBuilder(
+    column: $table.pickedIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get reward => $composableBuilder(
     column: $table.reward,
     builder: (column) => ColumnOrderings(column),
@@ -11239,6 +11378,11 @@ class $$QuizAttemptsTableAnnotationComposer
 
   GeneratedColumn<bool> get correct =>
       $composableBuilder(column: $table.correct, builder: (column) => column);
+
+  GeneratedColumn<int> get pickedIndex => $composableBuilder(
+    column: $table.pickedIndex,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get reward =>
       $composableBuilder(column: $table.reward, builder: (column) => column);
@@ -11292,6 +11436,7 @@ class $$QuizAttemptsTableTableManager
                 Value<DateTime> weekStart = const Value.absent(),
                 Value<bool> firstTry = const Value.absent(),
                 Value<bool> correct = const Value.absent(),
+                Value<int?> pickedIndex = const Value.absent(),
                 Value<int> reward = const Value.absent(),
                 Value<DateTime> answeredAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -11304,6 +11449,7 @@ class $$QuizAttemptsTableTableManager
                 weekStart: weekStart,
                 firstTry: firstTry,
                 correct: correct,
+                pickedIndex: pickedIndex,
                 reward: reward,
                 answeredAt: answeredAt,
                 updatedAt: updatedAt,
@@ -11318,6 +11464,7 @@ class $$QuizAttemptsTableTableManager
                 required DateTime weekStart,
                 Value<bool> firstTry = const Value.absent(),
                 Value<bool> correct = const Value.absent(),
+                Value<int?> pickedIndex = const Value.absent(),
                 Value<int> reward = const Value.absent(),
                 Value<DateTime> answeredAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -11330,6 +11477,7 @@ class $$QuizAttemptsTableTableManager
                 weekStart: weekStart,
                 firstTry: firstTry,
                 correct: correct,
+                pickedIndex: pickedIndex,
                 reward: reward,
                 answeredAt: answeredAt,
                 updatedAt: updatedAt,

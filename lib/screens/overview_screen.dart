@@ -11,6 +11,7 @@ import '../providers/tier_provider.dart';
 import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/interest_celebration.dart';
 import '../widgets/market_index_strip.dart';
 import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
@@ -21,6 +22,9 @@ import 'main_shell.dart';
 
 /// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
 final _showDetailsProvider = StateProvider<bool>((ref) => false);
+
+/// 자동 지급된 이자 축하 연출을 이번 실행에서 이미 보여줬는지(중복 방지).
+final _autoInterestCelebratedProvider = StateProvider<bool>((ref) => false);
 
 /// 홈 + 통계를 합친 대시보드. 기본은 핵심 정보만, "상세 통계"는 접어서 보여준다.
 class OverviewScreen extends ConsumerWidget {
@@ -39,6 +43,16 @@ class OverviewScreen extends ConsumerWidget {
     final balanceNow = summaryAsync.valueOrNull?['balance'] ?? 0;
     final isChild = ref.watch(settingsProvider).isChild;
     final showDetails = ref.watch(_showDetailsProvider);
+
+    // 못 받고 넘어간 이자가 자동 지급됐으면, 앱을 열 때 한 번 축하 연출을 띄운다.
+    final autoGranted = ref.watch(autoInterestProvider(child.id)).valueOrNull;
+    if (autoGranted != null && !ref.watch(_autoInterestCelebratedProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ref.read(_autoInterestCelebratedProvider.notifier).state = true;
+        showInterestCelebration(context, breakdown: autoGranted, auto: true);
+      });
+    }
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(summaryProvider(child.id)),
@@ -890,16 +904,15 @@ class OverviewScreen extends ConsumerWidget {
               Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
                   style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
             const SizedBox(height: 10),
-            if (isChild)
-              Text(
-                given ? '다음 지급 때 새로 계산돼요.' : '부모님이 지급하면 ${formatWon(b.amount)} 받아요.',
-                style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12),
-              )
+            // 이자는 아이도 직접 받을 수 있다(받는 재미 + 습관).
+            if (given)
+              Text('다음 지급 때 새로 계산돼요.',
+                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12))
             else
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => _giveInterest(ref, bankRate),
+                  onPressed: () => _giveInterest(context, ref, bankRate),
                   child: Text('+${formatWon(b.amount)} 받기'),
                 ),
               ),
@@ -926,11 +939,15 @@ class OverviewScreen extends ConsumerWidget {
     return b.annualPercent;
   }
 
-  Future<void> _giveInterest(WidgetRef ref, double? bankRate) async {
+  Future<void> _giveInterest(
+      BuildContext context, WidgetRef ref, double? bankRate) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref
+    final granted = await ref
         .read(databaseProvider)
         .giveInterest(child, owner, bankAnnualPercent: bankRate);
+    if (granted != null && context.mounted) {
+      await showInterestCelebration(context, breakdown: granted);
+    }
   }
 
   /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.
