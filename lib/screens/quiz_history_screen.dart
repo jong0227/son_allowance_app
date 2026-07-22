@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/quiz_bank.dart';
 import '../providers/quiz_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
@@ -18,6 +19,8 @@ class QuizHistoryScreen extends ConsumerWidget {
     final async = ref.watch(quizStateProvider(childId));
     final palette = appPalette(context);
     final byId = {for (final q in kQuizBank) q.id: q};
+    // 남은 문제 정보(개수·내용)는 아이가 미리 답을 외우지 못하도록 부모에게만 보여준다.
+    final isChild = ref.watch(settingsProvider).isChild;
 
     return Scaffold(
       appBar: AppBar(title: const Text('경제왕 퀴즈 기록')),
@@ -62,7 +65,9 @@ class QuizHistoryScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '한 번에 맞춘 문제 $firstTry개 · 남은 문제 ${state.remainingInBank}개',
+                      isChild
+                          ? '한 번에 맞춘 문제 $firstTry개'
+                          : '한 번에 맞춘 문제 $firstTry개 · 남은 문제 ${state.remainingInBank}개',
                       style: TextStyle(
                           fontSize: 12.5, color: palette.income.fg.withValues(alpha: 0.9)),
                     ),
@@ -70,7 +75,7 @@ class QuizHistoryScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              if (state.remainingInBank <= kQuizLowBankThreshold)
+              if (!isChild && state.remainingInBank <= kQuizLowBankThreshold)
                 _Notice(
                   pair: palette.expense,
                   text: state.remainingInBank == 0
@@ -88,6 +93,7 @@ class QuizHistoryScreen extends ConsumerWidget {
                     firstTry: a.firstTry,
                     reward: a.reward,
                     answeredAt: a.answeredAt,
+                    pickedIndex: a.pickedIndex,
                     palette: palette,
                   ),
             ],
@@ -135,6 +141,7 @@ class _AttemptTile extends StatelessWidget {
   final bool firstTry;
   final int reward;
   final DateTime answeredAt;
+  final int? pickedIndex;
   final AppPalette palette;
   const _AttemptTile({
     required this.question,
@@ -142,35 +149,141 @@ class _AttemptTile extends StatelessWidget {
     required this.firstTry,
     required this.reward,
     required this.answeredAt,
+    required this.pickedIndex,
     required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final pair = correct ? palette.income : palette.expense;
     final resultText = !correct
         ? '틀림'
         : firstTry
             ? '한 번에 정답'
             : '해설 보고 정답';
+    final q = question;
+
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(
-          backgroundColor: pair.bg,
-          child: Icon(correct ? Icons.check : Icons.close, color: pair.fg),
-        ),
-        title: Text(question?.question ?? '(삭제된 문제)',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(
-            '${question?.topic ?? ''} · $resultText · ${formatDate(answeredAt)}'
-            '${reward > 0 ? ' · +${formatWon(reward)}' : ''}',
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+      child: Theme(
+        // 펼쳤을 때 위아래 구분선이 생기지 않도록
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          leading: CircleAvatar(
+            backgroundColor: pair.bg,
+            child: Icon(correct ? Icons.check : Icons.close, color: pair.fg),
           ),
+          title: Text(q?.question ?? '(삭제된 문제)',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '${q?.topic ?? ''} · $resultText · ${formatDate(answeredAt)}'
+              '${reward > 0 ? ' · +${formatWon(reward)}' : ''}',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+          ),
+          children: [
+            if (q == null)
+              Text('문제 내용을 찾을 수 없어요.',
+                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant))
+            else ...[
+              // 보기를 전부 보여주고 "내가 고른 답"과 정답을 표시한다.
+              for (var i = 0; i < q.options.length; i++)
+                _OptionRow(
+                  text: q.options[i],
+                  isAnswer: i == q.answerIndex,
+                  isPicked: pickedIndex == i,
+                  palette: palette,
+                ),
+              if (pickedIndex == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, bottom: 6),
+                  child: Text('(이 기록엔 고른 답이 저장되어 있지 않아요)',
+                      style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                    color: palette.allowance.bg,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('💡', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(q.explanation,
+                          style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.5,
+                              color: palette.allowance.fg)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// 기록에서 보기 한 줄 — 정답은 초록, 내가 틀리게 고른 답은 빨강으로 표시.
+class _OptionRow extends StatelessWidget {
+  final String text;
+  final bool isAnswer;
+  final bool isPicked;
+  final AppPalette palette;
+  const _OptionRow({
+    required this.text,
+    required this.isAnswer,
+    required this.isPicked,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final pair = isAnswer ? palette.income : (isPicked ? palette.expense : null);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: pair?.bg ?? scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isAnswer
+                ? Icons.check_circle
+                : (isPicked ? Icons.cancel : Icons.circle_outlined),
+            size: 16,
+            color: pair?.fg ?? scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: (isAnswer || isPicked) ? FontWeight.w700 : null,
+                    color: pair?.fg ?? scheme.onSurface)),
+          ),
+          if (isPicked)
+            Text(isAnswer ? '내 답 ✓' : '내가 고른 답',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: pair?.fg ?? scheme.onSurfaceVariant)),
+        ],
       ),
     );
   }

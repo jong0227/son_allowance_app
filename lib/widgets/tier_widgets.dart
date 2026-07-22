@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
 import '../utils/formatters.dart';
+import 'tier_cinematic.dart';
 
 /// 이스터에그: 자기 등급(아이콘/칭호 영역)을 연속 7번 누르면 블럭이 터지는 애니메이션.
 /// child를 감싸 그 영역 전체가 탭 대상이 되도록 한다.
@@ -46,10 +47,10 @@ class _TierEasterEggTapState extends State<TierEasterEggTap> {
   }
 }
 
-/// 블럭 터짐 축하 애니메이션(풀스크린 오버레이).
+/// 블럭 터짐 축하 애니메이션(풀스크린 오버레이) → 이어서 티어 시네마틱.
 /// 처음 1초는 실수 탭으로 닫히지 않고, 이후 탭하거나 끝나면 닫힘.
-void showTierCelebration(BuildContext context, Tier tier) {
-  showGeneralDialog(
+Future<void> showTierCelebration(BuildContext context, Tier tier) async {
+  await showGeneralDialog(
     context: context,
     barrierDismissible: false, // 실수 탭으로 바로 닫히지 않게
     barrierLabel: 'tier-celebrate',
@@ -57,6 +58,8 @@ void showTierCelebration(BuildContext context, Tier tier) {
     transitionDuration: const Duration(milliseconds: 150),
     pageBuilder: (_, __, ___) => _TierBurst(tier: tier),
   );
+  // 터짐이 끝나면 블럭 낙하 → 채굴 → 아이템 등장 시네마틱이 이어진다.
+  if (context.mounted) showTierCinematic(context, tier);
 }
 
 class _Particle {

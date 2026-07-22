@@ -105,21 +105,38 @@ class _IndexCell extends StatelessWidget {
             ? '▼'
             : '–';
     final sign = index.change > 0 ? '+' : '';
+    // 칸마다 숫자 길이가 달라(2,845 vs 18,502) FittedBox 축소율이 달라지면
+    // 줄 높이가 어긋나 글자가 아래로 밀린 것처럼 보인다. 줄 높이를 고정해 맞춘다.
     return Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(index.label,
-            style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(_indexFormat.format(index.value),
-              style: const TextStyle(
-                  fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        SizedBox(
+          height: 15,
+          child: Center(
+            child: Text(index.label,
+                style:
+                    TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+          ),
         ),
-        const SizedBox(height: 1),
-        Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
-            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        SizedBox(
+          height: 21,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(_indexFormat.format(index.value),
+                  style: const TextStyle(
+                      fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 15,
+          child: Center(
+            child: Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
+                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          ),
+        ),
       ],
     );
   }

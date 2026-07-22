@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../data/app_database.dart';
 import '../providers/cofix_provider.dart';
 import '../providers/database_provider.dart';
+import '../providers/quiz_provider.dart';
 import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
@@ -182,6 +183,17 @@ class SettingsScreen extends ConsumerWidget {
           if (child.interestEnabled) ...[
             const SectionHeader('부모님과 약속'),
             _buildPromises(context, ref),
+            const SectionHeader('경제왕 퀴즈'),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.emoji_events_outlined),
+                title: Text('정답 1문제당 ${formatWon(child.quizReward)}'),
+                subtitle: Text('주 $kQuizPerWeek문제 · 해설 보고 다시 맞히면 '
+                    '${formatWon(quizHalfReward(child.quizReward))}'),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: () => _showQuizRewardDialog(context, ref),
+              ),
+            ),
             const SectionHeader('금리 표시 (COFIX·기준금리·예금)'),
             _buildCofixSettings(context, ref),
           ],
@@ -655,6 +667,53 @@ class SettingsScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showQuizRewardDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(text: '${child.quizReward}');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('퀴즈 보상'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration:
+                  const InputDecoration(labelText: '정답 1문제당(원)', hintText: '예: 10'),
+            ),
+            const SizedBox(height: 10),
+            Text('주 $kQuizPerWeek문제라 다 맞히면 이 금액의 $kQuizPerWeek배를 받아요.\n'
+                '틀렸다가 해설을 읽고 다시 맞히면 절반만 지급돼요.',
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              final v = int.tryParse(controller.text.trim());
+              if (v == null || v < 0) return;
+              await ref.read(databaseProvider).updateChildPartial(
+                    child.id,
+                    ChildrenCompanion(
+                      quizReward: Value(v),
+                      updatedAt: Value(DateTime.now()),
+                    ),
+                  );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
       ),
     );
   }

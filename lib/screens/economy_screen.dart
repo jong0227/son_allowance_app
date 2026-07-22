@@ -6,6 +6,7 @@ import '../data/quiz_bank.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/rates_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/topic_progress_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
@@ -37,7 +38,7 @@ class EconomyScreen extends ConsumerWidget {
                 child: Padding(padding: const EdgeInsets.all(16), child: Text('오류: $e'))),
             data: (state) => Column(
               children: [
-                _QuizCard(childId: child.id, state: state),
+                _QuizCard(child: child, state: state),
                 // 부모에게만: 문제은행이 바닥나기 전에 알려준다.
                 if (!isChild && state.bankRunningLow) ...[
                   const SizedBox(height: 8),
@@ -68,7 +69,176 @@ class EconomyScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => CompoundSimulatorScreen(child: child))),
           ),
-          const SectionHeader('경제상식'),
+          const SectionHeader('오늘의 경제상식'),
+          const _TodayTopicCard(),
+          const _TopicProgressCard(),
+          const _AllTopicsSection(),
+        ],
+      ),
+    );
+  }
+}
+
+/// 매일 하나씩 추천하는 경제상식. 목록을 통째로 늘어놓으면 아이가 질려하므로
+/// "오늘 읽을 것 하나"만 크게 보여준다.
+class _TodayTopicCard extends ConsumerWidget {
+  const _TodayTopicCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final topic = ref.watch(todayTopicProvider);
+    if (topic == null) return const SizedBox.shrink();
+    final read = ref.watch(readTopicsProvider).contains(topic.id);
+    final pair = appPalette(context).allowance;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => TopicExplainerScreen(topic: topic))),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+        child: Row(
+          children: [
+            Text(topic.emoji, style: const TextStyle(fontSize: 40)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(topic.title,
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: pair.fg)),
+                      ),
+                      if (read) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.check_circle, size: 15, color: pair.fg),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(topic.summary,
+                      style: TextStyle(fontSize: 13, height: 1.35, color: pair.fg)),
+                  const SizedBox(height: 6),
+                  Text(read ? '다시 읽어보기' : '오늘은 이거 하나만 읽어볼까?',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: pair.fg.withValues(alpha: 0.85))),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: pair.fg),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 읽은 개수 진행률 + 전부 읽으면 뱃지.
+class _TopicProgressCard extends ConsumerWidget {
+  const _TopicProgressCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final read = ref.watch(readTopicsProvider);
+    final total = kEconomyTopics.length;
+    final done = kEconomyTopics.where((t) => read.contains(t.id)).length;
+    final all = done >= total && total > 0;
+    final theme = Theme.of(context);
+    final palette = appPalette(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(all ? '🏅' : '📚', style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(all ? '경제상식 마스터!' : '$total개 중 $done개 읽었어요',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                ),
+                Text('${total == 0 ? 0 : ((done / total) * 100).round()}%',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: palette.income.fg)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: total == 0 ? 0 : done / total,
+                minHeight: 8,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(palette.income.fg),
+              ),
+            ),
+            if (all) ...[
+              const SizedBox(height: 8),
+              Text('모든 경제상식을 다 읽었어요. 대단해요! 🎉',
+                  style: TextStyle(fontSize: 12.5, color: palette.income.fg)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 전체 목록은 기본으로 접어둔다(매일 같은 목록이 길게 떠 있으면 질리기 때문).
+class _AllTopicsSection extends ConsumerStatefulWidget {
+  const _AllTopicsSection();
+
+  @override
+  ConsumerState<_AllTopicsSection> createState() => _AllTopicsSectionState();
+}
+
+class _AllTopicsSectionState extends ConsumerState<_AllTopicsSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final read = ref.watch(readTopicsProvider);
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => setState(() => _expanded = !_expanded),
+          icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+          label: Text(_expanded ? '접기' : '경제상식 전체 보기'),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: 8),
+          for (final topic in kEconomyTopics)
+            _NavCard(
+              emoji: topic.emoji,
+              title: topic.title,
+              subtitle: topic.summary,
+              read: read.contains(topic.id),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => TopicExplainerScreen(topic: topic))),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 4),
+            child: Text('더 깊이 알고 싶다면',
+                style:
+                    TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+          ),
           _NavCard(
             emoji: '💰',
             title: '이자가 뭐야?',
@@ -76,14 +246,6 @@ class EconomyScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const InterestExplainerScreen())),
           ),
-          for (final topic in kEconomyTopics)
-            _NavCard(
-              emoji: topic.emoji,
-              title: topic.title,
-              subtitle: topic.summary,
-              onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => TopicExplainerScreen(topic: topic))),
-            ),
           _NavCard(
             emoji: '🏛️',
             title: '금리란?',
@@ -92,16 +254,16 @@ class EconomyScreen extends ConsumerWidget {
                 .push(MaterialPageRoute(builder: (_) => const RatesExplainerScreen())),
           ),
         ],
-      ),
+      ],
     );
   }
 }
 
 /// 이번 주 퀴즈 진입 카드.
 class _QuizCard extends StatelessWidget {
-  final String childId;
+  final Child child;
   final QuizState state;
-  const _QuizCard({required this.childId, required this.state});
+  const _QuizCard({required this.child, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +293,7 @@ class _QuizCard extends StatelessWidget {
                     Text(
                       state.weekDone
                           ? '이번 주 완료! 다음 주 월요일에 또 만나요'
-                          : '이번 주 ${state.leftThisWeek}문제 남았어요 · 맞히면 ${formatWon(kQuizFullReward)}',
+                          : '이번 주 ${state.leftThisWeek}문제 남았어요 · 맞히면 ${formatWon(child.quizReward)}',
                       style: TextStyle(fontSize: 12.5, color: pair.fg, height: 1.3),
                     ),
                   ],
@@ -153,7 +315,7 @@ class _QuizCard extends StatelessWidget {
             child: FilledButton(
               onPressed: canPlay
                   ? () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => QuizScreen(childId: childId)))
+                      MaterialPageRoute(builder: (_) => QuizScreen(child: child)))
                   : null,
               child: Text(state.bankEmpty
                   ? '문제를 모두 풀었어요'
@@ -346,18 +508,31 @@ class _NavCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool read;
   const _NavCard(
       {required this.emoji,
       required this.title,
       required this.subtitle,
-      required this.onTap});
+      required this.onTap,
+      this.read = false});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
         leading: Text(emoji, style: const TextStyle(fontSize: 28)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Row(
+          children: [
+            Flexible(
+                child: Text(title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700))),
+            if (read) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.check_circle, size: 14, color: appPalette(context).income.fg),
+            ],
+          ],
+        ),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
