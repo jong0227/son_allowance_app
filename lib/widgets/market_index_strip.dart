@@ -59,8 +59,11 @@ class MarketIndexStrip extends ConsumerWidget {
                 if (indices.isEmpty) {
                   return _message('지수를 불러오지 못했어요. 잠시 후 새로고침해 주세요.', textSecondary);
                 }
+                // 칸마다 숫자 길이가 달라도(2,845 vs 18,502) 줄이 어긋나지 않도록
+                // 각 줄 높이를 고정한다.
                 return IntrinsicHeight(
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       for (var i = 0; i < indices.length; i++) ...[
                         if (i > 0)
@@ -102,21 +105,37 @@ class _IndexCell extends StatelessWidget {
             ? '▼'
             : '–';
     final sign = index.change > 0 ? '+' : '';
+    // 각 줄을 고정 높이로 두면 세 칸의 라벨/숫자/등락률이 정확히 같은 선에 놓인다.
     return Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(index.label,
-            style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(_indexFormat.format(index.value),
-              style: const TextStyle(
-                  fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        SizedBox(
+          height: 15,
+          child: Center(
+            child: Text(index.label,
+                style:
+                    TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+          ),
         ),
-        const SizedBox(height: 1),
-        Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
-            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        SizedBox(
+          height: 21,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(_indexFormat.format(index.value),
+                  style: const TextStyle(
+                      fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 15,
+          child: Center(
+            child: Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
+                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          ),
+        ),
       ],
     );
   }

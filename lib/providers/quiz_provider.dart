@@ -7,9 +7,11 @@ import 'database_provider.dart';
 /// 한 주에 풀 수 있는 문제 수.
 const int kQuizPerWeek = 3;
 
-/// 첫 시도에 맞췄을 때 / 해설을 보고 다시 맞췄을 때 보상(원).
-const int kQuizFullReward = 100;
-const int kQuizHalfReward = 50;
+/// 정답 1문제당 기본 보상(원). 자녀별로 설정에서 바꿀 수 있다(Children.quizReward).
+const int kQuizDefaultReward = 10;
+
+/// 해설을 보고 다시 맞췄을 때는 절반만 준다.
+int quizHalfReward(int full) => (full / 2).round();
 
 /// 남은 문제가 이 개수 이하면 부모에게 "새 문제를 추가해 주세요"라고 알린다.
 const int kQuizLowBankThreshold = 5;

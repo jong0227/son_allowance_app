@@ -11,6 +11,7 @@ import '../providers/tier_provider.dart';
 import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/interest_celebration.dart';
 import '../widgets/market_index_strip.dart';
 import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
@@ -21,6 +22,9 @@ import 'main_shell.dart';
 
 /// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
 final _showDetailsProvider = StateProvider<bool>((ref) => false);
+
+/// 자동 지급된 이자 축하 연출을 이번 실행에서 이미 보여줬는지(중복 방지).
+final _autoInterestCelebratedProvider = StateProvider<bool>((ref) => false);
 
 /// 홈 + 통계를 합친 대시보드. 기본은 핵심 정보만, "상세 통계"는 접어서 보여준다.
 class OverviewScreen extends ConsumerWidget {
@@ -39,6 +43,16 @@ class OverviewScreen extends ConsumerWidget {
     final balanceNow = summaryAsync.valueOrNull?['balance'] ?? 0;
     final isChild = ref.watch(settingsProvider).isChild;
     final showDetails = ref.watch(_showDetailsProvider);
+
+    // 못 받고 넘어간 이자가 자동 지급됐으면, 앱을 열 때 한 번 축하 연출을 띄운다.
+    final autoGranted = ref.watch(autoInterestProvider(child.id)).valueOrNull;
+    if (autoGranted != null && !ref.watch(_autoInterestCelebratedProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ref.read(_autoInterestCelebratedProvider.notifier).state = true;
+        showInterestCelebration(context, breakdown: autoGranted, auto: true);
+      });
+    }
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(summaryProvider(child.id)),
@@ -137,7 +151,8 @@ class OverviewScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   const RatesStrip(),
                   _buildBonus(context, ref, balance, isChild),
-                  if (!isChild) _buildInterest(context, ref, balance),
+                  // 이자는 아이도 직접 받을 수 있다(받는 재미 + 습관).
+                  _buildInterest(context, ref, balance),
                   // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
                   PromisesHomeCard(childId: child.id),
                 ],
@@ -814,66 +829,63 @@ class OverviewScreen extends ConsumerWidget {
         (ref.watch(promisesProvider(child.id)).valueOrNull ?? const [])
             .where((p) => p.enabled)
             .length;
+    // 세로로 길지 않도록 좌(설명)-우(받기 버튼) 가로 배치로 압축한다.
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: 10),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Icon(Icons.savings_outlined, color: pair.fg, size: 22),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('${b.periodName} 저축 이자 받기',
-                      style: TextStyle(
-                          color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
-                ),
-                InkWell(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => InterestExplainerScreen(breakdown: b)),
+            Icon(Icons.savings_outlined, color: pair.fg, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text('${b.periodName} 저축 이자',
+                            style: TextStyle(
+                                color: pair.fg,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5)),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => InterestExplainerScreen(breakdown: b)),
+                        ),
+                        child: Icon(Icons.help_outline,
+                            size: 15, color: pair.fg.withValues(alpha: 0.8)),
+                      ),
+                    ],
                   ),
-                  child: Text('이자가 뭐야?',
-                      style: TextStyle(
-                        color: pair.fg,
-                        fontSize: 11.5,
-                        decoration: TextDecoration.underline,
-                      )),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  if (multiple != null) ...[
+                    Text('은행이면 ${formatWon(b.bankAmount)} · 은행의 ${formatPercent(multiple)}배',
+                        style: TextStyle(color: pair.fg, fontSize: 11.5)),
+                    if (promiseCount > 0)
+                      Text('약속 $promiseCount개 지킴',
+                          style: TextStyle(
+                              color: pair.fg.withValues(alpha: 0.85), fontSize: 11)),
+                  ] else
+                    Text('잔액의 ${formatPercent(b.totalPercent)}%',
+                        style: TextStyle(color: pair.fg, fontSize: 11.5)),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            // 은행보다 얼마나 더 주는지 — 아이가 금리 차이를 체감하는 핵심 줄.
-            if (multiple != null) ...[
-              Text('은행에 맡기면 ${formatWon(b.bankAmount)}  →  우리집은 ${formatWon(b.amount)}',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                    color: pair.fg.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text(
-                  promiseCount > 0
-                      ? '약속 $promiseCount개 지킴 · 은행의 ${formatPercent(multiple)}배!'
-                      : '은행의 ${formatPercent(multiple)}배!',
-                  style: TextStyle(
-                      color: pair.fg, fontSize: 12, fontWeight: FontWeight.w800),
-                ),
+            const SizedBox(width: 8),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-            ] else
-              Text('잔액 ${formatWon(balance)}의 ${formatPercent(b.totalPercent)}%',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5)),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => _giveInterest(ref, bankRate),
-                child: Text('+${formatWon(b.amount)} 받기'),
-              ),
+              onPressed: () => _giveInterest(context, ref, bankRate),
+              child: Text('+${formatWon(b.amount)}'),
             ),
           ],
         ),
@@ -881,11 +893,15 @@ class OverviewScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _giveInterest(WidgetRef ref, double? bankRate) async {
+  Future<void> _giveInterest(
+      BuildContext context, WidgetRef ref, double? bankRate) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref
+    final granted = await ref
         .read(databaseProvider)
         .giveInterest(child, owner, bankAnnualPercent: bankRate);
+    if (granted != null && context.mounted) {
+      await showInterestCelebration(context, breakdown: granted);
+    }
   }
 
   /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.

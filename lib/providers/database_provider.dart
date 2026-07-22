@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
+import '../services/interest_calc.dart';
+import 'rates_provider.dart';
+import 'settings_provider.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -109,6 +112,27 @@ final interestGivenProvider =
     FutureProvider.family<bool, ({String childId, int period})>((ref, args) async {
   ref.watch(transactionsProvider(args.childId));
   return ref.watch(databaseProvider).interestGivenThisPeriod(args.childId, args.period);
+});
+
+/// 앱을 열 때, 못 받고 넘어간 "직전 주기" 이자를 자동으로 지급한다.
+/// 아무도 받기를 안 눌러서 이자가 날아가는 걸 막는 안전장치.
+/// 지급했으면 축하 연출에 쓸 내역을 반환한다.
+final autoInterestProvider =
+    FutureProvider.family<InterestBreakdown?, String>((ref, childId) async {
+  final children = await ref.watch(childrenListProvider.future);
+  Child? child;
+  for (final c in children) {
+    if (c.id == childId) {
+      child = c;
+      break;
+    }
+  }
+  if (child == null) return null;
+  final bankRate = await ref.watch(depositRateProvider.future);
+  final owner = ref.read(settingsProvider).deviceOwner ?? '';
+  return ref
+      .read(databaseProvider)
+      .autoGrantMissedInterest(child, owner, bankAnnualPercent: bankRate);
 });
 
 /// 과거 정기용돈 "일괄" 한 건을 주 단위 지급 목록으로 복원.

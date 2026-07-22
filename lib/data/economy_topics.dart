@@ -177,6 +177,168 @@ const List<EconomyTopic> kEconomyTopics = [
     ],
     callout: '빌린 돈은 꼭 약속한 날까지 갚아야 해요. 늦으면 이자를 더 내야 해요.',
   ),
+  EconomyTopic(
+    id: 'needwant',
+    emoji: '🧐',
+    title: '필요한 것 vs 갖고 싶은 것',
+    summary: '없으면 안 되는 것과, 있으면 좋은 것',
+    sections: [
+      TopicSection(
+        emoji: '🥛',
+        title: '필요한 것',
+        body: '없으면 곤란한 것이에요. 밥, 학용품, 신발처럼요. 이건 먼저 챙겨야 해요.',
+      ),
+      TopicSection(
+        emoji: '🎮',
+        title: '갖고 싶은 것',
+        body: '없어도 살 수 있지만 있으면 즐거운 것이에요. 게임, 장난감, 간식처럼요.',
+      ),
+      TopicSection(
+        emoji: '⚖️',
+        title: '순서를 정해요',
+        body: '필요한 것을 먼저 챙기고 남은 돈으로 갖고 싶은 걸 사면 후회가 적어요.',
+      ),
+    ],
+    callout: '"이거 없으면 진짜 곤란할까?" 한 번만 물어보면 답이 나와요.',
+  ),
+  EconomyTopic(
+    id: 'ads',
+    emoji: '📺',
+    title: '광고는 왜 있을까?',
+    summary: '사고 싶게 만드는 기술',
+    sections: [
+      TopicSection(
+        emoji: '✨',
+        title: '광고는 제일 좋은 모습만 보여줘요',
+        body: '광고 속 장난감은 반짝반짝하고 재밌어 보여요. 하지만 실제로 받아보면 다를 수 있어요.',
+      ),
+      TopicSection(
+        emoji: '⏰',
+        title: '하루만 기다려보기',
+        body: '갑자기 사고 싶어질 땐 하루만 참아보세요. 다음 날에도 갖고 싶으면 진짜 원하는 거예요.',
+      ),
+    ],
+    callout: '광고를 보고 사고 싶어지는 건 자연스러워요. 잠깐 멈추는 힘이 중요해요.',
+  ),
+  EconomyTopic(
+    id: 'compound',
+    emoji: '⛄',
+    title: '복리가 뭐야?',
+    summary: '이자에 또 이자가 붙는 눈덩이',
+    sections: [
+      TopicSection(
+        emoji: '❄️',
+        title: '작은 눈덩이가 커져요',
+        body: '눈덩이를 굴리면 처음엔 천천히 커지다가 나중엔 순식간에 커지죠? 돈도 똑같아요.',
+      ),
+      TopicSection(
+        emoji: '🔁',
+        title: '이자가 또 이자를 낳아요',
+        body: '이번 주에 받은 이자도 잔액이 돼요. 다음 주엔 그 이자에도 이자가 붙어요.',
+      ),
+      TopicSection(
+        emoji: '⏳',
+        title: '시간이 힘이에요',
+        body: '오래 둘수록 훨씬 빨리 커져요. 그래서 일찍 시작하는 게 좋아요.',
+      ),
+    ],
+    callout: '경제왕 탭의 "얼마나 모일까?"에서 눈덩이가 커지는 걸 직접 볼 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'tax',
+    emoji: '🏫',
+    title: '세금이 뭐야?',
+    summary: '다 같이 쓰는 것을 만드는 돈',
+    sections: [
+      TopicSection(
+        emoji: '🤝',
+        title: '모두가 조금씩 내는 돈',
+        body: '어른들이 번 돈에서 조금씩 나라에 내는 돈이 세금이에요.',
+      ),
+      TopicSection(
+        emoji: '🛣️',
+        title: '함께 쓰는 것에 써요',
+        body: '학교, 도로, 병원, 소방차처럼 모두가 함께 쓰는 것을 만드는 데 써요. 혼자서는 못 만드니까요.',
+      ),
+    ],
+    callout: '서원이가 다니는 학교도 세금으로 지어진 거예요.',
+  ),
+  EconomyTopic(
+    id: 'risk',
+    emoji: '🧺',
+    title: '한 바구니에 담지 마',
+    summary: '위험을 나누는 방법',
+    sections: [
+      TopicSection(
+        emoji: '🥚',
+        title: '달걀을 한 바구니에 담으면',
+        body: '바구니를 떨어뜨리면 달걀이 다 깨져요. 나눠 담으면 하나가 떨어져도 나머지는 무사해요.',
+      ),
+      TopicSection(
+        emoji: '📊',
+        title: '돈도 나눠서',
+        body: '한 회사 주식에 전부 넣으면 그 회사가 어려울 때 크게 잃어요. 여러 개로 나누면 안전해요.',
+      ),
+    ],
+    callout: '"몰빵"은 위험해요. 나누는 게 똑똑한 방법이에요.',
+  ),
+  EconomyTopic(
+    id: 'giving',
+    emoji: '💝',
+    title: '나눔이 뭐야?',
+    summary: '돈으로 할 수 있는 따뜻한 일',
+    sections: [
+      TopicSection(
+        emoji: '🎁',
+        title: '나눠도 줄지 않는 것',
+        body: '돈을 나누면 내 돈은 줄지만, 마음은 오히려 커져요. 도움받은 사람의 하루가 달라지거든요.',
+      ),
+      TopicSection(
+        emoji: '🌱',
+        title: '작아도 괜찮아요',
+        body: '큰돈이 아니어도 돼요. 100원도 모이면 누군가에게 큰 도움이 돼요.',
+      ),
+    ],
+    callout: '돈을 모으는 이유엔 "나를 위해"도 있고 "다른 사람을 위해"도 있어요.',
+  ),
+  EconomyTopic(
+    id: 'promise',
+    emoji: '🤞',
+    title: '신용이 뭐야?',
+    summary: '약속을 지키면 쌓이는 믿음',
+    sections: [
+      TopicSection(
+        emoji: '📒',
+        title: '약속을 지킨 기록',
+        body: '빌린 돈을 제때 갚고 약속을 지키면 "믿을 수 있는 사람"이 돼요. 그게 신용이에요.',
+      ),
+      TopicSection(
+        emoji: '🚪',
+        title: '신용이 있으면 문이 열려요',
+        body: '어른이 되면 신용이 좋아야 집을 살 때 은행이 돈을 빌려줘요. 신용이 나쁘면 안 빌려주거나 이자를 더 받아요.',
+      ),
+    ],
+    callout: '지금 부모님과의 약속을 지키는 것도 신용을 쌓는 연습이에요!',
+  ),
+  EconomyTopic(
+    id: 'budget',
+    emoji: '📝',
+    title: '용돈 계획 세우기',
+    summary: '쓰기 전에 정해두면 안 흔들려요',
+    sections: [
+      TopicSection(
+        emoji: '🍰',
+        title: '용돈을 세 조각으로',
+        body: '받자마자 "저축할 돈 / 쓸 돈 / 나눌 돈"으로 나눠보세요. 남은 걸 모으는 것보다 훨씬 잘 모여요.',
+      ),
+      TopicSection(
+        emoji: '✍️',
+        title: '적어두기',
+        body: '어디에 썼는지 적으면 내가 어디에 많이 쓰는지 보여요. 그래야 줄일 곳을 알 수 있어요.',
+      ),
+    ],
+    callout: '앱의 "이번 주 예산"이 바로 이 계획을 도와주는 기능이에요.',
+  ),
 ];
 
 EconomyTopic? topicById(String id) {

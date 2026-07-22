@@ -34,6 +34,8 @@ class Children extends Table {
   BoolColumn get interestUseBankRate => boolean().withDefault(const Constant(true))();
   /// 은행 예금금리의 몇 배를 줄지. 기본 6배(잔액 3.5만원 기준 주 100원 수준).
   RealColumn get interestMultiplier => real().withDefault(const Constant(6.0))();
+  /// 경제왕 퀴즈 정답 1문제당 보상(원). 해설 보고 다시 맞히면 이 금액의 절반.
+  IntColumn get quizReward => integer().withDefault(const Constant(10))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -234,6 +236,8 @@ class QuizAttempts extends Table {
   /// 첫 시도에 맞췄는지 (true면 전액, 해설 보고 재시도로 맞추면 false)
   BoolColumn get firstTry => boolean().withDefault(const Constant(false))();
   BoolColumn get correct => boolean().withDefault(const Constant(false))();
+  /// 마지막으로 고른 보기 번호(기록 화면에서 "내가 뭘 골랐는지" 보여주려고 저장).
+  IntColumn get pickedIndex => integer().nullable()();
   IntColumn get reward => integer().withDefault(const Constant(0))(); // 지급한 원
   DateTimeColumn get answeredAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -271,7 +275,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -326,6 +330,10 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 14) {
             await m.createTable(quizAttempts);
+          }
+          if (from < 15) {
+            await m.addColumn(children, children.quizReward);
+            await m.addColumn(quizAttempts, quizAttempts.pickedIndex);
           }
         },
       );
@@ -964,16 +972,40 @@ class AppDatabase extends _$AppDatabase {
     return DateTime(now.year, now.month, 1); // 이번 달 1일
   }
 
+  /// 직전 주기의 시작 시각(못 받고 넘어간 이자를 자동 지급할 때 쓴다).
+  DateTime _previousPeriodStart(int period, DateTime now) {
+    final start = _periodStart(period, now);
+    if (period == 0) return start.subtract(const Duration(days: 7));
+    return DateTime(start.year, start.month - 1, 1);
+  }
+
   Future<bool> interestGivenThisPeriod(String childId, int period) async {
     final start = _periodStart(period, DateTime.now());
+    return _interestGivenIn(childId, start, null);
+  }
+
+  /// [start] 이상 [end] 미만 구간에 이자 내역이 있는지. [end]가 null이면 이후 전체.
+  Future<bool> _interestGivenIn(String childId, DateTime start, DateTime? end) async {
     final rows = await (select(transactionEntries)
-          ..where((t) =>
-              t.childId.equals(childId) &
-              t.deletedAt.isNull() &
-              t.category.equals(kInterest) &
-              t.date.isBiggerOrEqualValue(start)))
+          ..where((t) {
+            var w = t.childId.equals(childId) &
+                t.deletedAt.isNull() &
+                t.category.equals(kInterest) &
+                t.date.isBiggerOrEqualValue(start);
+            if (end != null) w = w & t.date.isSmallerThanValue(end);
+            return w;
+          }))
         .get();
     return rows.isNotEmpty;
+  }
+
+  /// 이자 내역 id는 "자녀 + 주기 시작일"로 고정한다.
+  /// 두 기기가 동시에(오프라인에서) 자동 지급해도 동기화될 때 한 건으로 합쳐져 중복 지급을 막는다.
+  static String _interestTxId(String childId, DateTime periodStart) {
+    final d = periodStart;
+    final ymd =
+        '${d.year}${d.month.toString().padLeft(2, '0')}${d.day.toString().padLeft(2, '0')}';
+    return 'int_${childId}_$ymd';
   }
 
   /// 켜진(ON) 약속들의 이자 보너스 합계 %. 약속이 없거나 모두 OFF면 0.
@@ -1008,29 +1040,62 @@ class AppDatabase extends _$AppDatabase {
     return b.amount;
   }
 
-  /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
-  Future<bool> giveInterest(Child child, String editedBy,
+  /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 null.
+  /// 지급했으면 계산 내역을 돌려줘서 축하 연출에 쓸 수 있게 한다.
+  Future<InterestBreakdown?> giveInterest(Child child, String editedBy,
       {double? bankAnnualPercent}) async {
-    if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return false;
+    if (await interestGivenThisPeriod(child.id, child.interestPeriod)) return null;
     final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
-    if (b.amount <= 0) return false;
+    if (b.amount <= 0) return null;
+    final periodStart = _periodStart(child.interestPeriod, DateTime.now());
+    await _writeInterestTx(child, b, editedBy, periodStart, DateTime.now());
+    return b;
+  }
+
+  /// 못 받고 넘어간 "직전 주기" 이자를 자동으로 지급한다.
+  /// 부모가 깜빡해도 아이가 손해보지 않게 하기 위한 안전장치.
+  /// 지급했으면 내역을 반환(앱을 열 때 축하 연출), 지급할 게 없으면 null.
+  Future<InterestBreakdown?> autoGrantMissedInterest(Child child, String editedBy,
+      {double? bankAnnualPercent}) async {
+    if (!child.interestEnabled) return null;
     final now = DateTime.now();
+    final curStart = _periodStart(child.interestPeriod, now);
+    final prevStart = _previousPeriodStart(child.interestPeriod, now);
+    // 아이 프로필이 그 주기에 존재하지 않았으면 소급 지급하지 않는다.
+    if (child.createdAt.isAfter(prevStart)) return null;
+    if (await _interestGivenIn(child.id, prevStart, curStart)) return null;
+    final b = await interestBreakdown(child, bankAnnualPercent: bankAnnualPercent);
+    if (b.amount <= 0) return null;
+    // 날짜는 그 주기의 마지막 순간으로 기록해 통계가 해당 주에 잡히게 한다.
+    await _writeInterestTx(child, b, editedBy, prevStart,
+        curStart.subtract(const Duration(minutes: 1)),
+        auto: true);
+    return b;
+  }
+
+  Future<void> _writeInterestTx(
+    Child child,
+    InterestBreakdown b,
+    String editedBy,
+    DateTime periodStart,
+    DateTime date, {
+    bool auto = false,
+  }) async {
     final multiple = b.multipleOfBank;
-    final memo = multiple != null
+    final base = multiple != null
         ? '저축 이자 ${_trimPercent(b.totalPercent)}% (은행의 ${_trimPercent(multiple)}배)'
         : '저축 이자 ${_trimPercent(b.totalPercent)}%';
     await upsertTransaction(TransactionEntriesCompanion.insert(
-      id: const Uuid().v4(),
+      id: _interestTxId(child.id, periodStart),
       childId: child.id,
-      date: now,
+      date: date,
       flow: 'income',
       category: kInterest,
       amount: b.amount,
-      memo: Value(memo),
+      memo: Value(auto ? '$base · 자동 지급' : base),
       editedBy: Value(editedBy),
-      updatedAt: Value(now),
+      updatedAt: Value(DateTime.now()),
     ));
-    return true;
   }
 
   /// 1.20 -> "1.2", 1.00 -> "1" 처럼 불필요한 0을 없앤 퍼센트 문자열.
@@ -1158,6 +1223,7 @@ class AppDatabase extends _$AppDatabase {
     required bool firstTry,
     required int reward,
     required String editedBy,
+    int? pickedIndex,
   }) async {
     final now = DateTime.now();
     await upsertQuizAttempt(QuizAttemptsCompanion.insert(
@@ -1167,6 +1233,7 @@ class AppDatabase extends _$AppDatabase {
       weekStart: weekStartOf(now),
       firstTry: Value(firstTry),
       correct: Value(correct),
+      pickedIndex: Value(pickedIndex),
       reward: Value(reward),
       answeredAt: Value(now),
       updatedAt: Value(now),

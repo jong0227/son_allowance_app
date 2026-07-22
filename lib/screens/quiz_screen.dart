@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/app_database.dart';
 import '../data/quiz_bank.dart';
 import '../providers/database_provider.dart';
 import '../providers/quiz_provider.dart';
@@ -18,8 +19,8 @@ enum _Phase { asking, explaining, retrying, correct, failed }
 /// 첫 시도에 맞추면 100원, 틀리면 해설을 읽고 다시 풀어 맞추면 50원.
 /// 재도전 때는 보기 순서를 섞어서 "정답 위치"만 외워 찍는 걸 막는다.
 class QuizScreen extends ConsumerStatefulWidget {
-  final String childId;
-  const QuizScreen({super.key, required this.childId});
+  final Child child;
+  const QuizScreen({super.key, required this.child});
 
   @override
   ConsumerState<QuizScreen> createState() => _QuizScreenState();
@@ -65,20 +66,22 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   Future<void> _answer(QuizQuestion q, int originalIndex) async {
     final isCorrect = originalIndex == q.answerIndex;
     final firstTry = _phase == _Phase.asking;
+    final full = widget.child.quizReward;
 
     if (isCorrect) {
-      final reward = firstTry ? kQuizFullReward : kQuizHalfReward;
+      final reward = firstTry ? full : quizHalfReward(full);
       setState(() {
         _picked = originalIndex;
         _reward = reward;
         _phase = _Phase.correct;
       });
       await ref.read(databaseProvider).recordQuizAnswer(
-            childId: widget.childId,
+            childId: widget.child.id,
             questionId: q.id,
             correct: true,
             firstTry: firstTry,
             reward: reward,
+            pickedIndex: originalIndex,
             editedBy: ref.read(settingsProvider).deviceOwner ?? '',
           );
       return;
@@ -99,11 +102,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _phase = _Phase.failed;
       });
       await ref.read(databaseProvider).recordQuizAnswer(
-            childId: widget.childId,
+            childId: widget.child.id,
             questionId: q.id,
             correct: false,
             firstTry: false,
             reward: 0,
+            pickedIndex: originalIndex,
             editedBy: ref.read(settingsProvider).deviceOwner ?? '',
           );
     }
@@ -119,7 +123,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stateAsync = ref.watch(quizStateProvider(widget.childId));
+    final stateAsync = ref.watch(quizStateProvider(widget.child.id));
     return Scaffold(
       appBar: AppBar(title: const Text('도전! 경제왕 Quiz')),
       body: stateAsync.when(
@@ -201,13 +205,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               onPressed: _countdown > 0 ? null : () => _goRetry(q),
               child: Text(_countdown > 0
                   ? '해설을 읽어보세요 ($_countdown)'
-                  : '이해했어요! 다시 풀기 (맞히면 ${formatWon(kQuizHalfReward)})'),
+                  : '이해했어요! 다시 풀기 (맞히면 ${formatWon(quizHalfReward(widget.child.quizReward))})'),
             ),
           ),
         ],
 
         if (_phase == _Phase.correct) ...[
-          _CorrectCard(reward: _reward, firstTry: _reward == kQuizFullReward),
+          _CorrectCard(reward: _reward, firstTry: _reward == widget.child.quizReward),
           const SizedBox(height: 12),
           _ExplanationCard(explanation: q.explanation),
           const SizedBox(height: 16),

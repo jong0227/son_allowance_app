@@ -99,21 +99,34 @@ class _RateCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final highlight = rate.kind == RateKind.cofix;
+    // 지수 스트립과 마찬가지로 줄 높이를 고정해 세 칸을 같은 선에 맞춘다.
     return Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(rate.label,
-            style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 3),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text('${formatPercent(rate.rate)}%',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: highlight ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-              )),
+        SizedBox(
+          height: 15,
+          child: Center(
+            child: Text(rate.label,
+                style:
+                    TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+          ),
+        ),
+        SizedBox(
+          height: 23,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('${formatPercent(rate.rate)}%',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color:
+                        highlight ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                  )),
+            ),
+          ),
         ),
       ],
     );
