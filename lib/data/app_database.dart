@@ -1115,6 +1115,13 @@ class AppDatabase extends _$AppDatabase {
       amount: b.amount,
       memo: Value(auto ? '$base · 자동 지급' : base),
       editedBy: Value(editedBy),
+      // id가 주기별 고정값이라, 이 주기 이자를 지웠다가(소프트 삭제) 다시 주면
+      // 같은 행을 덮어쓰게 된다. deletedAt을 명시적으로 비워야 되살아난다.
+      // (비우지 않으면 "삭제됨" 상태가 남아 다시 줘도 내역에 안 보인다)
+      // id가 주기별 고정값이라, 이 주기 이자를 지웠다가(소프트 삭제) 다시 주면
+      // 같은 행을 덮어쓰게 된다. deletedAt을 명시적으로 비워야 되살아난다.
+      // (비우지 않으면 "삭제됨" 상태가 남아 다시 줘도 내역에 안 보인다)
+      deletedAt: const Value(null),
       updatedAt: Value(DateTime.now()),
     ));
   }
