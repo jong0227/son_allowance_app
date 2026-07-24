@@ -11,13 +11,14 @@ import '../providers/tier_provider.dart';
 import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
 import '../utils/formatters.dart';
+import '../widgets/bonus_home_card.dart';
 import '../widgets/interest_celebration.dart';
+import '../widgets/interest_home_card.dart';
 import '../widgets/market_index_strip.dart';
 import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
-import 'interest_explainer_screen.dart';
 import 'main_shell.dart';
 
 /// 홈 화면에서 상세 통계(차트 묶음)를 펼쳤는지 여부. 기본은 접힘.
@@ -153,10 +154,10 @@ class OverviewScreen extends ConsumerWidget {
                       income: income, expense: expense, savings: savings, rate: rate),
                   const SizedBox(height: 8),
                   const RatesStrip(),
-                  _buildBonus(context, ref, isChild),
-                  _buildInterest(context, ref, balance, isChild),
+                  BonusHomeCard(child: child, isChild: isChild),
+                  InterestHomeCard(child: child),
                   // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
-                  PromisesHomeCard(childId: child.id),
+                  PromisesHomeCard(child: child),
                 ],
               );
             },
@@ -520,167 +521,6 @@ class OverviewScreen extends ConsumerWidget {
     await ref.read(databaseProvider).markScheduleUnpaid(s, owner, child);
   }
 
-  /// 조건부 절약 보너스 카드. 규칙이 켜져 있으면 항상 현재 상태를 안내한다.
-  /// - 이미 이번 주에 받음: 완료 안내
-  /// - 기준일 당일 이후 + 목표 달성: 축하 + 원버튼 지급
-  /// - 기준일 이전: 목표 유지 안내 + 진행바
-  /// - 기준일 지남 + 미달: 이번 주 미달 안내
-  ///
-  /// 판단 기준은 "이번 주 받은 용돈 중 얼마가 남았는지"다(전체 누적 잔액이 아님).
-  /// 누적 잔액으로 비교하면 저축이 쌓일수록 목표가 항상 저절로 달성돼 버려
-  /// 정보로서 의미가 없어진다.
-  Widget _buildBonus(BuildContext context, WidgetRef ref, bool isChild) {
-    if (!child.bonusEnabled) return const SizedBox.shrink();
-    final palette = appPalette(context);
-    final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final dayName = weekdayName(child.bonusDayOfWeek);
-    final given = ref.watch(bonusGivenThisWeekProvider(child.id)).valueOrNull ?? false;
-    // 자녀 모드: 이미 보낸 대기 중 보너스 요청이 있으면 버튼 대신 "요청함" 표시
-    final pendingBonusReq = ref
-            .watch(requestsProvider(child.id))
-            .valueOrNull
-            ?.any((r) => r.type == 'bonus' && r.status == 'pending') ??
-        false;
-
-    final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
-    final weekStart =
-        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final weeklyBudget = child.weeklyAllowanceDefault;
-    final weekSpent = txs
-        .where((t) =>
-            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
-        .fold<int>(0, (a, b) => a + b.amount);
-    final weekRemaining = weeklyBudget - weekSpent;
-
-    final progress = child.bonusThreshold == 0
-        ? 1.0
-        : (weekRemaining / child.bonusThreshold).clamp(0.0, 1.0);
-    final dayReached = now.weekday >= child.bonusDayOfWeek;
-    final met = weekRemaining >= child.bonusThreshold;
-    final daysLeft = child.bonusDayOfWeek - now.weekday; // !dayReached일 때만 유효(항상 ≥1)
-
-    // "이번 주 용돈 3,000원 중 1,200원 썼어요 (1,800원 남음)"
-    String spendLine() => '이번 주 용돈 ${formatWon(weeklyBudget)} 중 ${formatWon(weekSpent)} 썼어요 '
-        '(${formatWon(weekRemaining < 0 ? 0 : weekRemaining)} 남음)';
-    // "내일 목요일까지" / "목요일까지 D-2"
-    String dayLeftText() =>
-        daysLeft == 1 ? '내일 $dayName요일까지' : '$dayName요일까지 D-$daysLeft';
-
-    // 공통 진행 바 위젯
-    Widget progressBar(Color color) => ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: scheme.surfaceContainerHighest,
-            valueColor: AlwaysStoppedAnimation(color),
-          ),
-        );
-
-    // 상태별 구성
-    late final Color bg;
-    late final Color fg;
-    late final IconData icon;
-    late final String title;
-    late final String sub;
-    Widget? trailing;
-
-    if (given) {
-      bg = palette.income.bg;
-      fg = palette.income.fg;
-      icon = Icons.check_circle;
-      title = '이번 주 절약 보너스 완료';
-      sub = '${formatWon(child.bonusAmount)}을 지급했어요. 다음 주에 또 도전!';
-    } else if (dayReached && met) {
-      bg = palette.special.bg;
-      fg = palette.special.fg;
-      icon = Icons.emoji_events;
-      title = '절약 목표 달성! 🎉';
-      sub = '${spendLine()}\n$dayName요일까지 ${formatWon(child.bonusThreshold)} 이상 남겼어요.';
-      if (isChild) {
-        // 자녀: 직접 지급 대신 부모에게 요청
-        trailing = pendingBonusReq
-            ? const Chip(label: Text('요청함'))
-            : FilledButton(
-                onPressed: () => _requestBonus(context, ref),
-                child: const Text('보너스 요청'),
-              );
-      } else {
-        trailing = FilledButton(
-          onPressed: () => _giveBonus(ref),
-          child: Text('보너스 ${formatWon(child.bonusAmount)}'),
-        );
-      }
-    } else if (!dayReached) {
-      bg = palette.allowance.bg;
-      fg = palette.allowance.fg;
-      icon = Icons.savings_outlined;
-      // 제목은 "무엇을 하는 카드인지", 부제는 "조건 → 보상"을 한 문장으로.
-      // (예전엔 제목이 조건으로 시작해 아이가 왜 이 숫자가 있는지 이해하기 어려웠음)
-      title = '이번 주 절약 도전';
-      sub = '${spendLine()}\n${dayLeftText()} · ${formatWon(child.bonusThreshold)} 이상 남기면 '
-          '+${formatWon(child.bonusAmount)}';
-    } else {
-      bg = scheme.surfaceContainerHighest;
-      fg = scheme.onSurfaceVariant;
-      icon = Icons.sentiment_neutral;
-      title = '이번 주는 목표에 조금 못 미쳤어요';
-      sub = '${spendLine()}\n목표 ${formatWon(child.bonusThreshold)}엔 못 미쳤어요. 다음 주에 다시 도전!';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: fg, size: 24),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: TextStyle(
-                              color: fg, fontWeight: FontWeight.w800, fontSize: 14.5)),
-                      const SizedBox(height: 2),
-                      Text(sub, style: TextStyle(color: fg, fontSize: 12.5)),
-                    ],
-                  ),
-                ),
-                if (trailing != null) ...[const SizedBox(width: 8), trailing],
-              ],
-            ),
-            if (!given) ...[
-              const SizedBox(height: 12),
-              progressBar(fg),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _giveBonus(WidgetRef ref) async {
-    final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref.read(databaseProvider).giveSavingsBonus(child, owner);
-  }
-
-  // ---------- 자녀 요청 ----------
-  Future<void> _requestBonus(BuildContext context, WidgetRef ref) async {
-    final ok = await ref.read(databaseProvider).requestBonus(child, '아들');
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ok ? '부모님께 보너스를 요청했어요.' : '이미 요청한 보너스가 있어요.')));
-    }
-  }
-
   void _showWishlistRequestDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
@@ -829,99 +669,6 @@ class OverviewScreen extends ConsumerWidget {
     return '위시리스트: ${r.title ?? ''}$price';
   }
 
-  /// 저축 이자 카드. 규칙이 켜져 있을 때만 표시.
-  /// COFIX 금리 안내 + "이자가 뭐야?" 설명 링크 + 약속 보너스가 반영된 실효 이자율을 보여준다.
-  /// - 부모 모드: 원버튼 지급 버튼(이미 지급했으면 카드 자체가 사라짐)
-  /// - 자녀 모드: 지급 버튼 없이, 지금 적용받는 이자율/금액을 항상 볼 수 있는 정보 카드
-  ///   (예전엔 부모 전용 카드라 자녀 화면엔 아예 안 보였음)
-  Widget _buildInterest(BuildContext context, WidgetRef ref, int balance, bool isChild) {
-    if (!child.interestEnabled) return const SizedBox.shrink();
-    final given = ref
-            .watch(interestGivenProvider((childId: child.id, period: child.interestPeriod)))
-            .valueOrNull ??
-        false;
-    if (!isChild && given) return const SizedBox.shrink();
-    final bonus = ref.watch(promiseBonusProvider(child.id)).valueOrNull ?? 0.0;
-    final bankRate = ref.watch(depositRateProvider).valueOrNull;
-    final b = computeInterest(
-      balance: balance,
-      period: child.interestPeriod,
-      useBankRate: child.interestUseBankRate,
-      multiplier: child.interestMultiplier,
-      fixedPercent: child.interestPercent,
-      promiseBonusAnnualPercent: bonus,
-      bankAnnualPercent: bankRate,
-    );
-    if (b.amount <= 0) return const SizedBox.shrink();
-    final pair = appPalette(context).savings;
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.savings_outlined, color: pair.fg, size: 22),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                      isChild
-                          ? (given ? '${b.periodName} 이자 받았어요' : '${b.periodName} 저축 이자')
-                          : '${b.periodName} 저축 이자 받기',
-                      style: TextStyle(
-                          color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
-                ),
-                InkWell(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => InterestExplainerScreen(breakdown: b)),
-                  ),
-                  child: Text('이자가 뭐야?',
-                      style: TextStyle(
-                        color: pair.fg,
-                        fontSize: 11.5,
-                        decoration: TextDecoration.underline,
-                      )),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // 연 이자율 대표 + 이번 주(회차) 이자 금액. 스스로 은행과 비교하도록
-            // 은행 정기예금 연이율을 나란히 보여준다.
-            Text('연 ${formatPercent(b.annualPercent)}%',
-                style: TextStyle(
-                    color: pair.fg, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-            if (b.hasBankRate)
-              Text('은행 정기예금은 연 ${formatPercent(b.bankAnnualPercent)}%',
-                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12)),
-            const SizedBox(height: 6),
-            Text('${b.periodName} 이자 ${formatWon(b.amount)}',
-                style: TextStyle(color: pair.fg, fontSize: 13, fontWeight: FontWeight.w700)),
-            if (bonus > 0)
-              Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
-                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
-            const SizedBox(height: 10),
-            // 이자는 아이도 직접 받을 수 있다(받는 재미 + 습관).
-            if (given)
-              Text('다음 지급 때 새로 계산돼요.',
-                  style: TextStyle(color: pair.fg.withValues(alpha: 0.85), fontSize: 12))
-            else
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => _giveInterest(context, ref, bankRate),
-                  child: Text('+${formatWon(b.amount)} 받기'),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// 지금 적용받는 연 이자율(%). 이자 규칙이 꺼져 있으면 null.
   double? _currentInterestAnnual(WidgetRef ref, int balance) {
     if (!child.interestEnabled) return null;
@@ -937,17 +684,6 @@ class OverviewScreen extends ConsumerWidget {
       bankAnnualPercent: bankRate,
     );
     return b.annualPercent;
-  }
-
-  Future<void> _giveInterest(
-      BuildContext context, WidgetRef ref, double? bankRate) async {
-    final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    final granted = await ref
-        .read(databaseProvider)
-        .giveInterest(child, owner, bankAnnualPercent: bankRate);
-    if (granted != null && context.mounted) {
-      await showInterestCelebration(context, breakdown: granted);
-    }
   }
 
   /// 홈 상단: 누적 저축 티어 + 주간 저축률 티어를 나란히 두 블럭으로.

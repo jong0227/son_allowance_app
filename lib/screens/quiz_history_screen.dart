@@ -82,6 +82,12 @@ class QuizHistoryScreen extends ConsumerWidget {
                       ? '준비된 문제를 모두 풀었어요. 새 문제를 추가하면 다시 풀 수 있어요.'
                       : '남은 문제가 ${state.remainingInBank}개예요. 곧 새 문제가 필요해요.',
                 ),
+              // 부모만: 아이가 아직 안 푼 문제를 미리 볼 수 있게 한다(정답·해설 포함).
+              // 아이에게는 절대 안 보여준다(미리 외우면 퀴즈 의미가 없어짐).
+              if (!isChild) ...[
+                const SectionHeader('안 푼 문제 미리 보기'),
+                _UnsolvedSection(questions: state.unused, palette: palette),
+              ],
               const SectionHeader('푼 문제 기록'),
               if (attempts.isEmpty)
                 _Notice(pair: palette.savings, text: '아직 푼 문제가 없어요.')
@@ -99,6 +105,112 @@ class QuizHistoryScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// 아직 안 푼 문제를 주제별로 묶어 미리 볼 수 있는 부모 전용 섹션.
+/// 기본은 접어둬서(전체 펼치면 화면이 너무 길어짐) 필요할 때만 열어본다.
+class _UnsolvedSection extends StatelessWidget {
+  final List<QuizQuestion> questions;
+  final AppPalette palette;
+  const _UnsolvedSection({required this.questions, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    if (questions.isEmpty) {
+      return _Notice(pair: palette.savings, text: '준비된 문제를 모두 풀었어요.');
+    }
+    // 주제별로 묶되, 문제은행에 나온 주제 순서를 그대로 따른다.
+    final byTopic = <String, List<QuizQuestion>>{};
+    for (final q in questions) {
+      byTopic.putIfAbsent(q.topic, () => []).add(q);
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+          leading: CircleAvatar(
+            backgroundColor: palette.allowance.bg,
+            child: Icon(Icons.visibility_outlined, color: palette.allowance.fg),
+          ),
+          title: Text('안 푼 문제 ${questions.length}개',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          subtitle: Text('주제별로 정답·해설까지 미리 확인할 수 있어요',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          children: [
+            for (final entry in byTopic.entries) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text('${entry.key} · ${entry.value.length}개',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurfaceVariant)),
+              ),
+              for (final q in entry.value) _UnsolvedTile(question: q, palette: palette),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 안 푼 문제 하나. 펼치면 보기 전부 + 정답 + 해설을 볼 수 있다(부모 전용).
+class _UnsolvedTile extends StatelessWidget {
+  final QuizQuestion question;
+  final AppPalette palette;
+  const _UnsolvedTile({required this.question, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(question.question,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+          children: [
+            for (var i = 0; i < question.options.length; i++)
+              _OptionRow(
+                text: question.options[i],
+                isAnswer: i == question.answerIndex,
+                isPicked: false,
+                palette: palette,
+              ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: palette.allowance.bg, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('💡', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(question.explanation,
+                        style: TextStyle(
+                            fontSize: 13, height: 1.5, color: palette.allowance.fg)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

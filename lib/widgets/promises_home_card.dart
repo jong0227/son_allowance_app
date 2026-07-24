@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
+import '../providers/rates_provider.dart';
 import '../screens/promise_detail_screen.dart';
+import '../services/interest_calc.dart';
 import '../utils/formatters.dart';
 import 'ui_kit.dart';
 
@@ -10,11 +12,12 @@ import 'ui_kit.dart';
 /// 아이도 부모도 같은 카드를 본다. 약속을 누르면 상세 + 댓글로 들어간다.
 /// (ON/OFF는 부모만 바꿀 수 있고, 아이는 댓글로 어떻게 지키는지 남긴다)
 class PromisesHomeCard extends ConsumerWidget {
-  final String childId;
-  const PromisesHomeCard({super.key, required this.childId});
+  final Child child;
+  const PromisesHomeCard({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final childId = child.id;
     final promises = ref.watch(promisesProvider(childId)).valueOrNull ?? const [];
     if (promises.isEmpty) return const SizedBox.shrink();
 
@@ -30,6 +33,23 @@ class PromisesHomeCard extends ConsumerWidget {
     final palette = appPalette(context);
     final theme = Theme.of(context);
 
+    // 약속까지 다 반영한 "최종 적용 이자"(연). 이자 규칙이 꺼져 있으면 표시하지 않는다.
+    double? finalAnnualPercent;
+    if (child.interestEnabled) {
+      final balance = ref.watch(summaryProvider(childId)).valueOrNull?['balance'] ?? 0;
+      final bankRate = ref.watch(depositRateProvider).valueOrNull;
+      final b = computeInterest(
+        balance: balance,
+        period: child.interestPeriod,
+        useBankRate: child.interestUseBankRate,
+        multiplier: child.interestMultiplier,
+        fixedPercent: child.interestPercent,
+        promiseBonusAnnualPercent: bonus,
+        bankAnnualPercent: bankRate,
+      );
+      finalAnnualPercent = b.annualPercent;
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
@@ -44,12 +64,12 @@ class PromisesHomeCard extends ConsumerWidget {
                 Text('부모님과 약속',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
-                if (bonus > 0)
+                if (finalAnnualPercent != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                     decoration: BoxDecoration(
                         color: palette.income.bg, borderRadius: BorderRadius.circular(20)),
-                    child: Text('이자 +${formatPercent(bonus)}%',
+                    child: Text('최종 이자 연 ${formatPercent(finalAnnualPercent)}%',
                         style: TextStyle(
                             color: palette.income.fg,
                             fontSize: 11.5,
@@ -57,6 +77,13 @@ class PromisesHomeCard extends ConsumerWidget {
                   ),
               ],
             ),
+            if (finalAnnualPercent != null && bonus > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 2),
+                child: Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
+                    style: TextStyle(
+                        fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+              ),
             const SizedBox(height: 4),
             for (final p in promises)
               _PromiseRow(promise: p, comments: commentCount[p.id] ?? 0),
