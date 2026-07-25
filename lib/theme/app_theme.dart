@@ -39,15 +39,31 @@ class AppPalette extends ThemeExtension<AppPalette> {
   }
 
   /// 여러 항목을 한 화면에서 함께 비교할 때(파이차트/범례/선택 칩 등) 서로
-  /// 겹치지 않는 색을 배정한다. 이름을 정렬한 뒤 순서대로 배정하므로, 항목 수가
-  /// 팔레트 크기([tags.length]) 이하면 절대 겹치지 않고, 같은 목록이면 항상
-  /// 같은 항목이 같은 색을 받는다(hashCode 기반 [tagFor]는 항목이 몇 개 안 돼도
-  /// 우연히 같은 색을 배정할 수 있어 "간식"과 "기타"가 겹치는 문제가 있었다).
+  /// 겹치지 않는 색을 배정한다. 이름을 정렬한 뒤 색상환을 항목 수만큼 "균등
+  /// 분할"해서 배정하므로, 항목이 몇 개 안 될 때(예: 4개)도 서로 최대한 멀리
+  /// 떨어진 색을 받아 확실히 구분된다. 예를 들어 항목이 4개면 정확히 90˚씩
+  /// 떨어진 색을 받는다.
+  /// (예전엔 hashCode 기반이라 "간식"·"기타"가 겹쳤고, 그다음엔 색상환을
+  /// 연속 슬롯으로 순서대로만 채워서 항목이 적을 때 우연히 가까운 색을
+  /// 받는 경우가 있었다 — 이번엔 항목 수에 맞춰 원을 나누므로 그런 우연이
+  /// 생기지 않는다)
   Map<String, PastelPair> tagsFor(Iterable<String> keys) {
     final sorted = keys.toSet().toList()..sort();
-    return {
-      for (var i = 0; i < sorted.length; i++) sorted[i]: tags[i % tags.length],
-    };
+    final n = sorted.length;
+    final total = tags.length;
+    if (n == 0) return const {};
+    final map = <String, PastelPair>{};
+    for (var i = 0; i < n; i++) {
+      // n이 total 이하면 (i * total) ~/ n 이 0..total-1 사이에서 서로 다른
+      // 값으로 고르게 퍼진다(원을 n등분). n이 total을 넘으면 어쩔 수 없이
+      // 순환해서 재사용한다(카테고리가 아주 많아질 때의 예외 상황).
+      final idx = n <= total ? (i * total) ~/ n : i % total;
+      map[sorted[i]] = tags[idx];
+    }
+    assert(
+        n > total || map.values.toSet().length == n,
+        'tagsFor: 색이 겹쳤어요 (n=$n, total=$total) — 원 등분 계산을 다시 확인하세요');
+    return map;
   }
 
   @override
