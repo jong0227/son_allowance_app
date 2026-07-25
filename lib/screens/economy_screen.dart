@@ -12,7 +12,6 @@ import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 import 'compound_simulator_screen.dart';
 import 'interest_explainer_screen.dart';
-import 'invest_screen.dart';
 import 'quiz_history_screen.dart';
 import 'quiz_screen.dart';
 import 'rates_explainer_screen.dart';
@@ -69,13 +68,6 @@ class EconomyScreen extends ConsumerWidget {
             subtitle: '지금처럼 모으면 1년 뒤 얼마가 될지 보기',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => CompoundSimulatorScreen(child: child))),
-          ),
-          _NavCard(
-            emoji: '🌏',
-            title: '모의 투자',
-            subtitle: '저축 포인트로 세계 지수에 투자해보기',
-            onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => InvestScreen(child: child))),
           ),
           const SectionHeader('오늘의 경제상식'),
           const _TodayTopicCard(),

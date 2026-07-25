@@ -98,10 +98,10 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                               color: palette.savings.fg)),
                       const SizedBox(width: 10),
                       Text(
-                          '${idx.isUp ? '▲' : (idx.isDown ? '▼' : '–')} '
+                          '어제보다 ${idx.isUp ? '▲' : (idx.isDown ? '▼' : '–')} '
                           '${idx.change > 0 ? '+' : ''}${idx.changePercent.toStringAsFixed(2)}%',
                           style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w800,
                               color: idx.isUp
                                   ? investUp

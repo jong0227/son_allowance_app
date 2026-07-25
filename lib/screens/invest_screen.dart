@@ -22,10 +22,11 @@ int positionValue(Investment p, double? nowValue) {
   return (p.amount * nowValue / p.buyValue).round();
 }
 
-/// 모의 투자 화면. 저축 포인트로 세계 지수에 투자해보고, 팔면 손익이 저축에 반영된다.
-class InvestScreen extends ConsumerWidget {
+/// 모의 투자 섹션. 저축 포인트로 세계 지수에 투자해보고, 팔면 손익이 저축에 반영된다.
+/// 주식 탭 본문에 그대로 끼워 넣어 쓴다(별도 화면이 아니라 인라인 섹션).
+class InvestSection extends ConsumerWidget {
   final Child child;
-  const InvestScreen({super.key, required this.child});
+  const InvestSection({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,83 +50,83 @@ class InvestScreen extends ConsumerWidget {
         0, (s, p) => s + positionValue(p, bySymbol[p.symbol]?.value));
     final openGain = openValue - invested;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('모의 투자'),
-        actions: [
-          IconButton(
-            tooltip: '새로고침',
-            onPressed: () => ref.invalidate(investIndicesProvider),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(investIndicesProvider),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            _SummaryCard(
-              canInvest: canInvest,
-              invested: invested,
-              openValue: openValue,
-              gain: openGain,
-              limitPercent: child.investLimitPercent,
-              cap: cap,
-              palette: palette,
+            const Expanded(child: SectionHeader('모의 투자')),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              iconSize: 19,
+              tooltip: '지수 새로고침',
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              onPressed: () => ref.invalidate(investIndicesProvider),
+              icon: const Icon(Icons.refresh),
             ),
-            const SizedBox(height: 4),
-            _Notice(
-              pair: palette.allowance,
-              text: '진짜 돈이 아니라 저축 포인트로 연습하는 투자예요. '
-                  '지수가 오르면 포인트가 늘고, 내리면 줄어요.',
-            ),
-            const SectionHeader('세계 지수'),
-            if (indicesAsync.isLoading && indices.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(28),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (indices.isEmpty)
-              _Notice(
-                pair: palette.expense,
-                text: '지수를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해주세요.',
-              )
-            else
-              for (final (key, label, symbol, note)
-                  in StockSearchService.investTargets)
-                if (bySymbol[symbol] != null)
-                  _IndexTile(
-                    index: bySymbol[symbol]!,
-                    note: note,
-                    holdingCount: open.where((p) => p.indexKey == key).length,
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => InvestDetailScreen(
-                        child: child,
-                        indexKey: key,
-                        label: label,
-                        symbol: symbol,
-                        note: note,
-                      ),
-                    )),
-                  ),
-            if (open.isNotEmpty) ...[
-              const SectionHeader('내가 가진 것'),
-              for (final p in open)
-                _OpenPositionTile(
-                  position: p,
-                  nowValue: bySymbol[p.symbol]?.value,
-                  palette: palette,
-                ),
-            ],
-            if (closed.isNotEmpty) ...[
-              const SectionHeader('판 기록'),
-              for (final p in closed.take(20))
-                _ClosedPositionTile(position: p, palette: palette),
-            ],
           ],
         ),
-      ),
+        _SummaryCard(
+          canInvest: canInvest,
+          invested: invested,
+          openValue: openValue,
+          gain: openGain,
+          limitPercent: child.investLimitPercent,
+          cap: cap,
+          palette: palette,
+        ),
+        _Notice(
+          pair: palette.allowance,
+          text: '진짜 돈이 아니라 저축 포인트로 연습하는 투자예요. '
+              '지수가 오르면 포인트가 늘고, 내리면 줄어요.',
+        ),
+        const SizedBox(height: 12),
+        Text('지수를 눌러 차트를 보고 투자할 수 있어요',
+            style: TextStyle(
+                fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 6),
+        if (indicesAsync.isLoading && indices.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(28),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (indices.isEmpty)
+          _Notice(
+            pair: palette.expense,
+            text: '지수를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해주세요.',
+          )
+        else
+          for (final target in StockSearchService.investTargets)
+            if (bySymbol[target.$3] != null)
+              _IndexTile(
+                index: bySymbol[target.$3]!,
+                note: target.$4,
+                holdingCount: open.where((p) => p.indexKey == target.$1).length,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => InvestDetailScreen(
+                    child: child,
+                    indexKey: target.$1,
+                    label: target.$2,
+                    symbol: target.$3,
+                    note: target.$4,
+                  ),
+                )),
+              ),
+        if (open.isNotEmpty) ...[
+          const SectionHeader('내가 가진 것'),
+          for (final p in open)
+            _OpenPositionTile(
+              position: p,
+              nowValue: bySymbol[p.symbol]?.value,
+              palette: palette,
+            ),
+        ],
+        if (closed.isNotEmpty) ...[
+          const SectionHeader('판 기록'),
+          for (final p in closed.take(10))
+            _ClosedPositionTile(position: p, palette: palette),
+        ],
+      ],
     );
   }
 }
@@ -152,6 +153,7 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final pair = palette.savings;
     final gainColor = gain > 0 ? investUp : (gain < 0 ? investDown : pair.fg);
+    final rate = invested == 0 ? 0.0 : gain / invested * 100;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration:
@@ -159,37 +161,69 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('지금 투자한 돈',
+          Text('지금 투자한 돈 (평가액)',
               style: TextStyle(fontSize: 13, color: pair.fg.withValues(alpha: 0.85))),
           const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(formatWon(openValue),
-                  style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.8,
-                      color: pair.fg)),
-              const SizedBox(width: 8),
-              if (invested > 0)
-                Text('${gain >= 0 ? '+' : ''}${formatWon(gain)}',
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(formatWon(openValue),
                     style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w800, color: gainColor)),
-            ],
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.8,
+                        color: pair.fg)),
+                if (invested > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                      '${gain >= 0 ? '+' : ''}${formatWon(gain)} '
+                      '(${gain >= 0 ? '+' : ''}${rate.toStringAsFixed(1)}%)',
+                      style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800, color: gainColor)),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               _Cell(label: '원금', value: formatWon(invested), pair: pair),
               const SizedBox(width: 8),
-              _Cell(label: '더 넣을 수 있는 돈', value: formatWon(canInvest), pair: pair),
+              _Cell(
+                label: '평가손익',
+                value: invested == 0
+                    ? '-'
+                    : '${gain >= 0 ? '+' : ''}${formatWon(gain)}',
+                pair: pair,
+                valueColor: invested == 0 ? null : gainColor,
+              ),
+              const SizedBox(width: 8),
+              _Cell(
+                label: '수익률',
+                value: invested == 0
+                    ? '-'
+                    : '${gain >= 0 ? '+' : ''}${rate.toStringAsFixed(1)}%',
+                pair: pair,
+                valueColor: invested == 0 ? null : gainColor,
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('투자 한도: 총 저축의 ${formatPercent(limitPercent)}% (${formatWon(cap)})',
-              style: TextStyle(fontSize: 11.5, color: pair.fg.withValues(alpha: 0.8))),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                    '더 넣을 수 있는 돈 ${formatWon(canInvest)} · '
+                    '한도 총 저축의 ${formatPercent(limitPercent)}%(${formatWon(cap)})',
+                    style:
+                        TextStyle(fontSize: 11.5, color: pair.fg.withValues(alpha: 0.8))),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -200,13 +234,18 @@ class _Cell extends StatelessWidget {
   final String label;
   final String value;
   final PastelPair pair;
-  const _Cell({required this.label, required this.value, required this.pair});
+  final Color? valueColor; // 손익처럼 색으로 뜻을 주는 값에만 지정
+  const _Cell(
+      {required this.label,
+      required this.value,
+      required this.pair,
+      this.valueColor});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
             color: pair.fg.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12)),
@@ -219,8 +258,11 @@ class _Cell extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(value,
+                  maxLines: 1,
                   style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w900, color: pair.fg)),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w900,
+                      color: valueColor ?? pair.fg)),
             ),
           ],
         ),
@@ -282,7 +324,8 @@ class _IndexTile extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 15, height: 1.1, fontWeight: FontWeight.w800)),
             const SizedBox(height: 2),
-            Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
+            // "어제" 를 붙여 하루 등락률임을 분명히 한다.
+            Text('어제 $arrow $sign${index.changePercent.toStringAsFixed(2)}%',
                 style: TextStyle(
                     fontSize: 11.5, height: 1.1, color: color, fontWeight: FontWeight.w600)),
           ],

@@ -36,6 +36,10 @@ class MarketIndexStrip extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Text('오늘의 지수',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(width: 6),
+                // 등락률이 "하루치"임을 분명히 (1개월 등과 헷갈리지 않게)
+                Text('어제 대비',
+                    style: TextStyle(fontSize: 11, color: textSecondary)),
                 const Spacer(),
                 Text(DateFormat('M월 d일').format(DateTime.now()),
                     style: TextStyle(fontSize: 11.5, color: textSecondary)),

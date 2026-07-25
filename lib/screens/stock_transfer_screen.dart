@@ -10,6 +10,7 @@ import '../utils/formatters.dart';
 import '../widgets/market_index_strip.dart';
 import '../widgets/stock_search.dart';
 import '../widgets/ui_kit.dart';
+import 'invest_screen.dart';
 
 class StockTransferScreen extends ConsumerWidget {
   final Child child;
@@ -32,7 +33,11 @@ class StockTransferScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const MarketIndexStrip(),
-          const SizedBox(height: 12),
+
+          // 저축 포인트로 세계 지수에 투자해보는 연습. 주식 탭의 주요 콘텐츠.
+          InvestSection(child: child),
+
+          const SectionHeader('주식계좌 이체'),
           summaryAsync.when(
             data: (s) => Card(
               color: Theme.of(context).colorScheme.secondaryContainer,

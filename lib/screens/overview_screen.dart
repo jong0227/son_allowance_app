@@ -14,7 +14,7 @@ import '../utils/formatters.dart';
 import '../widgets/bonus_home_card.dart';
 import '../widgets/interest_celebration.dart';
 import '../widgets/interest_home_card.dart';
-import '../widgets/market_index_strip.dart';
+import '../widgets/invest_status_strip.dart';
 import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
@@ -62,7 +62,7 @@ class OverviewScreen extends ConsumerWidget {
         children: [
           _buildLevelUpBanner(context, ref),
           _buildTierCard(ref),
-          const MarketIndexStrip(tightTop: true),
+          InvestStatusStrip(childId: child.id, tightTop: true),
           if (!isChild) _buildBackupReminder(context, ref),
           _buildRequestsSection(context, ref, isChild),
           summaryAsync.when(
