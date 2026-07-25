@@ -38,6 +38,18 @@ class AppPalette extends ThemeExtension<AppPalette> {
     return tags[idx];
   }
 
+  /// 여러 항목을 한 화면에서 함께 비교할 때(파이차트/범례/선택 칩 등) 서로
+  /// 겹치지 않는 색을 배정한다. 이름을 정렬한 뒤 순서대로 배정하므로, 항목 수가
+  /// 팔레트 크기([tags.length]) 이하면 절대 겹치지 않고, 같은 목록이면 항상
+  /// 같은 항목이 같은 색을 받는다(hashCode 기반 [tagFor]는 항목이 몇 개 안 돼도
+  /// 우연히 같은 색을 배정할 수 있어 "간식"과 "기타"가 겹치는 문제가 있었다).
+  Map<String, PastelPair> tagsFor(Iterable<String> keys) {
+    final sorted = keys.toSet().toList()..sort();
+    return {
+      for (var i = 0; i < sorted.length; i++) sorted[i]: tags[i % tags.length],
+    };
+  }
+
   @override
   AppPalette copyWith() => this;
 
@@ -50,15 +62,25 @@ class AppPalette extends ThemeExtension<AppPalette> {
     savings: PastelPair(Color(0xFFE8F1FD), Color(0xFF4B7BD8)),
     special: PastelPair(Color(0xFFF1EAFB), Color(0xFF8663C9)),
     allowance: PastelPair(Color(0xFFFAF1D9), Color(0xFFBE8E2E)),
+    // 16색상환에 고르게 분산 배치(22.5˚ 간격) — 카테고리가 늘어나도 인접한
+    // 두 색이 서로 확실히 구분되도록 색상환을 균등 분할했다.
     tags: [
-      PastelPair(Color(0xFFDCE7FB), Color(0xFF3E6DB5)),
-      PastelPair(Color(0xFFFBE6D4), Color(0xFFB5713A)),
-      PastelPair(Color(0xFFD9F0E0), Color(0xFF3B8B5E)),
-      PastelPair(Color(0xFFEADFF7), Color(0xFF7E5AB8)),
-      PastelPair(Color(0xFFFBDEE8), Color(0xFFB5527E)),
-      PastelPair(Color(0xFFFBF0CF), Color(0xFF9C7A26)),
-      PastelPair(Color(0xFFD5EFF0), Color(0xFF3A8A8F)),
-      PastelPair(Color(0xFFF3E0D0), Color(0xFF9A6B4A)),
+      PastelPair(Color(0xFFF5DBDB), Color(0xFF8E2929)), // 빨강
+      PastelPair(Color(0xFFF5E5DB), Color(0xFF8E4F29)), // 주황
+      PastelPair(Color(0xFFF5EEDB), Color(0xFF8E7529)), // 호박
+      PastelPair(Color(0xFFF2F5DB), Color(0xFF828E29)), // 올리브
+      PastelPair(Color(0xFFE8F5DB), Color(0xFF5C8E29)), // 연두
+      PastelPair(Color(0xFFDFF5DB), Color(0xFF368E29)), // 초록
+      PastelPair(Color(0xFFDBF5E2), Color(0xFF298E43)), // 에메랄드
+      PastelPair(Color(0xFFDBF5EB), Color(0xFF298E68)), // 스프링그린
+      PastelPair(Color(0xFFDBF5F5), Color(0xFF298E8E)), // 청록
+      PastelPair(Color(0xFFDBEBF5), Color(0xFF29688E)), // 하늘
+      PastelPair(Color(0xFFDBE2F5), Color(0xFF29438E)), // 파랑
+      PastelPair(Color(0xFFDFDBF5), Color(0xFF36298E)), // 남색
+      PastelPair(Color(0xFFE8DBF5), Color(0xFF5C298E)), // 보라
+      PastelPair(Color(0xFFF2DBF5), Color(0xFF82298E)), // 자주
+      PastelPair(Color(0xFFF5DBEE), Color(0xFF8E2975)), // 마젠타
+      PastelPair(Color(0xFFF5DBE5), Color(0xFF8E294F)), // 로즈
     ],
     heroFrom: Color(0xFFEDEFFF),
     heroTo: Color(0xFFF6EAFB),
@@ -71,15 +93,24 @@ class AppPalette extends ThemeExtension<AppPalette> {
     savings: PastelPair(Color(0xFF1E2A3F), Color(0xFF88ABF0)),
     special: PastelPair(Color(0xFF2A2440), Color(0xFFB79BEB)),
     allowance: PastelPair(Color(0xFF322A1A), Color(0xFFE0BC6A)),
+    // light와 같은 16색상환, 어두운 배경/밝은 글자로 반전.
     tags: [
-      PastelPair(Color(0xFF25324A), Color(0xFF9BBAF0)),
-      PastelPair(Color(0xFF3A2C1F), Color(0xFFE0B183)),
-      PastelPair(Color(0xFF203528), Color(0xFF8CD3A8)),
-      PastelPair(Color(0xFF2E2740), Color(0xFFC3A8EE)),
-      PastelPair(Color(0xFF3A2530), Color(0xFFEDA0BF)),
-      PastelPair(Color(0xFF352E1B), Color(0xFFE0C878)),
-      PastelPair(Color(0xFF1E3436), Color(0xFF87CBCF)),
-      PastelPair(Color(0xFF352A20), Color(0xFFD3A585)),
+      PastelPair(Color(0xFF471F1F), Color(0xFFE19898)), // 빨강
+      PastelPair(Color(0xFF472E1F), Color(0xFFE1B498)), // 주황
+      PastelPair(Color(0xFF473D1F), Color(0xFFE1CF98)), // 호박
+      PastelPair(Color(0xFF42471F), Color(0xFFD8E198)), // 올리브
+      PastelPair(Color(0xFF33471F), Color(0xFFBDE198)), // 연두
+      PastelPair(Color(0xFF24471F), Color(0xFFA1E198)), // 초록
+      PastelPair(Color(0xFF1F4729), Color(0xFF98E1AA)), // 에메랄드
+      PastelPair(Color(0xFF1F4738), Color(0xFF98E1C6)), // 스프링그린
+      PastelPair(Color(0xFF1F4747), Color(0xFF98E1E1)), // 청록
+      PastelPair(Color(0xFF1F3847), Color(0xFF98C6E1)), // 하늘
+      PastelPair(Color(0xFF1F2947), Color(0xFF98AAE1)), // 파랑
+      PastelPair(Color(0xFF241F47), Color(0xFFA198E1)), // 남색
+      PastelPair(Color(0xFF331F47), Color(0xFFBD98E1)), // 보라
+      PastelPair(Color(0xFF421F47), Color(0xFFD898E1)), // 자주
+      PastelPair(Color(0xFF471F3D), Color(0xFFE198CF)), // 마젠타
+      PastelPair(Color(0xFF471F2E), Color(0xFFE198B4)), // 로즈
     ],
     heroFrom: Color(0xFF272A45),
     heroTo: Color(0xFF322A47),
@@ -101,10 +132,16 @@ ThemeData _buildTheme({required Brightness brightness}) {
 
   final bg = isDark ? const Color(0xFF161719) : const Color(0xFFFAF9F7);
   final surface = isDark ? const Color(0xFF1F2123) : Colors.white;
-  final surfaceMuted = isDark ? const Color(0xFF26282B) : const Color(0xFFF3F1ED);
+  final surfaceMuted = isDark
+      ? const Color(0xFF26282B)
+      : const Color(0xFFF3F1ED);
   final border = isDark ? const Color(0xFF2E3033) : const Color(0xFFECEAE5);
-  final textPrimary = isDark ? const Color(0xFFE8E7E4) : const Color(0xFF2B2A28);
-  final textSecondary = isDark ? const Color(0xFF97938D) : const Color(0xFF8B8681);
+  final textPrimary = isDark
+      ? const Color(0xFFE8E7E4)
+      : const Color(0xFF2B2A28);
+  final textSecondary = isDark
+      ? const Color(0xFF97938D)
+      : const Color(0xFF8B8681);
   final accent = isDark ? NotionColors.accentDark : NotionColors.accent;
   final palette = isDark ? AppPalette.dark : AppPalette.light;
 
@@ -131,23 +168,60 @@ ThemeData _buildTheme({required Brightness brightness}) {
 
   // 세련된 위계: 큰 숫자는 굵고 자간 좁게, 본문은 살짝 여유있게.
   final base = GoogleFonts.notoSansKrTextTheme();
-  final textTheme = base.apply(bodyColor: textPrimary, displayColor: textPrimary).copyWith(
+  final textTheme = base
+      .apply(bodyColor: textPrimary, displayColor: textPrimary)
+      .copyWith(
         displaySmall: base.displaySmall?.copyWith(
-            fontWeight: FontWeight.w800, letterSpacing: -1.0, height: 1.05, color: textPrimary),
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.0,
+          height: 1.05,
+          color: textPrimary,
+        ),
         headlineMedium: base.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w800, letterSpacing: -0.8, height: 1.1, color: textPrimary),
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.8,
+          height: 1.1,
+          color: textPrimary,
+        ),
         headlineSmall: base.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700, letterSpacing: -0.5, color: textPrimary),
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+          color: textPrimary,
+        ),
         titleLarge: base.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700, letterSpacing: -0.4, color: textPrimary),
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: textPrimary,
+        ),
         titleMedium: base.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600, letterSpacing: -0.2, color: textPrimary),
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+          color: textPrimary,
+        ),
         titleSmall: base.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600, letterSpacing: -0.1, color: textPrimary),
-        bodyLarge: base.bodyLarge?.copyWith(letterSpacing: -0.1, height: 1.4, color: textPrimary),
-        bodyMedium: base.bodyMedium?.copyWith(letterSpacing: -0.1, height: 1.4, color: textPrimary),
-        bodySmall: base.bodySmall?.copyWith(letterSpacing: 0, height: 1.35, color: textSecondary),
-        labelLarge: base.labelLarge?.copyWith(fontWeight: FontWeight.w600, letterSpacing: -0.1),
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+          color: textPrimary,
+        ),
+        bodyLarge: base.bodyLarge?.copyWith(
+          letterSpacing: -0.1,
+          height: 1.4,
+          color: textPrimary,
+        ),
+        bodyMedium: base.bodyMedium?.copyWith(
+          letterSpacing: -0.1,
+          height: 1.4,
+          color: textPrimary,
+        ),
+        bodySmall: base.bodySmall?.copyWith(
+          letterSpacing: 0,
+          height: 1.35,
+          color: textSecondary,
+        ),
+        labelLarge: base.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+        ),
       );
 
   return ThemeData(
@@ -169,7 +243,11 @@ ThemeData _buildTheme({required Brightness brightness}) {
       centerTitle: false,
       titleSpacing: 16,
       titleTextStyle: GoogleFonts.notoSansKr(
-          color: textPrimary, fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+        color: textPrimary,
+        fontSize: 19,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.4,
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -184,9 +262,16 @@ ThemeData _buildTheme({required Brightness brightness}) {
     listTileTheme: ListTileThemeData(
       iconColor: textSecondary,
       titleTextStyle: GoogleFonts.notoSansKr(
-          color: textPrimary, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2),
-      subtitleTextStyle:
-          GoogleFonts.notoSansKr(color: textSecondary, fontSize: 12.5, letterSpacing: -0.1),
+        color: textPrimary,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
+      ),
+      subtitleTextStyle: GoogleFonts.notoSansKr(
+        color: textSecondary,
+        fontSize: 12.5,
+        letterSpacing: -0.1,
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -213,13 +298,20 @@ ThemeData _buildTheme({required Brightness brightness}) {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2, fontSize: 15),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
+          fontSize: 15,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: textSecondary,
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
@@ -227,7 +319,10 @@ ThemeData _buildTheme({required Brightness brightness}) {
       backgroundColor: accent,
       foregroundColor: Colors.white,
       elevation: 2,
-      extendedTextStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2),
+      extendedTextStyle: const TextStyle(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -247,7 +342,10 @@ ThemeData _buildTheme({required Brightness brightness}) {
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
-        return IconThemeData(color: selected ? accent : textSecondary, size: 24);
+        return IconThemeData(
+          color: selected ? accent : textSecondary,
+          size: 24,
+        );
       }),
     ),
     navigationRailTheme: NavigationRailThemeData(
@@ -255,19 +353,32 @@ ThemeData _buildTheme({required Brightness brightness}) {
       indicatorColor: accent.withValues(alpha: 0.16),
       selectedIconTheme: IconThemeData(color: accent),
       unselectedIconTheme: IconThemeData(color: textSecondary),
-      selectedLabelTextStyle:
-          TextStyle(color: accent, fontWeight: FontWeight.w700, letterSpacing: -0.2),
-      unselectedLabelTextStyle: TextStyle(color: textSecondary, letterSpacing: -0.2),
+      selectedLabelTextStyle: TextStyle(
+        color: accent,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+      ),
+      unselectedLabelTextStyle: TextStyle(
+        color: textSecondary,
+        letterSpacing: -0.2,
+      ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         textStyle: WidgetStatePropertyAll(
-            GoogleFonts.notoSansKr(fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+          GoogleFonts.notoSansKr(
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
         shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
         side: WidgetStatePropertyAll(BorderSide(color: border)),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return accent.withValues(alpha: 0.16);
+          if (states.contains(WidgetState.selected)) {
+            return accent.withValues(alpha: 0.16);
+          }
           return surface;
         }),
         foregroundColor: WidgetStateProperty.resolveWith((states) {
@@ -280,7 +391,11 @@ ThemeData _buildTheme({required Brightness brightness}) {
       backgroundColor: surfaceMuted,
       side: BorderSide(color: border),
       labelStyle: GoogleFonts.notoSansKr(
-          fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -0.2, color: textPrimary),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
+        color: textPrimary,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     dialogTheme: DialogThemeData(
@@ -288,7 +403,11 @@ ThemeData _buildTheme({required Brightness brightness}) {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       titleTextStyle: GoogleFonts.notoSansKr(
-          color: textPrimary, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+        color: textPrimary,
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.4,
+      ),
     ),
     checkboxTheme: CheckboxThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),

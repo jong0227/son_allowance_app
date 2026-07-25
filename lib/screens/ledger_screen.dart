@@ -68,7 +68,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     super.didUpdateWidget(old);
     // 지급요일/기본금액이 바뀌면 예정 일정을 다시 맞춘다.
     if (old.child.payDayOfWeek != widget.child.payDayOfWeek ||
-        old.child.weeklyAllowanceDefault != widget.child.weeklyAllowanceDefault) {
+        old.child.weeklyAllowanceDefault !=
+            widget.child.weeklyAllowanceDefault) {
       _syncSchedule();
     }
   }
@@ -98,56 +99,58 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           if (isChild)
             const SizedBox.shrink()
           else
-          schedulesAsync.maybeWhen(
-            orElse: () => const SizedBox.shrink(),
-            data: (schedules) {
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              bool isOverdue(AllowanceSchedule s) => DateTime(s.scheduledDate.year,
-                      s.scheduledDate.month, s.scheduledDate.day)
-                  .isBefore(today);
-              final pending = schedules.where((s) => !s.isPaid).toList()
-                ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-              final overdue = pending.where(isOverdue).toList();
-              final upcoming = pending.where((s) => !isOverdue(s)).toList();
-              if (pending.isEmpty) return const SizedBox.shrink();
-              final overdueSum = overdue.fold<int>(0, (a, b) => a + b.amount);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (overdue.isNotEmpty) ...[
-                    SectionHeader(
-                      '밀린 용돈 ${overdue.length}건 · ${formatWon(overdueSum)}',
-                      trailing: overdue.length >= 2
-                          ? TextButton(
-                              onPressed: () => _payAllOverdue(overdue),
-                              child: const Text('모두 지급'),
-                            )
-                          : null,
-                    ),
-                    for (final s in overdue)
-                      _PendingScheduleCard(
-                        s: s,
-                        overdue: true,
-                        onPay: () => _payNow(s),
-                        onEditAmount: () => _editAmount(s),
-                        onSkip: () => _confirmSkip(s),
+            schedulesAsync.maybeWhen(
+              orElse: () => const SizedBox.shrink(),
+              data: (schedules) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                bool isOverdue(AllowanceSchedule s) => DateTime(
+                  s.scheduledDate.year,
+                  s.scheduledDate.month,
+                  s.scheduledDate.day,
+                ).isBefore(today);
+                final pending = schedules.where((s) => !s.isPaid).toList()
+                  ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+                final overdue = pending.where(isOverdue).toList();
+                final upcoming = pending.where((s) => !isOverdue(s)).toList();
+                if (pending.isEmpty) return const SizedBox.shrink();
+                final overdueSum = overdue.fold<int>(0, (a, b) => a + b.amount);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (overdue.isNotEmpty) ...[
+                      SectionHeader(
+                        '밀린 용돈 ${overdue.length}건 · ${formatWon(overdueSum)}',
+                        trailing: overdue.length >= 2
+                            ? TextButton(
+                                onPressed: () => _payAllOverdue(overdue),
+                                child: const Text('모두 지급'),
+                              )
+                            : null,
                       ),
+                      for (final s in overdue)
+                        _PendingScheduleCard(
+                          s: s,
+                          overdue: true,
+                          onPay: () => _payNow(s),
+                          onEditAmount: () => _editAmount(s),
+                          onSkip: () => _confirmSkip(s),
+                        ),
+                    ],
+                    if (upcoming.isNotEmpty) ...[
+                      const SectionHeader('지급할 용돈'),
+                      for (final s in upcoming)
+                        _PendingScheduleCard(
+                          s: s,
+                          overdue: false,
+                          onPay: () => _payNow(s),
+                          onEditAmount: () => _editAmount(s),
+                        ),
+                    ],
                   ],
-                  if (upcoming.isNotEmpty) ...[
-                    const SectionHeader('지급할 용돈'),
-                    for (final s in upcoming)
-                      _PendingScheduleCard(
-                        s: s,
-                        overdue: false,
-                        onPay: () => _payNow(s),
-                        onEditAmount: () => _editAmount(s),
-                      ),
-                  ],
-                ],
-              );
-            },
-          ),
+                );
+              },
+            ),
           const SectionHeader('전체 내역'),
           // 검색창
           TextField(
@@ -185,7 +188,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                     child: ChoiceChip(
                       label: Text(e.$2),
                       selected: period == e.$1,
-                      onSelected: (_) => ref.read(_periodProvider.notifier).state = e.$1,
+                      onSelected: (_) =>
+                          ref.read(_periodProvider.notifier).state = e.$1,
                     ),
                   ),
               ],
@@ -202,27 +206,35 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               ],
               selected: {filter},
               showSelectedIcon: false,
-              onSelectionChanged: (s) => ref.read(_filterProvider.notifier).state = s.first,
+              onSelectionChanged: (s) =>
+                  ref.read(_filterProvider.notifier).state = s.first,
             ),
           ),
           const SizedBox(height: 6),
           txsAsync.when(
             loading: () => const Padding(
-                padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())),
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            ),
             error: (e, _) => Text('오류: $e'),
             data: (txs) {
               var filtered = switch (filter) {
                 _Filter.all => txs,
                 _Filter.income => txs.where((t) => t.flow == 'income').toList(),
-                _Filter.expense => txs.where((t) => t.flow == 'expense').toList(),
+                _Filter.expense =>
+                  txs.where((t) => t.flow == 'expense').toList(),
               };
-              filtered = filtered.where((t) => _inPeriod(t.date, period)).toList();
+              filtered = filtered
+                  .where((t) => _inPeriod(t.date, period))
+                  .toList();
               if (query.isNotEmpty) {
                 filtered = filtered
-                    .where((t) =>
-                        t.category.contains(query) ||
-                        (t.memo?.contains(query) ?? false) ||
-                        (t.giver?.contains(query) ?? false))
+                    .where(
+                      (t) =>
+                          t.category.contains(query) ||
+                          (t.memo?.contains(query) ?? false) ||
+                          (t.giver?.contains(query) ?? false),
+                    )
                     .toList();
               }
               if (filtered.isEmpty) {
@@ -230,10 +242,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Text(
-                        (query.isNotEmpty || period != _Period.all)
-                            ? '조건에 맞는 내역이 없어요.'
-                            : '내역이 없어요. 오른쪽 아래 + 버튼으로 추가해보세요.',
-                        style: TextStyle(color: palette.savings.fg.withValues(alpha: 0.8))),
+                      (query.isNotEmpty || period != _Period.all)
+                          ? '조건에 맞는 내역이 없어요.'
+                          : '내역이 없어요. 오른쪽 아래 + 버튼으로 추가해보세요.',
+                      style: TextStyle(
+                        color: palette.savings.fg.withValues(alpha: 0.8),
+                      ),
+                    ),
                   ),
                 );
               }
@@ -243,11 +258,24 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               final expenseSum = filtered
                   .where((t) => t.flow == 'expense')
                   .fold<int>(0, (a, b) => a + b.amount);
+              // 전체 내역(필터 전) 기준으로 카테고리 색을 배정해, 필터를 바꿔도
+              // 같은 카테고리는 항상 같은 색을 유지하면서 서로 겹치지 않게 한다.
+              final categoryTagMap = palette.tagsFor(
+                txs.map((t) => t.category),
+              );
               return Column(
                 children: [
                   _FilterSummary(
-                      count: filtered.length, income: incomeSum, expense: expenseSum),
-                  for (final t in filtered) _LedgerTxRow(t: t, onTap: () => _openEdit(t)),
+                    count: filtered.length,
+                    income: incomeSum,
+                    expense: expenseSum,
+                  ),
+                  for (final t in filtered)
+                    _LedgerTxRow(
+                      t: t,
+                      tagMap: categoryTagMap,
+                      onTap: () => _openEdit(t),
+                    ),
                 ],
               );
             },
@@ -276,13 +304,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('밀린 용돈 모두 지급'),
-        content: Text('${overdue.length}건, 총 ${formatWon(sum)}을 지급 처리할까요?\n'
-            '각 주의 내역이 오늘 날짜로 기록됩니다.'),
+        content: Text(
+          '${overdue.length}건, 총 ${formatWon(sum)}을 지급 처리할까요?\n'
+          '각 주의 내역이 오늘 날짜로 기록됩니다.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true), child: const Text('모두 지급')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('모두 지급'),
+          ),
         ],
       ),
     );
@@ -300,13 +334,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('이 주 용돈 건너뛰기'),
-        content: Text('${formatDate(s.scheduledDate)} 용돈 ${formatWon(s.amount)}을 '
-            '주지 않은 것으로 확정하고 목록에서 지웁니다.\n나중에 다시 생기지 않아요.'),
+        content: Text(
+          '${formatDate(s.scheduledDate)} 용돈 ${formatWon(s.amount)}을 '
+          '주지 않은 것으로 확정하고 목록에서 지웁니다.\n나중에 다시 생기지 않아요.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true), child: const Text('건너뛰기')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('건너뛰기'),
+          ),
         ],
       ),
     );
@@ -329,13 +369,18 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           decoration: const InputDecoration(labelText: '금액(원)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final amount = int.tryParse(controller.text);
               if (amount == null || amount <= 0) return;
               final owner = ref.read(settingsProvider).deviceOwner ?? '';
-              await ref.read(databaseProvider).updateScheduleAmount(s.id, amount, owner);
+              await ref
+                  .read(databaseProvider)
+                  .updateScheduleAmount(s.id, amount, owner);
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('저장'),
@@ -357,8 +402,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           children: [
             ListTile(
               leading: CircleAvatar(
-                  backgroundColor: palette.expense.bg,
-                  child: Icon(Icons.remove_rounded, color: palette.expense.fg)),
+                backgroundColor: palette.expense.bg,
+                child: Icon(Icons.remove_rounded, color: palette.expense.fg),
+              ),
               title: const Text('사용 내역 추가'),
               subtitle: const Text('간식, 문구 등 지출'),
               onTap: () {
@@ -368,8 +414,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             ),
             ListTile(
               leading: CircleAvatar(
-                  backgroundColor: palette.special.bg,
-                  child: Icon(Icons.card_giftcard, color: palette.special.fg)),
+                backgroundColor: palette.special.bg,
+                child: Icon(Icons.card_giftcard, color: palette.special.fg),
+              ),
               title: const Text('특별 용돈 추가'),
               subtitle: const Text('설날, 생일 등 받은 용돈'),
               onTap: () {
@@ -379,8 +426,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             ),
             ListTile(
               leading: CircleAvatar(
-                  backgroundColor: palette.allowance.bg,
-                  child: Icon(Icons.history, color: palette.allowance.fg)),
+                backgroundColor: palette.allowance.bg,
+                child: Icon(Icons.history, color: palette.allowance.fg),
+              ),
               title: const Text('지난 정기용돈 추가'),
               subtitle: const Text('예전에 안 준 정기용돈을 과거 날짜로 소급 지급'),
               onTap: () {
@@ -404,8 +452,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       lastPayday = lastPayday.subtract(const Duration(days: 1));
     }
     DateTime date = lastPayday;
-    final amountController =
-        TextEditingController(text: '${widget.child.weeklyAllowanceDefault}');
+    final amountController = TextEditingController(
+      text: '${widget.child.weeklyAllowanceDefault}',
+    );
 
     showDialog(
       context: context,
@@ -417,8 +466,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('예전에 주지 못한 정기용돈을 지급일(과거 날짜)로 기록해요. '
-                    '그 날짜로 지급 완료 처리되고 잔액에 합산됩니다.'),
+                const Text(
+                  '예전에 주지 못한 정기용돈을 지급일(과거 날짜)로 기록해요. '
+                  '그 날짜로 지급 완료 처리되고 잔액에 합산됩니다.',
+                ),
                 const SizedBox(height: 16),
                 InkWell(
                   borderRadius: BorderRadius.circular(12),
@@ -432,16 +483,23 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                     if (picked != null) setState(() => date = picked);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today, size: 16),
                         const SizedBox(width: 10),
-                        Text('${formatDate(date)} (${weekdayName(date.weekday)}요일)'),
+                        Text(
+                          '${formatDate(date)} (${weekdayName(date.weekday)}요일)',
+                        ),
                       ],
                     ),
                   ),
@@ -456,7 +514,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
             FilledButton(
               onPressed: () async {
                 final amount = int.tryParse(amountController.text);
@@ -498,11 +559,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     // 자녀 모드: 받은 용돈(정기/특별)과 과거 일괄 내역은 보기만 가능.
     // 자기 지출만 고칠 수 있게 한다.
     if (settings.isChild && (isIncome || AppDatabase.isPastSeedTx(t))) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('받은 용돈 내역은 부모님만 수정할 수 있어요.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('받은 용돈 내역은 부모님만 수정할 수 있어요.')),
+      );
       return;
     }
-    final base = isIncome ? settings.incomeCategories : settings.expenseCategories;
+    final base = isIncome
+        ? settings.incomeCategories
+        : settings.expenseCategories;
     // 현재 카테고리(정기용돈/절약보너스 등 목록에 없는 것 포함)를 선택지에 넣어준다.
     final cats = base.contains(t.category) ? base : [t.category, ...base];
     // 정기용돈/보너스/이자/이월잔액 같은 시스템 수입은 "받은 사람"이 없다.
@@ -523,16 +587,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     TransactionEntry? existing,
   }) {
     final isEdit = existing != null;
-    final title =
-        isEdit ? '내역 수정' : (flow == 'income' ? '특별 용돈 추가' : '사용 내역 추가');
+    final title = isEdit
+        ? '내역 수정'
+        : (flow == 'income' ? '특별 용돈 추가' : '사용 내역 추가');
     final withGiver = givers != null;
     final giverOptions = givers ?? const <String>[];
-    final amountController =
-        TextEditingController(text: isEdit ? '${existing.amount}' : '');
+    final amountController = TextEditingController(
+      text: isEdit ? '${existing.amount}' : '',
+    );
     final memoController = TextEditingController(text: existing?.memo ?? '');
     final customGiverController = TextEditingController();
-    String category =
-        (isEdit && categories.contains(existing.category)) ? existing.category : categories.first;
+    String category = (isEdit && categories.contains(existing.category))
+        ? existing.category
+        : categories.first;
     String giver;
     if (withGiver) {
       final eg = existing?.giver;
@@ -556,7 +623,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: StatefulBuilder(
           builder: (context, setState) {
             final palette = appPalette(context);
@@ -565,13 +634,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               if (amount == null || amount <= 0) return;
               final resolvedGiverRaw = !withGiver
                   ? null
-                  : (giver == '기타'
-                      ? customGiverController.text.trim()
-                      : giver);
+                  : (giver == '기타' ? customGiverController.text.trim() : giver);
               final resolvedGiver =
                   (resolvedGiverRaw == null || resolvedGiverRaw.isEmpty)
-                      ? null
-                      : resolvedGiverRaw;
+                  ? null
+                  : resolvedGiverRaw;
               final db = ref.read(databaseProvider);
               final owner = ref.read(settingsProvider).deviceOwner ?? '';
               if (isEdit) {
@@ -585,18 +652,20 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                   editedBy: owner,
                 );
               } else {
-                await db.upsertTransaction(TransactionEntriesCompanion.insert(
-                  id: const Uuid().v4(),
-                  childId: widget.child.id,
-                  date: date,
-                  flow: flow,
-                  category: category,
-                  amount: amount,
-                  memo: Value(memoController.text.trim()),
-                  giver: Value(resolvedGiver),
-                  editedBy: Value(owner),
-                  updatedAt: Value(DateTime.now()),
-                ));
+                await db.upsertTransaction(
+                  TransactionEntriesCompanion.insert(
+                    id: const Uuid().v4(),
+                    childId: widget.child.id,
+                    date: date,
+                    flow: flow,
+                    category: category,
+                    amount: amount,
+                    memo: Value(memoController.text.trim()),
+                    giver: Value(resolvedGiver),
+                    editedBy: Value(owner),
+                    updatedAt: Value(DateTime.now()),
+                  ),
+                );
               }
               if (context.mounted) Navigator.pop(context);
             }
@@ -612,36 +681,50 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(title,
-                              style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5)),
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
                         ),
                         FilledButton(
                           onPressed: submit,
                           style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22,
+                              vertical: 12,
+                            ),
                           ),
-                          child: Text(isEdit ? '수정 저장' : '저장',
-                              style: const TextStyle(fontWeight: FontWeight.w800)),
+                          child: Text(
+                            isEdit ? '수정 저장' : '저장',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     _FieldLabel(flow == 'income' ? '종류' : '카테고리'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final c in categories)
-                          _SelectChip(
-                            label: c,
-                            selected: category == c,
-                            pair: palette.tagFor(c),
-                            onTap: () => setState(() => category = c),
-                          ),
-                      ],
+                    Builder(
+                      builder: (context) {
+                        // 같이 보이는 카테고리 칩끼리는 색이 절대 겹치지 않게 배정.
+                        final tagMap = palette.tagsFor(categories);
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final c in categories)
+                              _SelectChip(
+                                label: c,
+                                selected: category == c,
+                                pair: tagMap[c]!,
+                                onTap: () => setState(() => category = c),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                     if (withGiver) ...[
                       const SizedBox(height: 12),
@@ -674,12 +757,18 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       keyboardType: TextInputType.number,
                       autofocus: true,
                       style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.8,
+                      ),
                       decoration: const InputDecoration(
                         isDense: true,
                         hintText: '0',
                         suffixText: '원',
-                        suffixStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        suffixStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -689,13 +778,21 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        for (final add in const [100, 1000, 10000, 50000, 100000])
+                        for (final add in const [
+                          100,
+                          1000,
+                          10000,
+                          50000,
+                          100000,
+                        ])
                           ActionChip(
                             label: Text('+${_shortWon(add)}'),
                             visualDensity: VisualDensity.compact,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                             onPressed: () {
-                              final cur = int.tryParse(amountController.text) ?? 0;
+                              final cur =
+                                  int.tryParse(amountController.text) ?? 0;
                               amountController.text = '${cur + add}';
                             },
                           ),
@@ -717,25 +814,45 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         final picked = await showDatePicker(
                           context: context,
                           initialDate: date,
-                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 365),
+                          ),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
                         if (picked != null) setState(() => date = picked);
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Theme.of(context).colorScheme.outline),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_today,
-                                size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.calendar_today,
+                              size: 18,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 10),
-                            Text(formatDate(date),
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(
+                              formatDate(date),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -747,19 +864,29 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => submit(),
                       decoration: const InputDecoration(
-                          isDense: true, hintText: '예: 학교 앞 문방구'),
+                        isDense: true,
+                        hintText: '예: 학교 앞 문방구',
+                      ),
                     ),
                     if (isEdit) ...[
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: () => _confirmDeleteFromSheet(context, existing),
-                          icon: Icon(Icons.delete_outline,
-                              color: appPalette(context).expense.fg),
+                          onPressed: () =>
+                              _confirmDeleteFromSheet(context, existing),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: appPalette(context).expense.fg,
+                          ),
                           label: Text(
-                              existing.linkedScheduleId != null ? '삭제 (지급 취소)' : '삭제',
-                              style: TextStyle(color: appPalette(context).expense.fg)),
+                            existing.linkedScheduleId != null
+                                ? '삭제 (지급 취소)'
+                                : '삭제',
+                            style: TextStyle(
+                              color: appPalette(context).expense.fg,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -779,15 +906,22 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       context: sheetContext,
       builder: (dialogContext) => AlertDialog(
         title: Text(linked ? '지급을 취소할까요?' : '삭제할까요?'),
-        content: Text(linked
-            ? '이 정기용돈 지급 내역을 삭제하면 해당 주 용돈이 다시 "미지급" 상태로 돌아갑니다.'
-            : '${formatDate(t.date)} · ${t.category} · ${formatWon(t.amount)}'),
+        content: Text(
+          linked
+              ? '이 정기용돈 지급 내역을 삭제하면 해당 주 용돈이 다시 "미지급" 상태로 돌아갑니다.'
+              : '${formatDate(t.date)} · ${t.category} · ${formatWon(t.amount)}',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final owner = ref.read(settingsProvider).deviceOwner ?? '';
-              await ref.read(databaseProvider).deleteTransaction(t, owner, widget.child);
+              await ref
+                  .read(databaseProvider)
+                  .deleteTransaction(t, owner, widget.child);
               if (dialogContext.mounted) Navigator.pop(dialogContext);
               if (sheetContext.mounted) Navigator.pop(sheetContext);
             },
@@ -805,12 +939,13 @@ class _PendingScheduleCard extends StatelessWidget {
   final VoidCallback onPay;
   final VoidCallback onEditAmount;
   final VoidCallback? onSkip;
-  const _PendingScheduleCard(
-      {required this.s,
-      required this.overdue,
-      required this.onPay,
-      required this.onEditAmount,
-      this.onSkip});
+  const _PendingScheduleCard({
+    required this.s,
+    required this.overdue,
+    required this.onPay,
+    required this.onEditAmount,
+    this.onSkip,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -820,11 +955,16 @@ class _PendingScheduleCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
         leading: CircleAvatar(
-            backgroundColor: pair.bg,
-            child: Icon(overdue ? Icons.history : Icons.schedule, color: pair.fg)),
-        title: Text(formatWon(s.amount), style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle:
-            Text('${formatDate(s.scheduledDate)} · ${overdue ? '밀린 용돈' : '지급 예정'}'),
+          backgroundColor: pair.bg,
+          child: Icon(overdue ? Icons.history : Icons.schedule, color: pair.fg),
+        ),
+        title: Text(
+          formatWon(s.amount),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          '${formatDate(s.scheduledDate)} · ${overdue ? '밀린 용돈' : '지급 예정'}',
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -838,7 +978,10 @@ class _PendingScheduleCard extends StatelessWidget {
               itemBuilder: (context) => [
                 const PopupMenuItem(value: 'edit', child: Text('금액 수정')),
                 if (onSkip != null)
-                  const PopupMenuItem(value: 'skip', child: Text('건너뛰기 (안 준 것으로)')),
+                  const PopupMenuItem(
+                    value: 'skip',
+                    child: Text('건너뛰기 (안 준 것으로)'),
+                  ),
               ],
             ),
           ],
@@ -851,8 +994,13 @@ class _PendingScheduleCard extends StatelessWidget {
 
 class _LedgerTxRow extends StatelessWidget {
   final TransactionEntry t;
+  final Map<String, PastelPair> tagMap;
   final VoidCallback onTap;
-  const _LedgerTxRow({required this.t, required this.onTap});
+  const _LedgerTxRow({
+    required this.t,
+    required this.tagMap,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -867,22 +1015,39 @@ class _LedgerTxRow extends StatelessWidget {
         leading: CircleAvatar(
           radius: 20,
           backgroundColor: pair.bg,
-          child: Icon(isIncome ? Icons.add_rounded : Icons.remove_rounded, color: pair.fg),
+          child: Icon(
+            isIncome ? Icons.add_rounded : Icons.remove_rounded,
+            color: pair.fg,
+          ),
         ),
         title: Row(
           children: [
-            Flexible(child: TagChip(label: t.category, pair: palette.tagFor(t.category))),
+            Flexible(
+              child: TagChip(
+                label: t.category,
+                pair: tagMap[t.category] ?? palette.tagFor(t.category),
+              ),
+            ),
             const Spacer(),
-            Text('${isIncome ? '+' : '-'}${formatWon(t.amount)}',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: isIncome ? palette.income.fg : palette.expense.fg)),
+            Text(
+              '${isIncome ? '+' : '-'}${formatWon(t.amount)}',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: isIncome ? palette.income.fg : palette.expense.fg,
+              ),
+            ),
           ],
         ),
-        subtitle: Padding(padding: const EdgeInsets.only(top: 3), child: Text(txSubtitle(t))),
-        trailing: Icon(Icons.chevron_right,
-            size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Text(txSubtitle(t)),
+        ),
+        trailing: Icon(
+          Icons.chevron_right,
+          size: 20,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         onTap: onTap,
       ),
     );
@@ -893,7 +1058,11 @@ class _FilterSummary extends StatelessWidget {
   final int count;
   final int income;
   final int expense;
-  const _FilterSummary({required this.count, required this.income, required this.expense});
+  const _FilterSummary({
+    required this.count,
+    required this.income,
+    required this.expense,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -903,19 +1072,31 @@ class _FilterSummary extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
       child: Row(
         children: [
-          Text('$count건',
-              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          Text(
+            '$count건',
+            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+          ),
           const Spacer(),
           if (income > 0) ...[
-            Text('수입 +${formatWon(income)}',
-                style: TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w700, color: palette.income.fg)),
+            Text(
+              '수입 +${formatWon(income)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: palette.income.fg,
+              ),
+            ),
             const SizedBox(width: 10),
           ],
           if (expense > 0)
-            Text('지출 -${formatWon(expense)}',
-                style: TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w700, color: palette.expense.fg)),
+            Text(
+              '지출 -${formatWon(expense)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: palette.expense.fg,
+              ),
+            ),
         ],
       ),
     );
@@ -930,12 +1111,15 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9, left: 2),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -945,11 +1129,12 @@ class _SelectChip extends StatelessWidget {
   final bool selected;
   final PastelPair pair;
   final VoidCallback onTap;
-  const _SelectChip(
-      {required this.label,
-      required this.selected,
-      required this.pair,
-      required this.onTap});
+  const _SelectChip({
+    required this.label,
+    required this.selected,
+    required this.pair,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -962,16 +1147,21 @@ class _SelectChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? pair.bg : Colors.transparent,
           borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: selected ? pair.fg.withValues(alpha: 0.5) : border),
+          border: Border.all(
+            color: selected ? pair.fg.withValues(alpha: 0.5) : border,
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                letterSpacing: -0.2,
-                color: selected
-                    ? pair.fg
-                    : Theme.of(context).colorScheme.onSurfaceVariant)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: -0.2,
+            color: selected
+                ? pair.fg
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }

@@ -51,12 +51,22 @@ class SettingsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(child.name,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+                      Text(
+                        child.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('기본 용돈 ${formatWon(child.weeklyAllowanceDefault)} · ${weekdayName(child.payDayOfWeek)}요일',
-                          style: TextStyle(
-                              fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        '기본 용돈 ${formatWon(child.weeklyAllowanceDefault)} · ${weekdayName(child.payDayOfWeek)}요일',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -133,17 +143,22 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('절약 보너스 사용'),
                   subtitle: const Text('정해진 요일까지 목표 금액 이상 남기면 보너스 지급'),
                   value: child.bonusEnabled,
-                  onChanged: (v) =>
-                      ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
-                        bonusEnabled: Value(v),
-                        updatedAt: Value(DateTime.now()),
-                      )),
+                  onChanged: (v) => ref
+                      .read(databaseProvider)
+                      .updateChildPartial(
+                        child.id,
+                        ChildrenCompanion(
+                          bonusEnabled: Value(v),
+                          updatedAt: Value(DateTime.now()),
+                        ),
+                      ),
                 ),
                 if (child.bonusEnabled)
                   ListTile(
                     leading: const Icon(Icons.emoji_events_outlined),
                     title: Text(
-                        '매주 ${weekdayName(child.bonusDayOfWeek)}요일까지 ${formatWon(child.bonusThreshold)} 유지 시'),
+                      '매주 ${weekdayName(child.bonusDayOfWeek)}요일까지 ${formatWon(child.bonusThreshold)} 유지 시',
+                    ),
                     subtitle: Text('${formatWon(child.bonusAmount)} 추가 지급'),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: () => _showBonusDialog(context, ref),
@@ -159,21 +174,29 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('저축 이자 사용'),
                   subtitle: const Text('잔액에 주기적으로 이자를 붙여 저축을 장려해요'),
                   value: child.interestEnabled,
-                  onChanged: (v) =>
-                      ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
-                        interestEnabled: Value(v),
-                        updatedAt: Value(DateTime.now()),
-                      )),
+                  onChanged: (v) => ref
+                      .read(databaseProvider)
+                      .updateChildPartial(
+                        child.id,
+                        ChildrenCompanion(
+                          interestEnabled: Value(v),
+                          updatedAt: Value(DateTime.now()),
+                        ),
+                      ),
                 ),
                 if (child.interestEnabled)
                   ListTile(
                     leading: const Icon(Icons.percent),
-                    title: Text(child.interestUseBankRate
-                        ? '${child.interestPeriod == 0 ? '매주' : '매월'} · 은행 예금금리의 ${formatPercent(child.interestMultiplier)}배'
-                        : '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${formatPercent(child.interestPercent)}% 이자'),
-                    subtitle: Text(child.interestUseBankRate
-                        ? '진짜 금리가 오르내리면 이자도 같이 움직여요'
-                        : '고정 이율 · 홈에서 원버튼으로 지급'),
+                    title: Text(
+                      child.interestUseBankRate
+                          ? '${child.interestPeriod == 0 ? '매주' : '매월'} · 은행 예금금리의 ${formatPercent(child.interestMultiplier)}배'
+                          : '${child.interestPeriod == 0 ? '매주' : '매월'} 잔액의 ${formatPercent(child.interestPercent)}% 이자',
+                    ),
+                    subtitle: Text(
+                      child.interestUseBankRate
+                          ? '진짜 금리가 오르내리면 이자도 같이 움직여요'
+                          : '고정 이율 · 홈에서 원버튼으로 지급',
+                    ),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: () => _showInterestDialog(context, ref),
                   ),
@@ -188,8 +211,10 @@ class SettingsScreen extends ConsumerWidget {
               child: ListTile(
                 leading: const Icon(Icons.emoji_events_outlined),
                 title: Text('정답 1문제당 ${formatWon(child.quizReward)}'),
-                subtitle: Text('주 $kQuizPerWeek문제 · 해설 보고 다시 맞히면 '
-                    '${formatWon(quizHalfReward(child.quizReward))}'),
+                subtitle: Text(
+                  '주 $kQuizPerWeek문제 · 해설 보고 다시 맞히면 '
+                  '${formatWon(quizHalfReward(child.quizReward))}',
+                ),
                 trailing: const Icon(Icons.edit_outlined),
                 onTap: () => _showQuizRewardDialog(context, ref),
               ),
@@ -198,7 +223,9 @@ class SettingsScreen extends ConsumerWidget {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.public),
-                title: Text('투자 한도: 총 저축의 ${formatPercent(child.investLimitPercent)}%'),
+                title: Text(
+                  '투자 한도: 총 저축의 ${formatPercent(child.investLimitPercent)}%',
+                ),
                 subtitle: const Text('저축 포인트 중 이 비율까지만 지수에 넣을 수 있어요'),
                 trailing: const Icon(Icons.edit_outlined),
                 onTap: () => _showInvestLimitDialog(context, ref),
@@ -226,18 +253,22 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.upload_file),
                   title: const Text('내보내기 (Export)'),
-                  subtitle: Text(settings.lastExportedAt != null
-                      ? '마지막 내보내기: ${formatDate(settings.lastExportedAt!)}'
-                      : '아직 내보낸 적 없음'),
+                  subtitle: Text(
+                    settings.lastExportedAt != null
+                        ? '마지막 내보내기: ${formatDate(settings.lastExportedAt!)}'
+                        : '아직 내보낸 적 없음',
+                  ),
                   onTap: () => _handleExport(context, ref),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.download),
                   title: const Text('가져오기 (Import)'),
-                  subtitle: Text(settings.lastImportedAt != null
-                      ? '마지막 가져오기: ${formatDate(settings.lastImportedAt!)}'
-                      : '아직 가져온 적 없음'),
+                  subtitle: Text(
+                    settings.lastImportedAt != null
+                        ? '마지막 가져오기: ${formatDate(settings.lastImportedAt!)}'
+                        : '아직 가져온 적 없음',
+                  ),
                   onTap: () => _handleImport(context, ref),
                 ),
               ],
@@ -253,14 +284,18 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('용돈 지급일 / 이체 권장 알림'),
                 value: settings.notificationsEnabled,
                 onChanged: (v) async {
-                  await ref.read(settingsProvider.notifier).setNotificationsEnabled(v);
+                  await ref
+                      .read(settingsProvider.notifier)
+                      .setNotificationsEnabled(v);
                   if (v) {
-                    await NotificationService.instance.scheduleWeeklyAllowanceReminder(
-                      childName: child.name,
-                      isoWeekday: child.payDayOfWeek,
-                    );
+                    await NotificationService.instance
+                        .scheduleWeeklyAllowanceReminder(
+                          childName: child.name,
+                          isoWeekday: child.payDayOfWeek,
+                        );
                   } else {
-                    await NotificationService.instance.cancelAllowanceReminder();
+                    await NotificationService.instance
+                        .cancelAllowanceReminder();
                   }
                 },
               ),
@@ -270,7 +305,9 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: const Text('매주 일요일 저녁, 이번 주 요약 리마인더'),
                 value: settings.weeklyReportEnabled,
                 onChanged: (v) async {
-                  await ref.read(settingsProvider.notifier).setWeeklyReportEnabled(v);
+                  await ref
+                      .read(settingsProvider.notifier)
+                      .setWeeklyReportEnabled(v);
                   if (v) {
                     await NotificationService.instance.scheduleWeeklyReport();
                   } else {
@@ -291,9 +328,11 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('정기 용돈 지급 이력'),
                 subtitle: const Text('지급일별 지급/미지급 + 기간별 합계'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => AllowanceHistoryScreen(child: child),
-                )),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AllowanceHistoryScreen(child: child),
+                  ),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
@@ -338,13 +377,26 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             child: SegmentedButton<ThemeMode>(
               segments: const [
-                ButtonSegment(value: ThemeMode.system, label: Text('시스템'), icon: Icon(Icons.brightness_auto)),
-                ButtonSegment(value: ThemeMode.light, label: Text('밝게'), icon: Icon(Icons.light_mode)),
-                ButtonSegment(value: ThemeMode.dark, label: Text('어둡게'), icon: Icon(Icons.dark_mode)),
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  label: Text('시스템'),
+                  icon: Icon(Icons.brightness_auto),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  label: Text('밝게'),
+                  icon: Icon(Icons.light_mode),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  label: Text('어둡게'),
+                  icon: Icon(Icons.dark_mode),
+                ),
               ],
               selected: {settings.themeMode},
               showSelectedIcon: false,
-              onSelectionChanged: (s) => ref.read(settingsProvider.notifier).setThemeMode(s.first),
+              onSelectionChanged: (s) =>
+                  ref.read(settingsProvider.notifier).setThemeMode(s.first),
             ),
           ),
         ),
@@ -358,9 +410,9 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: const Text('칭호·도달 금액·아이콘·보상 수정 (동기화됨)'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
-                await Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const TierSettingsScreen(),
-                ));
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TierSettingsScreen()),
+                );
                 // 수정 후 즉시 가족 문서로 전파
                 final sync = ref.read(familySyncServiceProvider);
                 if (sync.isActive) await sync.pushNow();
@@ -375,25 +427,32 @@ class SettingsScreen extends ConsumerWidget {
                 : appPalette(context).expense.bg,
             child: ListTile(
               leading: Icon(
-                  settings.hasParentPasscode
-                      ? Icons.shield_outlined
-                      : Icons.gpp_maybe_outlined,
+                settings.hasParentPasscode
+                    ? Icons.shield_outlined
+                    : Icons.gpp_maybe_outlined,
+                color: settings.hasParentPasscode
+                    ? null
+                    : appPalette(context).expense.fg,
+              ),
+              title: Text(
+                settings.hasParentPasscode ? '부모 암호 변경' : '부모 암호를 설정해주세요',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
                   color: settings.hasParentPasscode
                       ? null
-                      : appPalette(context).expense.fg),
-              title: Text(settings.hasParentPasscode ? '부모 암호 변경' : '부모 암호를 설정해주세요',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: settings.hasParentPasscode
-                          ? null
-                          : appPalette(context).expense.fg)),
-              subtitle: Text(settings.hasParentPasscode
-                  ? '아이 폰에서 부모 모드로 못 들어가게 막아요'
-                  : '지금은 아이가 설정에서 부모 모드로 바꿔 모든 제한을 풀 수 있어요.',
-                  style: TextStyle(
-                      color: settings.hasParentPasscode
-                          ? null
-                          : appPalette(context).expense.fg)),
+                      : appPalette(context).expense.fg,
+                ),
+              ),
+              subtitle: Text(
+                settings.hasParentPasscode
+                    ? '아이 폰에서 부모 모드로 못 들어가게 막아요'
+                    : '지금은 아이가 설정에서 부모 모드로 바꿔 모든 제한을 풀 수 있어요.',
+                style: TextStyle(
+                  color: settings.hasParentPasscode
+                      ? null
+                      : appPalette(context).expense.fg,
+                ),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showSetParentPasscodeDialog(context, ref),
             ),
@@ -404,9 +463,11 @@ class SettingsScreen extends ConsumerWidget {
         Card(
           child: ListTile(
             title: Text(settings.deviceOwner ?? '미설정'),
-            subtitle: Text(settings.isChild
-                ? '자녀 모드예요. 부모 모드로 바꾸려면 부모 암호가 필요해요.'
-                : '내역 기록 시 "누가 입력했는지" 표시에 사용돼요.'),
+            subtitle: Text(
+              settings.isChild
+                  ? '자녀 모드예요. 부모 모드로 바꾸려면 부모 암호가 필요해요.'
+                  : '내역 기록 시 "누가 입력했는지" 표시에 사용돼요.',
+            ),
             trailing: DropdownButton<String>(
               value: settings.deviceOwner,
               underline: const SizedBox.shrink(),
@@ -429,7 +490,11 @@ class SettingsScreen extends ConsumerWidget {
   /// 역할 전환. 자녀→부모(아빠/엄마)로 갈 때만 부모 암호를 요구한다.
   /// 암호가 설정돼 있지 않으면(초기) 부모가 아직 안 정한 것이므로 통과시키되 안내한다.
   Future<void> _handleRoleChange(
-      BuildContext context, WidgetRef ref, AppSettings settings, String? v) async {
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+    String? v,
+  ) async {
     if (v == null || v == settings.deviceOwner) return;
     final toParent = v == '아빠' || v == '엄마';
     if (toParent && settings.isChild && settings.hasParentPasscode) {
@@ -440,7 +505,10 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   /// 부모 암호 입력을 받아 검증. 맞으면 true.
-  Future<bool> _promptParentPasscode(BuildContext context, WidgetRef ref) async {
+  Future<bool> _promptParentPasscode(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final controller = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
@@ -455,14 +523,20 @@ class SettingsScreen extends ConsumerWidget {
           decoration: const InputDecoration(labelText: '부모 암호'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () {
-              final ok = ref.read(settingsProvider.notifier).verifyParentPasscode(controller.text);
+              final ok = ref
+                  .read(settingsProvider.notifier)
+                  .verifyParentPasscode(controller.text);
               Navigator.pop(context, ok);
               if (!ok && context.mounted) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('암호가 맞지 않아요.')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('암호가 맞지 않아요.')));
               }
             },
             child: const Text('확인'),
@@ -482,8 +556,10 @@ class SettingsScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('아이 폰에서 부모 모드로 전환하려면 이 암호가 필요해요. '
-                '가족 동기화로 다른 부모 폰에도 자동 적용됩니다.'),
+            const Text(
+              '아이 폰에서 부모 모드로 전환하려면 이 암호가 필요해요. '
+              '가족 동기화로 다른 부모 폰에도 자동 적용됩니다.',
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: pinController,
@@ -496,18 +572,24 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               if (pinController.text.length < 4) return;
-              await ref.read(settingsProvider.notifier).setParentPasscode(pinController.text);
+              await ref
+                  .read(settingsProvider.notifier)
+                  .setParentPasscode(pinController.text);
               // 즉시 가족 문서로 전파(다른 폰/아이 폰에 반영)
               final sync = ref.read(familySyncServiceProvider);
               if (sync.isActive) await sync.pushNow();
               if (context.mounted) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('부모 암호를 설정했어요.')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('부모 암호를 설정했어요.')));
               }
             },
             child: const Text('저장'),
@@ -521,9 +603,15 @@ class SettingsScreen extends ConsumerWidget {
   // 저장 시 category='이월잔액'인 특별 수입 내역 1건으로 기록되어 잔액 계산에 자동 합산된다.
   void _showEditChildDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController(text: child.name);
-    final amountController = TextEditingController(text: '${child.weeklyAllowanceDefault}');
-    final thresholdController = TextEditingController(text: '${child.autoTransferThreshold}');
-    final stockLabelController = TextEditingController(text: child.stockAccountLabel ?? '');
+    final amountController = TextEditingController(
+      text: '${child.weeklyAllowanceDefault}',
+    );
+    final thresholdController = TextEditingController(
+      text: '${child.autoTransferThreshold}',
+    );
+    final stockLabelController = TextEditingController(
+      text: child.stockAccountLabel ?? '',
+    );
     final reasonController = TextEditingController();
     int payDay = child.payDayOfWeek;
 
@@ -537,28 +625,37 @@ class SettingsScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: '이름')),
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: '이름'),
+                ),
                 const SizedBox(height: 10),
                 TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: '기본 주간 용돈(원)')),
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: '기본 주간 용돈(원)'),
+                ),
                 const SizedBox(height: 10),
                 // 용돈을 바꾸는 경우에만 사유를 남길 수 있게 안내
                 TextField(
-                    controller: reasonController,
-                    decoration: const InputDecoration(
-                        labelText: '용돈 변경 사유 (선택)', hintText: '예: 초등학교 입학, 심부름 잘함')),
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: '용돈 변경 사유 (선택)',
+                    hintText: '예: 초등학교 입학, 심부름 잘함',
+                  ),
+                ),
                 const SizedBox(height: 10),
                 TextField(
-                    controller: thresholdController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: '이체 권장 기준 금액(원)')),
+                  controller: thresholdController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: '이체 권장 기준 금액(원)',
+                  ),
+                ),
                 const SizedBox(height: 10),
                 TextField(
-                    controller: stockLabelController,
-                    decoration: const InputDecoration(labelText: '주식계좌 별칭')),
+                  controller: stockLabelController,
+                  decoration: const InputDecoration(labelText: '주식계좌 별칭'),
+                ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
                   initialValue: payDay,
@@ -578,28 +675,40 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
             FilledButton(
               onPressed: () async {
                 final db = ref.read(databaseProvider);
                 final owner = ref.read(settingsProvider).deviceOwner ?? '';
                 final newAmount =
-                    int.tryParse(amountController.text) ?? child.weeklyAllowanceDefault;
-                await db.upsertChild(ChildrenCompanion(
-                  id: Value(child.id),
-                  name: Value(nameController.text.trim()),
-                  stockAccountLabel: Value(stockLabelController.text.trim()),
-                  weeklyAllowanceDefault: Value(newAmount),
-                  autoTransferThreshold: Value(
-                      int.tryParse(thresholdController.text) ?? child.autoTransferThreshold),
-                  payDayOfWeek: Value(payDay),
-                  updatedAt: Value(DateTime.now()),
-                ));
+                    int.tryParse(amountController.text) ??
+                    child.weeklyAllowanceDefault;
+                await db.upsertChild(
+                  ChildrenCompanion(
+                    id: Value(child.id),
+                    name: Value(nameController.text.trim()),
+                    stockAccountLabel: Value(stockLabelController.text.trim()),
+                    weeklyAllowanceDefault: Value(newAmount),
+                    autoTransferThreshold: Value(
+                      int.tryParse(thresholdController.text) ??
+                          child.autoTransferThreshold,
+                    ),
+                    payDayOfWeek: Value(payDay),
+                    updatedAt: Value(DateTime.now()),
+                  ),
+                );
                 // 기본 용돈이 실제로 바뀌었으면 변경 이력 기록(사유 포함)
                 if (newAmount != child.weeklyAllowanceDefault) {
                   final reason = reasonController.text.trim();
-                  await db.addAllowanceRate(child.id, newAmount, owner,
-                      note: reason.isEmpty ? null : reason);
+                  await db.addAllowanceRate(
+                    child.id,
+                    newAmount,
+                    owner,
+                    note: reason.isEmpty ? null : reason,
+                  );
                 }
                 if (context.mounted) Navigator.pop(context);
               },
@@ -625,26 +734,41 @@ class SettingsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('기본 용돈 변경 이력',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+                  const Text(
+                    '기본 용돈 변경 이력',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('현재 ${formatWon(child.weeklyAllowanceDefault)}',
-                      style: TextStyle(
-                          fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    '현재 ${formatWon(child.weeklyAllowanceDefault)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   ratesAsync.when(
                     loading: () => const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator())),
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                     error: (e, _) => Text('오류: $e'),
                     data: (rates) {
                       if (rates.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Text('아직 변경 이력이 없어요. 자녀 정보에서 기본 용돈을 바꾸면 여기에 기록돼요.',
-                              style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          child: Text(
+                            '아직 변경 이력이 없어요. 자녀 정보에서 기본 용돈을 바꾸면 여기에 기록돼요.',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         );
                       }
                       return Column(
@@ -653,18 +777,28 @@ class SettingsScreen extends ConsumerWidget {
                             ListTile(
                               contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.trending_up),
-                              title: Text(formatWon(r.amount),
-                                  style: const TextStyle(fontWeight: FontWeight.w700)),
+                              title: Text(
+                                formatWon(r.amount),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                      '${formatDate(r.changedAt)}${r.editedBy.isNotEmpty ? ' · ${r.editedBy}' : ''}'),
+                                    '${formatDate(r.changedAt)}${r.editedBy.isNotEmpty ? ' · ${r.editedBy}' : ''}',
+                                  ),
                                   if (r.note != null && r.note!.isNotEmpty)
-                                    Text('사유: ${r.note}',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic,
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    Text(
+                                      '사유: ${r.note}',
+                                      style: TextStyle(
+                                        fontStyle: FontStyle.italic,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -682,8 +816,9 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showInvestLimitDialog(BuildContext context, WidgetRef ref) {
-    final controller =
-        TextEditingController(text: formatPercent(child.investLimitPercent));
+    final controller = TextEditingController(
+      text: formatPercent(child.investLimitPercent),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -694,26 +829,38 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             TextField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
-                  labelText: '총 저축의 몇 %까지?', hintText: '예: 10'),
+                labelText: '총 저축의 몇 %까지?',
+                hintText: '예: 10',
+              ),
             ),
             const SizedBox(height: 10),
-            Text('모의 투자에 한 번에 넣어둘 수 있는 저축 포인트의 최대 비율이에요.\n'
-                '지수가 내리면 저축 포인트가 실제로 줄어드니, 너무 높게 잡지 않는 걸 권해요.',
-                style: TextStyle(
-                    fontSize: 12,
-                    height: 1.4,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              '모의 투자에 한 번에 넣어둘 수 있는 저축 포인트의 최대 비율이에요.\n'
+              '지수가 내리면 저축 포인트가 실제로 줄어드니, 너무 높게 잡지 않는 걸 권해요.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final v = double.tryParse(controller.text.trim());
               if (v == null || v < 0 || v > 100) return;
-              await ref.read(databaseProvider).updateChildPartial(
+              await ref
+                  .read(databaseProvider)
+                  .updateChildPartial(
                     child.id,
                     ChildrenCompanion(
                       investLimitPercent: Value(v),
@@ -742,25 +889,35 @@ class SettingsScreen extends ConsumerWidget {
             TextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              decoration:
-                  const InputDecoration(labelText: '정답 1문제당(원)', hintText: '예: 10'),
+              decoration: const InputDecoration(
+                labelText: '정답 1문제당(원)',
+                hintText: '예: 10',
+              ),
             ),
             const SizedBox(height: 10),
-            Text('주 $kQuizPerWeek문제라 다 맞히면 이 금액의 $kQuizPerWeek배를 받아요.\n'
-                '틀렸다가 해설을 읽고 다시 맞히면 절반만 지급돼요.',
-                style: TextStyle(
-                    fontSize: 12,
-                    height: 1.4,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              '주 $kQuizPerWeek문제라 다 맞히면 이 금액의 $kQuizPerWeek배를 받아요.\n'
+              '틀렸다가 해설을 읽고 다시 맞히면 절반만 지급돼요.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final v = int.tryParse(controller.text.trim());
               if (v == null || v < 0) return;
-              await ref.read(databaseProvider).updateChildPartial(
+              await ref
+                  .read(databaseProvider)
+                  .updateChildPartial(
                     child.id,
                     ChildrenCompanion(
                       quizReward: Value(v),
@@ -777,13 +934,17 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showInterestDialog(BuildContext context, WidgetRef ref) {
-    final percentController = TextEditingController(text: formatPercent(child.interestPercent));
-    final multiplierController =
-        TextEditingController(text: formatPercent(child.interestMultiplier));
+    final percentController = TextEditingController(
+      text: formatPercent(child.interestPercent),
+    );
+    final multiplierController = TextEditingController(
+      text: formatPercent(child.interestMultiplier),
+    );
     int period = child.interestPeriod;
     bool useBank = child.interestUseBankRate;
     final bankRate = ref.read(depositRateProvider).valueOrNull;
-    final balance = ref.read(summaryProvider(child.id)).valueOrNull?['balance'] ?? 0;
+    final balance =
+        ref.read(summaryProvider(child.id)).valueOrNull?['balance'] ?? 0;
 
     showDialog(
       context: context,
@@ -794,8 +955,12 @@ class SettingsScreen extends ConsumerWidget {
             balance: balance,
             period: period,
             useBankRate: useBank,
-            multiplier: double.tryParse(multiplierController.text) ?? child.interestMultiplier,
-            fixedPercent: double.tryParse(percentController.text) ?? child.interestPercent,
+            multiplier:
+                double.tryParse(multiplierController.text) ??
+                child.interestMultiplier,
+            fixedPercent:
+                double.tryParse(percentController.text) ??
+                child.interestPercent,
             promiseBonusAnnualPercent: 0,
             bankAnnualPercent: bankRate,
           );
@@ -820,28 +985,37 @@ class SettingsScreen extends ConsumerWidget {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('진짜 은행 금리에 연동'),
-                    subtitle: Text(bankRate == null
-                        ? '예금금리를 아직 못 받아왔어요 (연결되면 적용)'
-                        : '현재 정기예금 ${formatPercent(bankRate)}% 기준'),
+                    subtitle: Text(
+                      bankRate == null
+                          ? '예금금리를 아직 못 받아왔어요 (연결되면 적용)'
+                          : '현재 정기예금 ${formatPercent(bankRate)}% 기준',
+                    ),
                     value: useBank,
                     onChanged: (v) => setState(() => useBank = v),
                   ),
                   if (useBank)
                     TextField(
                       controller: multiplierController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
-                          labelText: '은행 금리의 몇 배?',
-                          hintText: '예: 1 (은행과 동일)',
-                          helperText: '1이면 진짜 은행 정기예금과 똑같은 이자율이에요'),
+                        labelText: '은행 금리의 몇 배?',
+                        hintText: '예: 1 (은행과 동일)',
+                        helperText: '1이면 진짜 은행 정기예금과 똑같은 이자율이에요',
+                      ),
                       onChanged: (_) => setState(() {}),
                     )
                   else
                     TextField(
                       controller: percentController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
-                          labelText: '고정 이율(%)', hintText: '예: 1 또는 0.5'),
+                        labelText: '고정 이율(%)',
+                        hintText: '예: 1 또는 0.5',
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   const SizedBox(height: 12),
@@ -849,26 +1023,37 @@ class SettingsScreen extends ConsumerWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('미리보기 (잔액 ${formatWon(balance)})',
-                            style: TextStyle(fontSize: 12, color: muted)),
+                        Text(
+                          '미리보기 (잔액 ${formatWon(balance)})',
+                          style: TextStyle(fontSize: 12, color: muted),
+                        ),
                         const SizedBox(height: 4),
                         Text(
-                            '연 ${formatPercent(preview.annualPercent)}%'
-                            ' · ${period == 0 ? '이번 주' : '이번 달'} ${formatWon(preview.amount)}',
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w800)),
+                          '연 ${formatPercent(preview.annualPercent)}%'
+                          ' · ${period == 0 ? '이번 주' : '이번 달'} ${formatWon(preview.amount)}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                         if (preview.hasBankRate)
-                          Text('은행 정기예금은 연 ${formatPercent(preview.bankAnnualPercent)}%',
-                              style: TextStyle(fontSize: 12, color: muted)),
+                          Text(
+                            '은행 정기예금은 연 ${formatPercent(preview.bankAnnualPercent)}%',
+                            style: TextStyle(fontSize: 12, color: muted),
+                          ),
                         const SizedBox(height: 4),
-                        Text('약속을 지키면 약속 1개당 연 +0.3%p가 더해져요',
-                            style: TextStyle(fontSize: 11.5, color: muted)),
+                        Text(
+                          '약속을 지키면 약속 1개당 연 +0.3%p가 더해져요',
+                          style: TextStyle(fontSize: 11.5, color: muted),
+                        ),
                       ],
                     ),
                   ),
@@ -876,13 +1061,21 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
               FilledButton(
                 onPressed: () async {
-                  final pct = double.tryParse(percentController.text) ?? child.interestPercent;
+                  final pct =
+                      double.tryParse(percentController.text) ??
+                      child.interestPercent;
                   final mul =
-                      double.tryParse(multiplierController.text) ?? child.interestMultiplier;
-                  await ref.read(databaseProvider).updateChildPartial(
+                      double.tryParse(multiplierController.text) ??
+                      child.interestMultiplier;
+                  await ref
+                      .read(databaseProvider)
+                      .updateChildPartial(
                         child.id,
                         ChildrenCompanion(
                           interestPercent: Value(pct),
@@ -912,8 +1105,13 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           promisesAsync.when(
             loading: () => const Padding(
-                padding: EdgeInsets.all(16), child: LinearProgressIndicator()),
-            error: (e, _) => Padding(padding: const EdgeInsets.all(16), child: Text('오류: $e')),
+              padding: EdgeInsets.all(16),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('오류: $e'),
+            ),
             data: (promises) {
               if (promises.isEmpty) {
                 return const Padding(
@@ -930,13 +1128,17 @@ class SettingsScreen extends ConsumerWidget {
                   for (final p in promises)
                     SwitchListTile(
                       value: p.enabled,
-                      onChanged: (v) => db.updatePromiseFields(p.id, enabled: v),
+                      onChanged: (v) =>
+                          db.updatePromiseFields(p.id, enabled: v),
                       title: Text(p.title),
-                      subtitle: Text('지키면 연 +${formatPercent(p.bonusPercent)}%p'),
+                      subtitle: Text(
+                        '지키면 연 +${formatPercent(p.bonusPercent)}%p',
+                      ),
                       secondary: IconButton(
                         icon: const Icon(Icons.more_horiz),
                         tooltip: '수정/삭제',
-                        onPressed: () => _showPromiseDialog(context, ref, existing: p),
+                        onPressed: () =>
+                            _showPromiseDialog(context, ref, existing: p),
                       ),
                     ),
                 ],
@@ -954,10 +1156,15 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showPromiseDialog(BuildContext context, WidgetRef ref, {Promise? existing}) {
+  void _showPromiseDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    Promise? existing,
+  }) {
     final titleController = TextEditingController(text: existing?.title ?? '');
-    final bonusController =
-        TextEditingController(text: formatPercent(existing?.bonusPercent ?? 0.3));
+    final bonusController = TextEditingController(
+      text: formatPercent(existing?.bonusPercent ?? 0.3),
+    );
     final db = ref.read(databaseProvider);
     showDialog(
       context: context,
@@ -968,17 +1175,22 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             TextField(
               controller: titleController,
-              decoration:
-                  const InputDecoration(labelText: '약속 내용', hintText: '예: 매일 이 닦기'),
+              decoration: const InputDecoration(
+                labelText: '약속 내용',
+                hintText: '예: 매일 이 닦기',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: bonusController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
-                  labelText: '지키면 올려줄 연 이자율(%p)',
-                  hintText: '예: 0.3',
-                  helperText: '은행 정기예금(연 %)에 이만큼 더해줘요'),
+                labelText: '지키면 올려줄 연 이자율(%p)',
+                hintText: '예: 0.3',
+                helperText: '은행 정기예금(연 %)에 이만큼 더해줘요',
+              ),
             ),
           ],
         ),
@@ -989,25 +1201,36 @@ class SettingsScreen extends ConsumerWidget {
                 await db.softDeletePromise(existing.id);
                 if (context.mounted) Navigator.pop(context);
               },
-              child:
-                  Text('삭제', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                '삭제',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final title = titleController.text.trim();
               if (title.isEmpty) return;
               final bonus = double.tryParse(bonusController.text.trim()) ?? 0.3;
               if (existing == null) {
-                await db.upsertPromise(PromisesCompanion.insert(
-                  id: const Uuid().v4(),
-                  childId: child.id,
-                  title: title,
-                  bonusPercent: Value(bonus),
-                  updatedAt: Value(DateTime.now()),
-                ));
+                await db.upsertPromise(
+                  PromisesCompanion.insert(
+                    id: const Uuid().v4(),
+                    childId: child.id,
+                    title: title,
+                    bonusPercent: Value(bonus),
+                    updatedAt: Value(DateTime.now()),
+                  ),
+                );
               } else {
-                await db.updatePromiseFields(existing.id, title: title, bonusPercent: bonus);
+                await db.updatePromiseFields(
+                  existing.id,
+                  title: title,
+                  bonusPercent: bonus,
+                );
               }
               if (context.mounted) Navigator.pop(context);
             },
@@ -1027,19 +1250,23 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.account_balance_outlined),
-            title: Text(shown != null
-                ? '현재 표시: ${formatPercent(shown.rate)}% (${shown.isAuto ? '자동' : '수동'})'
-                : 'COFIX 값이 아직 없어요'),
+            title: Text(
+              shown != null
+                  ? '현재 표시: ${formatPercent(shown.rate)}% (${shown.isAuto ? '자동' : '수동'})'
+                  : 'COFIX 값이 아직 없어요',
+            ),
             subtitle: const Text('이자 카드와 "COFIX 금리란?" 설명에 함께 보여줘요'),
           ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text('COFIX 금리 직접 입력'),
-            subtitle: Text(config.hasManual
-                ? '${formatPercent(config.manualRate!)}%'
-                    '${config.manualDate != null ? ' · ${formatDate(config.manualDate!)} 갱신' : ''}'
-                : '매월 한 번 입력 (은행연합회 발표값)'),
+            subtitle: Text(
+              config.hasManual
+                  ? '${formatPercent(config.manualRate!)}%'
+                        '${config.manualDate != null ? ' · ${formatDate(config.manualDate!)} 갱신' : ''}'
+                  : '매월 한 번 입력 (은행연합회 발표값)',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showCofixManualDialog(context, ref),
           ),
@@ -1047,9 +1274,11 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.cloud_sync_outlined),
             title: const Text('기준금리·정기예금 자동조회 (ECOS)'),
-            subtitle: Text(config.hasCustomKey
-                ? '내 인증키 사용 중'
-                : '기본 인증키로 자동 표시 중 · 필요하면 내 키로 교체'),
+            subtitle: Text(
+              config.hasCustomKey
+                  ? '내 인증키 사용 중'
+                  : '기본 인증키로 자동 표시 중 · 필요하면 내 키로 교체',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showEcosKeyDialog(context, ref),
           ),
@@ -1060,8 +1289,9 @@ class SettingsScreen extends ConsumerWidget {
 
   void _showCofixManualDialog(BuildContext context, WidgetRef ref) {
     final config = ref.read(cofixConfigProvider);
-    final controller =
-        TextEditingController(text: config.manualRate == null ? '' : formatPercent(config.manualRate!));
+    final controller = TextEditingController(
+      text: config.manualRate == null ? '' : formatPercent(config.manualRate!),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1071,8 +1301,13 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             TextField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'COFIX 금리(%)', hintText: '예: 3.05'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'COFIX 금리(%)',
+                hintText: '예: 3.05',
+              ),
             ),
             const SizedBox(height: 10),
             Align(
@@ -1089,7 +1324,10 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               final rate = double.tryParse(controller.text.trim());
@@ -1115,14 +1353,18 @@ class SettingsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('기준금리·정기예금은 기본 인증키로 이미 자동 표시돼요. '
-                '내 인증키로 바꾸고 싶을 때만 넣으면 돼요. (COFIX는 키 없이 자동)',
-                style: TextStyle(fontSize: 13, height: 1.4)),
+            const Text(
+              '기준금리·정기예금은 기본 인증키로 이미 자동 표시돼요. '
+              '내 인증키로 바꾸고 싶을 때만 넣으면 돼요. (COFIX는 키 없이 자동)',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              decoration:
-                  const InputDecoration(labelText: 'ECOS 인증키(선택)', hintText: '비우면 기본키 사용'),
+              decoration: const InputDecoration(
+                labelText: 'ECOS 인증키(선택)',
+                hintText: '비우면 기본키 사용',
+              ),
             ),
             const SizedBox(height: 8),
             Align(
@@ -1139,10 +1381,15 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
-              await ref.read(cofixConfigProvider.notifier).setEcosApiKey(controller.text.trim());
+              await ref
+                  .read(cofixConfigProvider.notifier)
+                  .setEcosApiKey(controller.text.trim());
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('저장'),
@@ -1153,8 +1400,12 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showBonusDialog(BuildContext context, WidgetRef ref) {
-    final thresholdController = TextEditingController(text: '${child.bonusThreshold}');
-    final amountController = TextEditingController(text: '${child.bonusAmount}');
+    final thresholdController = TextEditingController(
+      text: '${child.bonusThreshold}',
+    );
+    final amountController = TextEditingController(
+      text: '${child.bonusAmount}',
+    );
     int day = child.bonusDayOfWeek;
 
     showDialog(
@@ -1193,24 +1444,40 @@ class SettingsScreen extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: '보너스 금액(원)'),
                 ),
                 const SizedBox(height: 8),
-                Text('예: 매주 목요일까지 1,000원 이상 남아있으면 500원 지급',
-                    style: TextStyle(
-                        fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Text(
+                  '예: 매주 목요일까지 1,000원 이상 남아있으면 500원 지급',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
             FilledButton(
               onPressed: () async {
-                await ref.read(databaseProvider).updateChildPartial(child.id, ChildrenCompanion(
-                      bonusDayOfWeek: Value(day),
-                      bonusThreshold:
-                          Value(int.tryParse(thresholdController.text) ?? child.bonusThreshold),
-                      bonusAmount:
-                          Value(int.tryParse(amountController.text) ?? child.bonusAmount),
-                      updatedAt: Value(DateTime.now()),
-                    ));
+                await ref
+                    .read(databaseProvider)
+                    .updateChildPartial(
+                      child.id,
+                      ChildrenCompanion(
+                        bonusDayOfWeek: Value(day),
+                        bonusThreshold: Value(
+                          int.tryParse(thresholdController.text) ??
+                              child.bonusThreshold,
+                        ),
+                        bonusAmount: Value(
+                          int.tryParse(amountController.text) ??
+                              child.bonusAmount,
+                        ),
+                        updatedAt: Value(DateTime.now()),
+                      ),
+                    );
                 if (context.mounted) Navigator.pop(context);
               },
               child: const Text('저장'),
@@ -1235,11 +1502,16 @@ class SettingsScreen extends ConsumerWidget {
           decoration: const InputDecoration(labelText: '4~6자리 숫자'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () async {
               if (pinController.text.length < 4) return;
-              await ref.read(settingsProvider.notifier).setPin(pinController.text);
+              await ref
+                  .read(settingsProvider.notifier)
+                  .setPin(pinController.text);
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('저장'),
@@ -1250,23 +1522,35 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // ---------- 실시간 자동 동기화 (Firebase) ----------
-  Widget _buildSyncPanel(BuildContext context, WidgetRef ref, AppSettings settings) {
+  Widget _buildSyncPanel(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+  ) {
     final code = settings.familyCode;
     final isChild = settings.isChild;
 
     if (code == null) {
       // 자녀 모드에서는 가족 연결을 새로 만들거나 갈아끼울 수 없다.
       if (isChild) {
-        return Text('아직 가족 연결이 안 돼 있어요. 부모님께 말씀드리면 연결해 주실 거예요.',
-            style: TextStyle(
-                fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant));
+        return Text(
+          '아직 가족 연결이 안 돼 있어요. 부모님께 말씀드리면 연결해 주실 거예요.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('앱을 켜두면 아내/남편 폰과 자동으로 동기화돼요. 파일을 주고받을 필요 없어요.',
-              style: TextStyle(
-                  fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            '앱을 켜두면 아내/남편 폰과 자동으로 동기화돼요. 파일을 주고받을 필요 없어요.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: () => _handleCreateFamily(context, ref),
@@ -1289,9 +1573,10 @@ class SettingsScreen extends ConsumerWidget {
       data: (s) => switch (s) {
         SyncStatus.syncing => '동기화 중...',
         SyncStatus.error => '동기화 오류 (인터넷 연결을 확인해주세요)',
-        SyncStatus.idle => service.lastSyncedAt != null
-            ? '마지막 동기화: ${formatDate(service.lastSyncedAt!)}'
-            : '연결됨',
+        SyncStatus.idle =>
+          service.lastSyncedAt != null
+              ? '마지막 동기화: ${formatDate(service.lastSyncedAt!)}'
+              : '연결됨',
       },
       loading: () => '연결하는 중...',
       error: (_, __) => '상태 확인 불가',
@@ -1309,12 +1594,21 @@ class SettingsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 자녀 모드에선 코드를 노출하지 않는다(코드를 알면 다른 기기에서 참여 가능)
-                  Text(isChild ? '가족과 연결됨' : '가족 코드: $code',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15.5, letterSpacing: 1)),
-                  Text(statusText,
-                      style: TextStyle(
-                          fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    isChild ? '가족과 연결됨' : '가족 코드: $code',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1323,7 +1617,8 @@ class SettingsScreen extends ConsumerWidget {
                 icon: const Icon(Icons.share_outlined),
                 tooltip: '코드 공유',
                 onPressed: () => Share.share(
-                    '용돈관리 앱 동기화 코드: $code\n앱 설정 > 실시간 자동 동기화 > "상대방 코드로 참여하기"에 입력해주세요.'),
+                  '용돈관리 앱 동기화 코드: $code\n앱 설정 > 실시간 자동 동기화 > "상대방 코드로 참여하기"에 입력해주세요.',
+                ),
               ),
           ],
         ),
@@ -1346,7 +1641,9 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _handleCreateFamily(BuildContext context, WidgetRef ref) async {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
     try {
-      final code = await ref.read(familySyncServiceProvider).createFamily(owner);
+      final code = await ref
+          .read(familySyncServiceProvider)
+          .createFamily(owner);
       await ref.read(settingsProvider.notifier).setFamilyCode(code);
       if (!context.mounted) return;
       await showDialog(
@@ -1357,12 +1654,19 @@ class SettingsScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(code,
-                  style:
-                      const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 3)),
+              Text(
+                code,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 3,
+                ),
+              ),
               const SizedBox(height: 10),
-              const Text('이 코드를 상대방에게 알려주고, 상대방 폰의 설정 > 실시간 자동 동기화 > '
-                  '"상대방 코드로 참여하기"에 입력하면 자동으로 연결돼요.'),
+              const Text(
+                '이 코드를 상대방에게 알려주고, 상대방 폰의 설정 > 실시간 자동 동기화 > '
+                '"상대방 코드로 참여하기"에 입력하면 자동으로 연결돼요.',
+              ),
             ],
           ),
           actions: [
@@ -1370,13 +1674,18 @@ class SettingsScreen extends ConsumerWidget {
               onPressed: () => Share.share('용돈관리 앱 동기화 코드: $code'),
               child: const Text('카톡으로 공유'),
             ),
-            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
           ],
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('동기화 시작 실패: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('동기화 시작 실패: $e')));
     }
   }
 
@@ -1393,7 +1702,10 @@ class SettingsScreen extends ConsumerWidget {
           decoration: const InputDecoration(labelText: '6자리 코드'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('참여'),
@@ -1406,14 +1718,19 @@ class SettingsScreen extends ConsumerWidget {
     final owner = ref.read(settingsProvider).deviceOwner ?? '';
     try {
       await ref.read(familySyncServiceProvider).joinFamily(code, owner);
-      await ref.read(settingsProvider.notifier).setFamilyCode(code.trim().toUpperCase());
+      await ref
+          .read(settingsProvider.notifier)
+          .setFamilyCode(code.trim().toUpperCase());
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('동기화에 연결됐어요.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('동기화에 연결됐어요.')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -1425,8 +1742,14 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('동기화를 끊을까요?'),
         content: const Text('이 기기에서만 자동 동기화가 중단됩니다. 지금까지의 데이터는 그대로 남아있어요.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('끊기')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('끊기'),
+          ),
         ],
       ),
     );
@@ -1451,10 +1774,10 @@ class SettingsScreen extends ConsumerWidget {
       },
     );
     await ref.read(settingsProvider.notifier).recordExport();
-    await Share.shareXFiles(
-      [XFile(jsonFile.path), XFile(summaryFile.path)],
-      text: '아이 용돈 관리 백업 파일입니다. (.json 파일을 앱에서 Import 해주세요)',
-    );
+    await Share.shareXFiles([
+      XFile(jsonFile.path),
+      XFile(summaryFile.path),
+    ], text: '아이 용돈 관리 백업 파일입니다. (.json 파일을 앱에서 Import 해주세요)');
   }
 
   Future<void> _handleImport(BuildContext context, WidgetRef ref) async {
@@ -1473,10 +1796,17 @@ class SettingsScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('가져오기 미리보기'),
         content: Text(
-            '신규 항목: ${preview.newCount}건\n갱신될 항목: ${preview.updatedCount}건\n변경 없음: ${preview.unchangedCount}건\n\n적용하시겠습니까?'),
+          '신규 항목: ${preview.newCount}건\n갱신될 항목: ${preview.updatedCount}건\n변경 없음: ${preview.unchangedCount}건\n\n적용하시겠습니까?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('적용')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('적용'),
+          ),
         ],
       ),
     );
@@ -1488,7 +1818,9 @@ class SettingsScreen extends ConsumerWidget {
       if (s is Map) {
         List<String>? toList(dynamic v) =>
             v is List ? v.whereType<String>().toList() : null;
-        await ref.read(settingsProvider.notifier).mergeCategoryLists(
+        await ref
+            .read(settingsProvider.notifier)
+            .mergeCategoryLists(
               expense: toList(s['expenseCategories']),
               income: toList(s['incomeCategories']),
               givers: toList(s['givers']),
@@ -1503,8 +1835,9 @@ class SettingsScreen extends ConsumerWidget {
         ref.read(selectedChildIdProvider.notifier).state = primary;
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('가져오기가 완료되었습니다.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('가져오기가 완료되었습니다.')));
       }
     }
   }
@@ -1515,7 +1848,8 @@ class _PastAllowanceDialog extends ConsumerStatefulWidget {
   final Child child;
   const _PastAllowanceDialog({required this.child});
   @override
-  ConsumerState<_PastAllowanceDialog> createState() => _PastAllowanceDialogState();
+  ConsumerState<_PastAllowanceDialog> createState() =>
+      _PastAllowanceDialogState();
 }
 
 class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
@@ -1537,7 +1871,9 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
 
   Future<void> _recompute() async {
     setState(() => _total = null);
-    final t = await ref.read(databaseProvider).estimatePastAllowance(widget.child, _start);
+    final t = await ref
+        .read(databaseProvider)
+        .estimatePastAllowance(widget.child, _start);
     if (mounted) setState(() => _total = t);
   }
 
@@ -1554,8 +1890,10 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('① 용돈을 처음 주기 시작한 날짜와 ② 지금까지 모아둔 돈만 넣으면, '
-                '그동안 받은 정기용돈을 자동 계산하고 쓴 돈을 뭉텅이로 내역에 넣어드려요.'),
+            const Text(
+              '① 용돈을 처음 주기 시작한 날짜와 ② 지금까지 모아둔 돈만 넣으면, '
+              '그동안 받은 정기용돈을 자동 계산하고 쓴 돈을 뭉텅이로 내역에 넣어드려요.',
+            ),
             const SizedBox(height: 14),
             InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -1572,7 +1910,10 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: scheme.outline),
                   borderRadius: BorderRadius.circular(12),
@@ -1609,23 +1950,34 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                         ? '계산 중...'
                         : '받은 정기용돈 ≈ ${formatWon(total)}',
                     style: TextStyle(
-                        fontWeight: FontWeight.w800, color: scheme.onSecondaryContainer),
+                      fontWeight: FontWeight.w800,
+                      color: scheme.onSecondaryContainer,
+                    ),
                   ),
                   const SizedBox(height: 2),
-                  Text('자동 계산된 소비 ≈ ${formatWon(spent)}',
-                      style: TextStyle(
-                          fontSize: 12.5, color: scheme.onSecondaryContainer)),
+                  Text(
+                    '자동 계산된 소비 ≈ ${formatWon(spent)}',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-            Text('적용하면 기존 시작 잔액은 대체돼요.',
-                style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+            Text(
+              '적용하면 기존 시작 잔액은 대체돼요.',
+              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+            ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
         FilledButton(
           onPressed: _total == null
               ? null
@@ -1637,7 +1989,8 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('과거 용돈을 반영했어요.')));
+                      const SnackBar(content: Text('과거 용돈을 반영했어요.')),
+                    );
                   }
                 },
           child: const Text('적용'),
@@ -1661,19 +2014,26 @@ class _AppVersionTileState extends State<_AppVersionTile> {
   @override
   void initState() {
     super.initState();
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _version = 'v${info.version} (빌드 ${info.buildNumber})');
-    }).catchError((_) {
-      if (mounted) setState(() => _version = '버전 정보를 읽을 수 없어요');
-    });
+    PackageInfo.fromPlatform()
+        .then((info) {
+          if (mounted) {
+            setState(
+              () => _version = 'v${info.version} (빌드 ${info.buildNumber})',
+            );
+          }
+        })
+        .catchError((_) {
+          if (mounted) setState(() => _version = '버전 정보를 읽을 수 없어요');
+        });
   }
 
   Future<void> _open(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('링크를 열 수 없어요.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('링크를 열 수 없어요.')));
       }
     }
   }
@@ -1688,12 +2048,14 @@ class _AppVersionTileState extends State<_AppVersionTile> {
     setState(() => _checking = false);
     if (info == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('업데이트 확인 실패 (인터넷 연결을 확인해주세요)')));
+        const SnackBar(content: Text('업데이트 확인 실패 (인터넷 연결을 확인해주세요)')),
+      );
       return;
     }
     if (!info.hasUpdate) {
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('최신 버전이에요 (v${info.currentVersion})')));
+        SnackBar(content: Text('최신 버전이에요 (v${info.currentVersion})')),
+      );
       return;
     }
     final u = info;
@@ -1701,13 +2063,20 @@ class _AppVersionTileState extends State<_AppVersionTile> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('새 버전 v${u.latestVersion} 있어요!'),
-        content: Text('현재 v${u.currentVersion} → 최신 v${u.latestVersion}\n\n'
-            '아래 "지금 받기"를 누르면 새 버전 파일을 내려받아요. 다운로드한 파일을 열면 설치됩니다.\n'
-            '(플레이스토어 앱이 아니라서 "출처를 알 수 없는 앱 허용"이 필요할 수 있어요)'),
+        content: Text(
+          '현재 v${u.currentVersion} → 최신 v${u.latestVersion}\n\n'
+          '아래 "지금 받기"를 누르면 새 버전 파일을 내려받아요. 다운로드한 파일을 열면 설치됩니다.\n'
+          '(플레이스토어 앱이 아니라서 "출처를 알 수 없는 앱 허용"이 필요할 수 있어요)',
+        ),
         actions: [
           TextButton(
-              onPressed: () => _open(u.releaseUrl), child: const Text('릴리즈 페이지')),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('나중에')),
+            onPressed: () => _open(u.releaseUrl),
+            child: const Text('릴리즈 페이지'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('나중에'),
+          ),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
@@ -1733,7 +2102,10 @@ class _AppVersionTileState extends State<_AppVersionTile> {
         ListTile(
           leading: _checking
               ? const SizedBox(
-                  width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.system_update),
           title: const Text('업데이트 확인'),
           subtitle: const Text('새 버전이 있으면 받을 수 있어요'),
@@ -1772,33 +2144,56 @@ class _CategoryExpansion extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = appPalette(context);
     return ExpansionTile(
-      leading: Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2)),
-      subtitle: Text(subtitle,
-          style: TextStyle(
-              fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      leading: Icon(
+        icon,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
       shape: const Border(),
       collapsedShape: const Border(),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final c in items)
-                _RemovableChip(
-                  label: c,
-                  pair: palette.tagFor(c),
-                  onRemove: items.length > 1
-                      ? () => ref.read(settingsProvider.notifier).removeCategory(kind, c)
-                      : null,
-                ),
-              _AddCategoryChip(
-                  onAdd: (name) =>
-                      ref.read(settingsProvider.notifier).addCategory(kind, name)),
-            ],
+          child: Builder(
+            builder: (context) {
+              // 관리 화면에서 한눈에 다 보이는 목록이라 서로 겹치지 않는 색으로 배정.
+              final tagMap = palette.tagsFor(items);
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in items)
+                    _RemovableChip(
+                      label: c,
+                      pair: tagMap[c]!,
+                      onRemove: items.length > 1
+                          ? () => ref
+                                .read(settingsProvider.notifier)
+                                .removeCategory(kind, c)
+                          : null,
+                    ),
+                  _AddCategoryChip(
+                    onAdd: (name) => ref
+                        .read(settingsProvider.notifier)
+                        .addCategory(kind, name),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -1810,25 +2205,41 @@ class _RemovableChip extends StatelessWidget {
   final String label;
   final PastelPair pair;
   final VoidCallback? onRemove;
-  const _RemovableChip({required this.label, required this.pair, this.onRemove});
+  const _RemovableChip({
+    required this.label,
+    required this.pair,
+    this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(left: 12, right: 6, top: 7, bottom: 7),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: pair.bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: pair.fg, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+          Text(
+            label,
+            style: TextStyle(
+              color: pair.fg,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
+          ),
           if (onRemove != null)
             GestureDetector(
               onTap: onRemove,
               child: Padding(
                 padding: const EdgeInsets.only(left: 4),
-                child: Icon(Icons.close, size: 16, color: pair.fg.withValues(alpha: 0.8)),
+                child: Icon(
+                  Icons.close,
+                  size: 16,
+                  color: pair.fg.withValues(alpha: 0.8),
+                ),
               ),
             )
           else
@@ -1859,10 +2270,14 @@ class _AddCategoryChip extends StatelessWidget {
               onSubmitted: (v) => Navigator.pop(context, v),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
               FilledButton(
-                  onPressed: () => Navigator.pop(context, controller.text),
-                  child: const Text('추가')),
+                onPressed: () => Navigator.pop(context, controller.text),
+                child: const Text('추가'),
+              ),
             ],
           ),
         );
@@ -1877,12 +2292,19 @@ class _AddCategoryChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.add,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 4),
-            Text('추가',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              '추가',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
