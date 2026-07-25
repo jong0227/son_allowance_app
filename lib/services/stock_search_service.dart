@@ -191,6 +191,67 @@ class StockSearchService {
     }
   }
 
+  /// 모의 투자에서 다루는 세계 주요 지수.
+  /// 베트남은 야후에 지수(^VNI)가 없어 베트남 ETF(VNM)로 대신한다.
+  static const List<(String key, String label, String symbol, String note)>
+      investTargets = [
+    ('kospi', '코스피', '^KS11', '우리나라 대표 회사들'),
+    ('kosdaq', '코스닥', '^KQ11', '우리나라 도전하는 회사들'),
+    ('nasdaq', '나스닥', '^IXIC', '미국 기술 회사들'),
+    ('india', '인도', '^BSESN', '인도 대표 회사들 (센섹스)'),
+    ('china', '중국', '000001.SS', '중국 상하이 회사들'),
+    ('vietnam', '베트남', 'VNM', '베트남 회사 모음(ETF)'),
+    ('europe', '유럽', '^STOXX50E', '유럽 대표 50개 회사'),
+  ];
+
+  /// 모의 투자 화면에 쓸 지수 시세 모음. 실패한 항목은 빠진다.
+  Future<List<MarketIndex>> investIndices() async {
+    final out = <MarketIndex>[];
+    for (final target in investTargets) {
+      final label = target.$2;
+      final symbol = target.$3;
+      final idx = await marketIndex(label, symbol);
+      if (idx != null) out.add(idx);
+    }
+    return out;
+  }
+
+  /// 지수 과거 시세(차트용). [range]는 야후 형식('1mo','3mo','6mo','1y','5y').
+  /// 종가 목록을 오래된 것 → 최신 순으로 돌려준다. 실패하면 빈 목록.
+  Future<List<double>> indexSeries(String symbol, String range) async {
+    // 기간이 길수록 일봉, 짧으면 촘촘하게.
+    final interval = switch (range) {
+      '1mo' => '1d',
+      '3mo' => '1d',
+      '6mo' => '1d',
+      '1y' => '1d',
+      _ => '1wk',
+    };
+    try {
+      final uri = Uri.parse(
+          'https://query1.finance.yahoo.com/v8/finance/chart/${Uri.encodeComponent(symbol)}'
+          '?range=$range&interval=$interval');
+      final res = await http.get(uri, headers: const {
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+      });
+      if (res.statusCode != 200) return const [];
+      final body = jsonDecode(utf8.decode(res.bodyBytes));
+      final result = body?['chart']?['result'];
+      if (result is! List || result.isEmpty) return const [];
+      final quote = result.first['indicators']?['quote'];
+      if (quote is! List || quote.isEmpty) return const [];
+      final closes = quote.first['close'];
+      if (closes is! List) return const [];
+      return [
+        for (final c in closes)
+          if (c is num) c.toDouble(),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<Map<String, dynamic>?> _chartMeta(String symbol) async {
     final uri = Uri.parse(
         'https://query1.finance.yahoo.com/v8/finance/chart/${Uri.encodeComponent(symbol)}?range=1d&interval=1d');

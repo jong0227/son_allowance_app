@@ -211,6 +211,18 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     requiredDuringInsert: false,
     defaultValue: const Constant(10),
   );
+  static const VerificationMeta _investLimitPercentMeta =
+      const VerificationMeta('investLimitPercent');
+  @override
+  late final GeneratedColumn<double> investLimitPercent =
+      GeneratedColumn<double>(
+        'invest_limit_percent',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(10.0),
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -265,6 +277,7 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
     interestUseBankRate,
     interestMultiplier,
     quizReward,
+    investLimitPercent,
     createdAt,
     updatedAt,
     deletedAt,
@@ -423,6 +436,15 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         quizReward.isAcceptableOrUnknown(data['quiz_reward']!, _quizRewardMeta),
       );
     }
+    if (data.containsKey('invest_limit_percent')) {
+      context.handle(
+        _investLimitPercentMeta,
+        investLimitPercent.isAcceptableOrUnknown(
+          data['invest_limit_percent']!,
+          _investLimitPercentMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -518,6 +540,10 @@ class $ChildrenTable extends Children with TableInfo<$ChildrenTable, Child> {
         DriftSqlType.int,
         data['${effectivePrefix}quiz_reward'],
       )!,
+      investLimitPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}invest_limit_percent'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -566,6 +592,9 @@ class Child extends DataClass implements Insertable<Child> {
 
   /// 경제왕 퀴즈 정답 1문제당 보상(원). 해설 보고 다시 맞히면 이 금액의 절반.
   final int quizReward;
+
+  /// 모의 투자에 넣을 수 있는 저축 포인트 상한(총 저축의 %). 부모가 설정에서 조절.
+  final double investLimitPercent;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -587,6 +616,7 @@ class Child extends DataClass implements Insertable<Child> {
     required this.interestUseBankRate,
     required this.interestMultiplier,
     required this.quizReward,
+    required this.investLimitPercent,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -615,6 +645,7 @@ class Child extends DataClass implements Insertable<Child> {
     map['interest_use_bank_rate'] = Variable<bool>(interestUseBankRate);
     map['interest_multiplier'] = Variable<double>(interestMultiplier);
     map['quiz_reward'] = Variable<int>(quizReward);
+    map['invest_limit_percent'] = Variable<double>(investLimitPercent);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -646,6 +677,7 @@ class Child extends DataClass implements Insertable<Child> {
       interestUseBankRate: Value(interestUseBankRate),
       interestMultiplier: Value(interestMultiplier),
       quizReward: Value(quizReward),
+      investLimitPercent: Value(investLimitPercent),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -687,6 +719,9 @@ class Child extends DataClass implements Insertable<Child> {
         json['interestMultiplier'],
       ),
       quizReward: serializer.fromJson<int>(json['quizReward']),
+      investLimitPercent: serializer.fromJson<double>(
+        json['investLimitPercent'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -713,6 +748,7 @@ class Child extends DataClass implements Insertable<Child> {
       'interestUseBankRate': serializer.toJson<bool>(interestUseBankRate),
       'interestMultiplier': serializer.toJson<double>(interestMultiplier),
       'quizReward': serializer.toJson<int>(quizReward),
+      'investLimitPercent': serializer.toJson<double>(investLimitPercent),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -737,6 +773,7 @@ class Child extends DataClass implements Insertable<Child> {
     bool? interestUseBankRate,
     double? interestMultiplier,
     int? quizReward,
+    double? investLimitPercent,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -761,6 +798,7 @@ class Child extends DataClass implements Insertable<Child> {
     interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
     interestMultiplier: interestMultiplier ?? this.interestMultiplier,
     quizReward: quizReward ?? this.quizReward,
+    investLimitPercent: investLimitPercent ?? this.investLimitPercent,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -814,6 +852,9 @@ class Child extends DataClass implements Insertable<Child> {
       quizReward: data.quizReward.present
           ? data.quizReward.value
           : this.quizReward,
+      investLimitPercent: data.investLimitPercent.present
+          ? data.investLimitPercent.value
+          : this.investLimitPercent,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -840,6 +881,7 @@ class Child extends DataClass implements Insertable<Child> {
           ..write('interestUseBankRate: $interestUseBankRate, ')
           ..write('interestMultiplier: $interestMultiplier, ')
           ..write('quizReward: $quizReward, ')
+          ..write('investLimitPercent: $investLimitPercent, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -848,7 +890,7 @@ class Child extends DataClass implements Insertable<Child> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     stockAccountLabel,
@@ -866,10 +908,11 @@ class Child extends DataClass implements Insertable<Child> {
     interestUseBankRate,
     interestMultiplier,
     quizReward,
+    investLimitPercent,
     createdAt,
     updatedAt,
     deletedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -891,6 +934,7 @@ class Child extends DataClass implements Insertable<Child> {
           other.interestUseBankRate == this.interestUseBankRate &&
           other.interestMultiplier == this.interestMultiplier &&
           other.quizReward == this.quizReward &&
+          other.investLimitPercent == this.investLimitPercent &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -914,6 +958,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
   final Value<bool> interestUseBankRate;
   final Value<double> interestMultiplier;
   final Value<int> quizReward;
+  final Value<double> investLimitPercent;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -936,6 +981,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestUseBankRate = const Value.absent(),
     this.interestMultiplier = const Value.absent(),
     this.quizReward = const Value.absent(),
+    this.investLimitPercent = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -959,6 +1005,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     this.interestUseBankRate = const Value.absent(),
     this.interestMultiplier = const Value.absent(),
     this.quizReward = const Value.absent(),
+    this.investLimitPercent = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -983,6 +1030,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Expression<bool>? interestUseBankRate,
     Expression<double>? interestMultiplier,
     Expression<int>? quizReward,
+    Expression<double>? investLimitPercent,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -1009,6 +1057,8 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
         'interest_use_bank_rate': interestUseBankRate,
       if (interestMultiplier != null) 'interest_multiplier': interestMultiplier,
       if (quizReward != null) 'quiz_reward': quizReward,
+      if (investLimitPercent != null)
+        'invest_limit_percent': investLimitPercent,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1034,6 +1084,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     Value<bool>? interestUseBankRate,
     Value<double>? interestMultiplier,
     Value<int>? quizReward,
+    Value<double>? investLimitPercent,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -1059,6 +1110,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
       interestUseBankRate: interestUseBankRate ?? this.interestUseBankRate,
       interestMultiplier: interestMultiplier ?? this.interestMultiplier,
       quizReward: quizReward ?? this.quizReward,
+      investLimitPercent: investLimitPercent ?? this.investLimitPercent,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1124,6 +1176,9 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
     if (quizReward.present) {
       map['quiz_reward'] = Variable<int>(quizReward.value);
     }
+    if (investLimitPercent.present) {
+      map['invest_limit_percent'] = Variable<double>(investLimitPercent.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1159,6 +1214,7 @@ class ChildrenCompanion extends UpdateCompanion<Child> {
           ..write('interestUseBankRate: $interestUseBankRate, ')
           ..write('interestMultiplier: $interestMultiplier, ')
           ..write('quizReward: $quizReward, ')
+          ..write('investLimitPercent: $investLimitPercent, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -7721,6 +7777,750 @@ class QuizAttemptsCompanion extends UpdateCompanion<QuizAttempt> {
   }
 }
 
+class $InvestmentsTable extends Investments
+    with TableInfo<$InvestmentsTable, Investment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InvestmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _indexKeyMeta = const VerificationMeta(
+    'indexKey',
+  );
+  @override
+  late final GeneratedColumn<String> indexKey = GeneratedColumn<String>(
+    'index_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _buyValueMeta = const VerificationMeta(
+    'buyValue',
+  );
+  @override
+  late final GeneratedColumn<double> buyValue = GeneratedColumn<double>(
+    'buy_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _buyAtMeta = const VerificationMeta('buyAt');
+  @override
+  late final GeneratedColumn<DateTime> buyAt = GeneratedColumn<DateTime>(
+    'buy_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _soldAtMeta = const VerificationMeta('soldAt');
+  @override
+  late final GeneratedColumn<DateTime> soldAt = GeneratedColumn<DateTime>(
+    'sold_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellValueMeta = const VerificationMeta(
+    'sellValue',
+  );
+  @override
+  late final GeneratedColumn<double> sellValue = GeneratedColumn<double>(
+    'sell_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _returnedMeta = const VerificationMeta(
+    'returned',
+  );
+  @override
+  late final GeneratedColumn<int> returned = GeneratedColumn<int>(
+    'returned',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    childId,
+    indexKey,
+    label,
+    symbol,
+    amount,
+    buyValue,
+    buyAt,
+    soldAt,
+    sellValue,
+    returned,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'investments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Investment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('index_key')) {
+      context.handle(
+        _indexKeyMeta,
+        indexKey.isAcceptableOrUnknown(data['index_key']!, _indexKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_indexKeyMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symbolMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('buy_value')) {
+      context.handle(
+        _buyValueMeta,
+        buyValue.isAcceptableOrUnknown(data['buy_value']!, _buyValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_buyValueMeta);
+    }
+    if (data.containsKey('buy_at')) {
+      context.handle(
+        _buyAtMeta,
+        buyAt.isAcceptableOrUnknown(data['buy_at']!, _buyAtMeta),
+      );
+    }
+    if (data.containsKey('sold_at')) {
+      context.handle(
+        _soldAtMeta,
+        soldAt.isAcceptableOrUnknown(data['sold_at']!, _soldAtMeta),
+      );
+    }
+    if (data.containsKey('sell_value')) {
+      context.handle(
+        _sellValueMeta,
+        sellValue.isAcceptableOrUnknown(data['sell_value']!, _sellValueMeta),
+      );
+    }
+    if (data.containsKey('returned')) {
+      context.handle(
+        _returnedMeta,
+        returned.isAcceptableOrUnknown(data['returned']!, _returnedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Investment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Investment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      indexKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}index_key'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      buyValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}buy_value'],
+      )!,
+      buyAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}buy_at'],
+      )!,
+      soldAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sold_at'],
+      ),
+      sellValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sell_value'],
+      ),
+      returned: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}returned'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $InvestmentsTable createAlias(String alias) {
+    return $InvestmentsTable(attachedDatabase, alias);
+  }
+}
+
+class Investment extends DataClass implements Insertable<Investment> {
+  final String id;
+  final String childId;
+  final String indexKey;
+  final String label;
+  final String symbol;
+  final int amount;
+  final double buyValue;
+  final DateTime buyAt;
+
+  /// 판 시각. null이면 아직 보유 중.
+  final DateTime? soldAt;
+  final double? sellValue;
+  final int? returned;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const Investment({
+    required this.id,
+    required this.childId,
+    required this.indexKey,
+    required this.label,
+    required this.symbol,
+    required this.amount,
+    required this.buyValue,
+    required this.buyAt,
+    this.soldAt,
+    this.sellValue,
+    this.returned,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['child_id'] = Variable<String>(childId);
+    map['index_key'] = Variable<String>(indexKey);
+    map['label'] = Variable<String>(label);
+    map['symbol'] = Variable<String>(symbol);
+    map['amount'] = Variable<int>(amount);
+    map['buy_value'] = Variable<double>(buyValue);
+    map['buy_at'] = Variable<DateTime>(buyAt);
+    if (!nullToAbsent || soldAt != null) {
+      map['sold_at'] = Variable<DateTime>(soldAt);
+    }
+    if (!nullToAbsent || sellValue != null) {
+      map['sell_value'] = Variable<double>(sellValue);
+    }
+    if (!nullToAbsent || returned != null) {
+      map['returned'] = Variable<int>(returned);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  InvestmentsCompanion toCompanion(bool nullToAbsent) {
+    return InvestmentsCompanion(
+      id: Value(id),
+      childId: Value(childId),
+      indexKey: Value(indexKey),
+      label: Value(label),
+      symbol: Value(symbol),
+      amount: Value(amount),
+      buyValue: Value(buyValue),
+      buyAt: Value(buyAt),
+      soldAt: soldAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(soldAt),
+      sellValue: sellValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellValue),
+      returned: returned == null && nullToAbsent
+          ? const Value.absent()
+          : Value(returned),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory Investment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Investment(
+      id: serializer.fromJson<String>(json['id']),
+      childId: serializer.fromJson<String>(json['childId']),
+      indexKey: serializer.fromJson<String>(json['indexKey']),
+      label: serializer.fromJson<String>(json['label']),
+      symbol: serializer.fromJson<String>(json['symbol']),
+      amount: serializer.fromJson<int>(json['amount']),
+      buyValue: serializer.fromJson<double>(json['buyValue']),
+      buyAt: serializer.fromJson<DateTime>(json['buyAt']),
+      soldAt: serializer.fromJson<DateTime?>(json['soldAt']),
+      sellValue: serializer.fromJson<double?>(json['sellValue']),
+      returned: serializer.fromJson<int?>(json['returned']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'childId': serializer.toJson<String>(childId),
+      'indexKey': serializer.toJson<String>(indexKey),
+      'label': serializer.toJson<String>(label),
+      'symbol': serializer.toJson<String>(symbol),
+      'amount': serializer.toJson<int>(amount),
+      'buyValue': serializer.toJson<double>(buyValue),
+      'buyAt': serializer.toJson<DateTime>(buyAt),
+      'soldAt': serializer.toJson<DateTime?>(soldAt),
+      'sellValue': serializer.toJson<double?>(sellValue),
+      'returned': serializer.toJson<int?>(returned),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  Investment copyWith({
+    String? id,
+    String? childId,
+    String? indexKey,
+    String? label,
+    String? symbol,
+    int? amount,
+    double? buyValue,
+    DateTime? buyAt,
+    Value<DateTime?> soldAt = const Value.absent(),
+    Value<double?> sellValue = const Value.absent(),
+    Value<int?> returned = const Value.absent(),
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => Investment(
+    id: id ?? this.id,
+    childId: childId ?? this.childId,
+    indexKey: indexKey ?? this.indexKey,
+    label: label ?? this.label,
+    symbol: symbol ?? this.symbol,
+    amount: amount ?? this.amount,
+    buyValue: buyValue ?? this.buyValue,
+    buyAt: buyAt ?? this.buyAt,
+    soldAt: soldAt.present ? soldAt.value : this.soldAt,
+    sellValue: sellValue.present ? sellValue.value : this.sellValue,
+    returned: returned.present ? returned.value : this.returned,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  Investment copyWithCompanion(InvestmentsCompanion data) {
+    return Investment(
+      id: data.id.present ? data.id.value : this.id,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      indexKey: data.indexKey.present ? data.indexKey.value : this.indexKey,
+      label: data.label.present ? data.label.value : this.label,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      buyValue: data.buyValue.present ? data.buyValue.value : this.buyValue,
+      buyAt: data.buyAt.present ? data.buyAt.value : this.buyAt,
+      soldAt: data.soldAt.present ? data.soldAt.value : this.soldAt,
+      sellValue: data.sellValue.present ? data.sellValue.value : this.sellValue,
+      returned: data.returned.present ? data.returned.value : this.returned,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Investment(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('indexKey: $indexKey, ')
+          ..write('label: $label, ')
+          ..write('symbol: $symbol, ')
+          ..write('amount: $amount, ')
+          ..write('buyValue: $buyValue, ')
+          ..write('buyAt: $buyAt, ')
+          ..write('soldAt: $soldAt, ')
+          ..write('sellValue: $sellValue, ')
+          ..write('returned: $returned, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    childId,
+    indexKey,
+    label,
+    symbol,
+    amount,
+    buyValue,
+    buyAt,
+    soldAt,
+    sellValue,
+    returned,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Investment &&
+          other.id == this.id &&
+          other.childId == this.childId &&
+          other.indexKey == this.indexKey &&
+          other.label == this.label &&
+          other.symbol == this.symbol &&
+          other.amount == this.amount &&
+          other.buyValue == this.buyValue &&
+          other.buyAt == this.buyAt &&
+          other.soldAt == this.soldAt &&
+          other.sellValue == this.sellValue &&
+          other.returned == this.returned &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class InvestmentsCompanion extends UpdateCompanion<Investment> {
+  final Value<String> id;
+  final Value<String> childId;
+  final Value<String> indexKey;
+  final Value<String> label;
+  final Value<String> symbol;
+  final Value<int> amount;
+  final Value<double> buyValue;
+  final Value<DateTime> buyAt;
+  final Value<DateTime?> soldAt;
+  final Value<double?> sellValue;
+  final Value<int?> returned;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const InvestmentsCompanion({
+    this.id = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.indexKey = const Value.absent(),
+    this.label = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.buyValue = const Value.absent(),
+    this.buyAt = const Value.absent(),
+    this.soldAt = const Value.absent(),
+    this.sellValue = const Value.absent(),
+    this.returned = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InvestmentsCompanion.insert({
+    required String id,
+    required String childId,
+    required String indexKey,
+    required String label,
+    required String symbol,
+    required int amount,
+    required double buyValue,
+    this.buyAt = const Value.absent(),
+    this.soldAt = const Value.absent(),
+    this.sellValue = const Value.absent(),
+    this.returned = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       childId = Value(childId),
+       indexKey = Value(indexKey),
+       label = Value(label),
+       symbol = Value(symbol),
+       amount = Value(amount),
+       buyValue = Value(buyValue);
+  static Insertable<Investment> custom({
+    Expression<String>? id,
+    Expression<String>? childId,
+    Expression<String>? indexKey,
+    Expression<String>? label,
+    Expression<String>? symbol,
+    Expression<int>? amount,
+    Expression<double>? buyValue,
+    Expression<DateTime>? buyAt,
+    Expression<DateTime>? soldAt,
+    Expression<double>? sellValue,
+    Expression<int>? returned,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (childId != null) 'child_id': childId,
+      if (indexKey != null) 'index_key': indexKey,
+      if (label != null) 'label': label,
+      if (symbol != null) 'symbol': symbol,
+      if (amount != null) 'amount': amount,
+      if (buyValue != null) 'buy_value': buyValue,
+      if (buyAt != null) 'buy_at': buyAt,
+      if (soldAt != null) 'sold_at': soldAt,
+      if (sellValue != null) 'sell_value': sellValue,
+      if (returned != null) 'returned': returned,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InvestmentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? childId,
+    Value<String>? indexKey,
+    Value<String>? label,
+    Value<String>? symbol,
+    Value<int>? amount,
+    Value<double>? buyValue,
+    Value<DateTime>? buyAt,
+    Value<DateTime?>? soldAt,
+    Value<double?>? sellValue,
+    Value<int?>? returned,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return InvestmentsCompanion(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      indexKey: indexKey ?? this.indexKey,
+      label: label ?? this.label,
+      symbol: symbol ?? this.symbol,
+      amount: amount ?? this.amount,
+      buyValue: buyValue ?? this.buyValue,
+      buyAt: buyAt ?? this.buyAt,
+      soldAt: soldAt ?? this.soldAt,
+      sellValue: sellValue ?? this.sellValue,
+      returned: returned ?? this.returned,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (indexKey.present) {
+      map['index_key'] = Variable<String>(indexKey.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (buyValue.present) {
+      map['buy_value'] = Variable<double>(buyValue.value);
+    }
+    if (buyAt.present) {
+      map['buy_at'] = Variable<DateTime>(buyAt.value);
+    }
+    if (soldAt.present) {
+      map['sold_at'] = Variable<DateTime>(soldAt.value);
+    }
+    if (sellValue.present) {
+      map['sell_value'] = Variable<double>(sellValue.value);
+    }
+    if (returned.present) {
+      map['returned'] = Variable<int>(returned.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvestmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('indexKey: $indexKey, ')
+          ..write('label: $label, ')
+          ..write('symbol: $symbol, ')
+          ..write('amount: $amount, ')
+          ..write('buyValue: $buyValue, ')
+          ..write('buyAt: $buyAt, ')
+          ..write('soldAt: $soldAt, ')
+          ..write('sellValue: $sellValue, ')
+          ..write('returned: $returned, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7740,6 +8540,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $QuizAttemptsTable quizAttempts = $QuizAttemptsTable(this);
+  late final $InvestmentsTable investments = $InvestmentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7757,6 +8558,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     promises,
     promiseComments,
     quizAttempts,
+    investments,
   ];
 }
 
@@ -7779,6 +8581,7 @@ typedef $$ChildrenTableCreateCompanionBuilder =
       Value<bool> interestUseBankRate,
       Value<double> interestMultiplier,
       Value<int> quizReward,
+      Value<double> investLimitPercent,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -7803,6 +8606,7 @@ typedef $$ChildrenTableUpdateCompanionBuilder =
       Value<bool> interestUseBankRate,
       Value<double> interestMultiplier,
       Value<int> quizReward,
+      Value<double> investLimitPercent,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -7900,6 +8704,11 @@ class $$ChildrenTableFilterComposer
 
   ColumnFilters<int> get quizReward => $composableBuilder(
     column: $table.quizReward,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get investLimitPercent => $composableBuilder(
+    column: $table.investLimitPercent,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8013,6 +8822,11 @@ class $$ChildrenTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get investLimitPercent => $composableBuilder(
+    column: $table.investLimitPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8119,6 +8933,11 @@ class $$ChildrenTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get investLimitPercent => $composableBuilder(
+    column: $table.investLimitPercent,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -8174,6 +8993,7 @@ class $$ChildrenTableTableManager
                 Value<bool> interestUseBankRate = const Value.absent(),
                 Value<double> interestMultiplier = const Value.absent(),
                 Value<int> quizReward = const Value.absent(),
+                Value<double> investLimitPercent = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -8196,6 +9016,7 @@ class $$ChildrenTableTableManager
                 interestUseBankRate: interestUseBankRate,
                 interestMultiplier: interestMultiplier,
                 quizReward: quizReward,
+                investLimitPercent: investLimitPercent,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -8220,6 +9041,7 @@ class $$ChildrenTableTableManager
                 Value<bool> interestUseBankRate = const Value.absent(),
                 Value<double> interestMultiplier = const Value.absent(),
                 Value<int> quizReward = const Value.absent(),
+                Value<double> investLimitPercent = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -8242,6 +9064,7 @@ class $$ChildrenTableTableManager
                 interestUseBankRate: interestUseBankRate,
                 interestMultiplier: interestMultiplier,
                 quizReward: quizReward,
+                investLimitPercent: investLimitPercent,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -11509,6 +12332,358 @@ typedef $$QuizAttemptsTableProcessedTableManager =
       QuizAttempt,
       PrefetchHooks Function()
     >;
+typedef $$InvestmentsTableCreateCompanionBuilder =
+    InvestmentsCompanion Function({
+      required String id,
+      required String childId,
+      required String indexKey,
+      required String label,
+      required String symbol,
+      required int amount,
+      required double buyValue,
+      Value<DateTime> buyAt,
+      Value<DateTime?> soldAt,
+      Value<double?> sellValue,
+      Value<int?> returned,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$InvestmentsTableUpdateCompanionBuilder =
+    InvestmentsCompanion Function({
+      Value<String> id,
+      Value<String> childId,
+      Value<String> indexKey,
+      Value<String> label,
+      Value<String> symbol,
+      Value<int> amount,
+      Value<double> buyValue,
+      Value<DateTime> buyAt,
+      Value<DateTime?> soldAt,
+      Value<double?> sellValue,
+      Value<int?> returned,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$InvestmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InvestmentsTable> {
+  $$InvestmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get indexKey => $composableBuilder(
+    column: $table.indexKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get buyValue => $composableBuilder(
+    column: $table.buyValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get buyAt => $composableBuilder(
+    column: $table.buyAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get soldAt => $composableBuilder(
+    column: $table.soldAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sellValue => $composableBuilder(
+    column: $table.sellValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get returned => $composableBuilder(
+    column: $table.returned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InvestmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InvestmentsTable> {
+  $$InvestmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get indexKey => $composableBuilder(
+    column: $table.indexKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get buyValue => $composableBuilder(
+    column: $table.buyValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get buyAt => $composableBuilder(
+    column: $table.buyAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get soldAt => $composableBuilder(
+    column: $table.soldAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sellValue => $composableBuilder(
+    column: $table.sellValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get returned => $composableBuilder(
+    column: $table.returned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InvestmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InvestmentsTable> {
+  $$InvestmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get indexKey =>
+      $composableBuilder(column: $table.indexKey, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<double> get buyValue =>
+      $composableBuilder(column: $table.buyValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get buyAt =>
+      $composableBuilder(column: $table.buyAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get soldAt =>
+      $composableBuilder(column: $table.soldAt, builder: (column) => column);
+
+  GeneratedColumn<double> get sellValue =>
+      $composableBuilder(column: $table.sellValue, builder: (column) => column);
+
+  GeneratedColumn<int> get returned =>
+      $composableBuilder(column: $table.returned, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$InvestmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InvestmentsTable,
+          Investment,
+          $$InvestmentsTableFilterComposer,
+          $$InvestmentsTableOrderingComposer,
+          $$InvestmentsTableAnnotationComposer,
+          $$InvestmentsTableCreateCompanionBuilder,
+          $$InvestmentsTableUpdateCompanionBuilder,
+          (
+            Investment,
+            BaseReferences<_$AppDatabase, $InvestmentsTable, Investment>,
+          ),
+          Investment,
+          PrefetchHooks Function()
+        > {
+  $$InvestmentsTableTableManager(_$AppDatabase db, $InvestmentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InvestmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InvestmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InvestmentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> indexKey = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> symbol = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<double> buyValue = const Value.absent(),
+                Value<DateTime> buyAt = const Value.absent(),
+                Value<DateTime?> soldAt = const Value.absent(),
+                Value<double?> sellValue = const Value.absent(),
+                Value<int?> returned = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvestmentsCompanion(
+                id: id,
+                childId: childId,
+                indexKey: indexKey,
+                label: label,
+                symbol: symbol,
+                amount: amount,
+                buyValue: buyValue,
+                buyAt: buyAt,
+                soldAt: soldAt,
+                sellValue: sellValue,
+                returned: returned,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String childId,
+                required String indexKey,
+                required String label,
+                required String symbol,
+                required int amount,
+                required double buyValue,
+                Value<DateTime> buyAt = const Value.absent(),
+                Value<DateTime?> soldAt = const Value.absent(),
+                Value<double?> sellValue = const Value.absent(),
+                Value<int?> returned = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvestmentsCompanion.insert(
+                id: id,
+                childId: childId,
+                indexKey: indexKey,
+                label: label,
+                symbol: symbol,
+                amount: amount,
+                buyValue: buyValue,
+                buyAt: buyAt,
+                soldAt: soldAt,
+                sellValue: sellValue,
+                returned: returned,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InvestmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InvestmentsTable,
+      Investment,
+      $$InvestmentsTableFilterComposer,
+      $$InvestmentsTableOrderingComposer,
+      $$InvestmentsTableAnnotationComposer,
+      $$InvestmentsTableCreateCompanionBuilder,
+      $$InvestmentsTableUpdateCompanionBuilder,
+      (
+        Investment,
+        BaseReferences<_$AppDatabase, $InvestmentsTable, Investment>,
+      ),
+      Investment,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11537,4 +12712,6 @@ class $AppDatabaseManager {
       $$PromiseCommentsTableTableManager(_db, _db.promiseComments);
   $$QuizAttemptsTableTableManager get quizAttempts =>
       $$QuizAttemptsTableTableManager(_db, _db.quizAttempts);
+  $$InvestmentsTableTableManager get investments =>
+      $$InvestmentsTableTableManager(_db, _db.investments);
 }

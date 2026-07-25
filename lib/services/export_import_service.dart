@@ -45,6 +45,7 @@ class ExportImportService {
     final promiseList = await db.allPromisesRaw();
     final promiseCommentList = await db.allPromiseCommentsRaw();
     final quizList = await db.allQuizAttemptsRaw();
+    final investList = await db.allInvestmentsRaw();
 
     return {
       'version': dataFormatVersion,
@@ -61,6 +62,7 @@ class ExportImportService {
       'promises': promiseList.map(_promiseToJson).toList(),
       'promiseComments': promiseCommentList.map(_promiseCommentToJson).toList(),
       'quizAttempts': quizList.map(_quizAttemptToJson).toList(),
+      'investments': investList.map(_investmentToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -184,6 +186,8 @@ class ExportImportService {
         (PromiseComment c) => c.updatedAt);
     await diff('quizAttempts', db.allQuizAttemptsRaw, (QuizAttempt q) => q.id,
         (QuizAttempt q) => q.updatedAt);
+    await diff('investments', db.allInvestmentsRaw, (Investment i) => i.id,
+        (Investment i) => i.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -242,6 +246,8 @@ class ExportImportService {
         (c) => c.updatedAt, (row) => db.upsertPromiseComment(_promiseCommentFromJson(row)));
     await merge('quizAttempts', db.allQuizAttemptsRaw, (QuizAttempt q) => q.id,
         (q) => q.updatedAt, (row) => db.upsertQuizAttempt(_quizAttemptFromJson(row)));
+    await merge('investments', db.allInvestmentsRaw, (Investment i) => i.id,
+        (i) => i.updatedAt, (row) => db.upsertInvestment(_investmentFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -284,6 +290,7 @@ class ExportImportService {
         'interestUseBankRate': c.interestUseBankRate,
         'interestMultiplier': c.interestMultiplier,
         'quizReward': c.quizReward,
+        'investLimitPercent': c.investLimitPercent,
         'createdAt': c.createdAt.toIso8601String(),
         'updatedAt': c.updatedAt.toIso8601String(),
         'deletedAt': c.deletedAt?.toIso8601String(),
@@ -309,6 +316,7 @@ class ExportImportService {
       interestUseBankRate: Value(_bool(j['interestUseBankRate'], true)),
       interestMultiplier: Value(_double(j['interestMultiplier'], 1.0)),
       quizReward: Value(_int(j['quizReward'], 10)),
+      investLimitPercent: Value(_double(j['investLimitPercent'], 10.0)),
       createdAt: Value(_dtOr(j['createdAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
@@ -586,6 +594,41 @@ class ExportImportService {
       correct: Value(_bool(j['correct'])),
       reward: Value(_int(j['reward'])),
       answeredAt: Value(_dtOr(j['answeredAt'], now)),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _investmentToJson(Investment i) => {
+        'id': i.id,
+        'childId': i.childId,
+        'indexKey': i.indexKey,
+        'label': i.label,
+        'symbol': i.symbol,
+        'amount': i.amount,
+        'buyValue': i.buyValue,
+        'buyAt': i.buyAt.toIso8601String(),
+        'soldAt': i.soldAt?.toIso8601String(),
+        'sellValue': i.sellValue,
+        'returned': i.returned,
+        'updatedAt': i.updatedAt.toIso8601String(),
+        'deletedAt': i.deletedAt?.toIso8601String(),
+      };
+
+  InvestmentsCompanion _investmentFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return InvestmentsCompanion.insert(
+      id: _str(j['id']),
+      childId: _str(j['childId']),
+      indexKey: _str(j['indexKey']),
+      label: _str(j['label']),
+      symbol: _str(j['symbol']),
+      amount: _int(j['amount']),
+      buyValue: _double(j['buyValue'], 0),
+      buyAt: Value(_dtOr(j['buyAt'], now)),
+      soldAt: Value(_dt(j['soldAt'])),
+      sellValue: Value(j['sellValue'] is num ? (j['sellValue'] as num).toDouble() : null),
+      returned: Value(j['returned'] is int ? j['returned'] as int : null),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
     );

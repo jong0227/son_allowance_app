@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
@@ -27,6 +28,35 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  /// 뒤로가기를 마지막으로 누른 시각. 2초 안에 한 번 더 눌러야 앱이 꺼진다.
+  /// (주머니 속에서 실수로 눌러 앱이 바로 꺼지던 문제)
+  DateTime? _lastBackAt;
+
+  void _handleBack() {
+    // 홈이 아니면 먼저 홈 탭으로 돌아간다(일반적인 안드로이드 동작).
+    if (ref.read(mainTabIndexProvider) != 0) {
+      ref.read(mainTabIndexProvider.notifier).state = 0;
+      _lastBackAt = null;
+      return;
+    }
+    final now = DateTime.now();
+    final last = _lastBackAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 2)) {
+      // 두 번째 뒤로가기 → 실제로 종료
+      Navigator.of(context).maybePop();
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBackAt = now;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(const SnackBar(
+        content: Text('한 번 더 누르면 앱이 꺼져요'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +122,13 @@ class _MainShellState extends ConsumerState<MainShell> {
     final savePct = budget == 0 ? 0 : (((budget - spent) / budget) * 100).clamp(0, 100).round();
     final weeklyTier = tierFor(weeklyTiers, savePct).current;
 
-    return ResponsiveScaffold(
+    return PopScope(
+      // 시스템 뒤로가기를 우리가 직접 처리한다(바로 종료 방지).
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: ResponsiveScaffold(
       titleWidget: Row(
         children: [
           ChildAvatar(child: child, size: 36),
@@ -134,6 +170,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         NavigationDestination(
             icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '설정'),
       ],
+      ),
     );
   }
 }

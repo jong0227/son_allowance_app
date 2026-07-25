@@ -167,3 +167,9 @@ final monthlyBreakdownProvider =
   ref.watch(stockTransfersProvider(childId));
   return ref.watch(databaseProvider).monthlyBreakdown(childId);
 });
+
+/// 모의 투자 기록(보유 + 청산).
+final investmentsProvider =
+    StreamProvider.family<List<Investment>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchInvestments(childId);
+});

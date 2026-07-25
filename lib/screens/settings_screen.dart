@@ -194,6 +194,16 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => _showQuizRewardDialog(context, ref),
               ),
             ),
+            const SectionHeader('모의 투자'),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.public),
+                title: Text('투자 한도: 총 저축의 ${formatPercent(child.investLimitPercent)}%'),
+                subtitle: const Text('저축 포인트 중 이 비율까지만 지수에 넣을 수 있어요'),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: () => _showInvestLimitDialog(context, ref),
+              ),
+            ),
             const SectionHeader('금리 표시 (COFIX·기준금리·예금)'),
             _buildCofixSettings(context, ref),
           ],
@@ -667,6 +677,54 @@ class SettingsScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showInvestLimitDialog(BuildContext context, WidgetRef ref) {
+    final controller =
+        TextEditingController(text: formatPercent(child.investLimitPercent));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('모의 투자 한도'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                  labelText: '총 저축의 몇 %까지?', hintText: '예: 10'),
+            ),
+            const SizedBox(height: 10),
+            Text('모의 투자에 한 번에 넣어둘 수 있는 저축 포인트의 최대 비율이에요.\n'
+                '지수가 내리면 저축 포인트가 실제로 줄어드니, 너무 높게 잡지 않는 걸 권해요.',
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () async {
+              final v = double.tryParse(controller.text.trim());
+              if (v == null || v < 0 || v > 100) return;
+              await ref.read(databaseProvider).updateChildPartial(
+                    child.id,
+                    ChildrenCompanion(
+                      investLimitPercent: Value(v),
+                      updatedAt: Value(DateTime.now()),
+                    ),
+                  );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
       ),
     );
   }

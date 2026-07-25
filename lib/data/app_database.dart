@@ -36,6 +36,8 @@ class Children extends Table {
   RealColumn get interestMultiplier => real().withDefault(const Constant(1.0))();
   /// 경제왕 퀴즈 정답 1문제당 보상(원). 해설 보고 다시 맞히면 이 금액의 절반.
   IntColumn get quizReward => integer().withDefault(const Constant(10))();
+  /// 모의 투자에 넣을 수 있는 저축 포인트 상한(총 저축의 %). 부모가 설정에서 조절.
+  RealColumn get investLimitPercent => real().withDefault(const Constant(10.0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -247,6 +249,30 @@ class QuizAttempts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 모의 투자 보유/청산 기록. 실제 돈이 아니라 저축 포인트로 지수에 투자해본다.
+/// 보유 중(soldAt == null)이면 원금이 잔액에서 잠기고, 팔면 원금이 돌아오면서
+/// 손익만큼 '투자수익'/'투자손실' 내역이 생긴다.
+/// 가족 동기화(부부 폰) 대상.
+class Investments extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get indexKey => text()(); // kospi, nasdaq 등 안정적인 키
+  TextColumn get label => text()(); // 코스피 등 표시명
+  TextColumn get symbol => text()(); // ^KS11 등 야후 심볼
+  IntColumn get amount => integer()(); // 투자한 원금(포인트)
+  RealColumn get buyValue => real()(); // 매수 시점 지수값
+  DateTimeColumn get buyAt => dateTime().withDefault(currentDateAndTime)();
+  /// 판 시각. null이면 아직 보유 중.
+  DateTimeColumn get soldAt => dateTime().nullable()();
+  RealColumn get sellValue => real().nullable()(); // 매도 시점 지수값
+  IntColumn get returned => integer().nullable()(); // 회수한 금액(원금+손익)
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -268,6 +294,7 @@ class PastAllowancePayment {
     Promises,
     PromiseComments,
     QuizAttempts,
+    Investments,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -275,7 +302,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -335,6 +362,10 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(children, children.quizReward);
             await m.addColumn(quizAttempts, quizAttempts.pickedIndex);
           }
+          if (from < 16) {
+            await m.createTable(investments);
+            await m.addColumn(children, children.investLimitPercent);
+          }
         },
       );
 
@@ -343,6 +374,8 @@ class AppDatabase extends _$AppDatabase {
   static const kSavingsBonus = '절약보너스';
   static const kInterest = '이자';
   static const kQuizReward = '퀴즈보상';
+  static const kInvestProfit = '투자수익';
+  static const kInvestLoss = '투자손실';
   static const kInitialBalance = '이월잔액';
   /// 앱 사용 전 지출을 한 번에 뭉뚱그린 항목(과거 지출 일괄). 실제 잔액엔 반영되지만
   /// 카테고리가 없는 뭉치라 카테고리/월별/연간 통계에서는 제외한다.
@@ -1288,6 +1321,113 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(DateTime.now()),
       ));
 
+  // ---------------- 모의 투자 ----------------
+  /// 이 자녀의 모의 투자 기록(보유 + 청산). 최근 매수 순.
+  Stream<List<Investment>> watchInvestments(String childId) => (select(investments)
+        ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.desc(t.buyAt)]))
+      .watch();
+
+  Future<List<Investment>> allInvestmentsRaw() => select(investments).get();
+
+  Future<void> upsertInvestment(InvestmentsCompanion i) =>
+      into(investments).insertOnConflictUpdate(i);
+
+  /// 보유 중인(안 판) 포지션들.
+  Future<List<Investment>> openInvestments(String childId) => (select(investments)
+        ..where((t) =>
+            t.childId.equals(childId) & t.deletedAt.isNull() & t.soldAt.isNull()))
+      .get();
+
+  /// 모의 투자 매수. 저축 포인트에서 [amount]만큼 잠근다.
+  /// 한도(총 저축의 investLimitPercent%)를 넘거나 잔액이 모자라면 실패 사유를 돌려준다.
+  /// 성공하면 null.
+  Future<String?> buyInvestment({
+    required Child child,
+    required String indexKey,
+    required String label,
+    required String symbol,
+    required int amount,
+    required double indexValue,
+  }) async {
+    if (amount <= 0) return '금액을 입력해주세요.';
+    if (indexValue <= 0) return '지수를 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
+    final s = await computeSummary(child.id);
+    final balance = s['balance'] ?? 0;
+    final invested = s['invested'] ?? 0;
+    final totalSavings = balance + invested; // 주식이체분은 제외한 "쓸 수 있는 저축"
+    final cap = (totalSavings * child.investLimitPercent / 100).floor();
+    if (amount > balance) return '저축 포인트가 모자라요. (쓸 수 있는 돈 ${formatWonPlain(balance)})';
+    if (invested + amount > cap) {
+      final left = cap - invested;
+      return '투자 한도를 넘었어요. 지금은 ${formatWonPlain(left < 0 ? 0 : left)}까지 넣을 수 있어요.'
+          ' (한도: 총 저축의 ${_trimPercent(child.investLimitPercent)}%)';
+    }
+    final now = DateTime.now();
+    await upsertInvestment(InvestmentsCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      indexKey: indexKey,
+      label: label,
+      symbol: symbol,
+      amount: amount,
+      buyValue: indexValue,
+      buyAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    return null;
+  }
+
+  /// 모의 투자 매도. 원금이 풀리고, 손익만큼 '투자수익'/'투자손실' 내역이 생긴다.
+  /// 회수 금액(원금+손익)을 돌려준다. 실패하면 null.
+  Future<int?> sellInvestment({
+    required Investment position,
+    required double indexValue,
+    required String editedBy,
+  }) async {
+    if (position.soldAt != null) return null; // 이미 판 포지션
+    if (indexValue <= 0 || position.buyValue <= 0) return null;
+    final now = DateTime.now();
+    // 회수액 = 원금 × (지금 지수 / 살 때 지수)
+    final returned = (position.amount * indexValue / position.buyValue).round();
+    final diff = returned - position.amount;
+
+    await (update(investments)..where((t) => t.id.equals(position.id)))
+        .write(InvestmentsCompanion(
+      soldAt: Value(now),
+      sellValue: Value(indexValue),
+      returned: Value(returned),
+      updatedAt: Value(now),
+    ));
+
+    if (diff != 0) {
+      await upsertTransaction(TransactionEntriesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: position.childId,
+        date: now,
+        flow: diff > 0 ? 'income' : 'expense',
+        category: diff > 0 ? kInvestProfit : kInvestLoss,
+        amount: diff.abs(),
+        memo: Value('모의투자 ${position.label} '
+            '${diff > 0 ? '수익' : '손실'} (${formatWonPlain(position.amount)} 투자)'),
+        editedBy: Value(editedBy),
+        updatedAt: Value(now),
+      ));
+    }
+    return returned;
+  }
+
+  /// 콤마 찍은 금액 문자열(원). intl 의존 없이 DB 계층에서 메시지 만들 때 쓴다.
+  static String formatWonPlain(int won) {
+    final s = won.abs().toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return '${won < 0 ? '-' : ''}$buf원';
+  }
+
   // ---------------- 연간 통계 ----------------
   /// 연도별 집계. key: 연도, value: {regular, special, bonus, interest, expense, transfer}
   Future<Map<int, Map<String, int>>> yearlyBreakdown(String childId) =>
@@ -1714,7 +1854,8 @@ class AppDatabase extends _$AppDatabase {
           initialBalance += t.amount;
         } else if (t.category == kSavingsBonus ||
             t.category == kInterest ||
-            t.category == kQuizReward) {
+            t.category == kQuizReward ||
+            t.category == kInvestProfit) {
           rewardIncome += t.amount;
         } else {
           totalSpecialIncome += t.amount;
@@ -1724,11 +1865,19 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     final totalTransfer = transfers.fold<int>(0, (sum, s) => sum + s.amount);
+    // 모의 투자로 잠긴 원금(보유 중인 포지션). 팔면 자동으로 풀린다.
+    final openPositions = await (select(investments)
+          ..where((t) =>
+              t.childId.equals(childId) & t.deletedAt.isNull() & t.soldAt.isNull()))
+        .get();
+    final invested = openPositions.fold<int>(0, (sum, p) => sum + p.amount);
     // "총 수입"은 실제로 받은 것(정기+특별+보상)만. 시작 잔액은 별도.
     final totalIncome = totalRegularIncome + totalSpecialIncome + rewardIncome;
-    // 잔액은 시작 잔액까지 포함해서 계산.
-    final balance = totalIncome + initialBalance - totalExpense - totalTransfer;
-    final totalSavings = totalTransfer + balance;
+    // 쓸 수 있는 잔액에선 투자로 잠긴 원금을 뺀다(팔면 돌아옴).
+    final balance =
+        totalIncome + initialBalance - totalExpense - totalTransfer - invested;
+    // 총 저축엔 투자 원금도 포함(형태만 다를 뿐 내 돈).
+    final totalSavings = totalTransfer + balance + invested;
 
     // 저축 티어 점수: 정기용돈/보너스/이자/시작잔액은 100%, 특별용돈은 10%.
     // 지출은 "특별용돈 먼저 쓴 것"으로 계산해 큰 선물이 티어를 수직상승시키는 걸 막는다.
@@ -1749,6 +1898,7 @@ class AppDatabase extends _$AppDatabase {
       'totalTransfer': totalTransfer,
       'balance': balance,
       'totalSavings': totalSavings,
+      'invested': invested,
       'tierScore': tierScore < 0 ? 0 : tierScore,
     };
   }
@@ -1760,6 +1910,8 @@ class AppDatabase extends _$AppDatabase {
       category == kSavingsBonus ||
       category == kInterest ||
       category == kQuizReward ||
+      category == kInvestProfit ||
+      category == kInvestLoss ||
       category == kInitialBalance;
 
   /// 앱 사용 전 상태를 맞추려고 넣은 "일괄 시딩" 내역인지 여부.
@@ -1805,6 +1957,8 @@ class AppDatabase extends _$AppDatabase {
     for (final t in txs) {
       // 과거 지출 일괄은 카테고리 없는 뭉치라 카테고리 통계에서 제외
       if (isPastSeedTx(t)) continue;
+      // 투자 손실은 "무엇에 썼나"가 아니라 투자 결과라 소비 통계에서 제외
+      if (t.category == kInvestLoss) continue;
       map[t.category] = (map[t.category] ?? 0) + t.amount;
     }
     return map;

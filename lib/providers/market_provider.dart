@@ -7,3 +7,14 @@ import '../services/stock_search_service.dart';
 final marketIndicesProvider = FutureProvider<List<MarketIndex>>((ref) async {
   return const StockSearchService().marketIndices();
 });
+
+/// 모의 투자 화면에서 쓰는 세계 지수 시세(코스피~유럽 7개).
+final investIndicesProvider = FutureProvider<List<MarketIndex>>((ref) async {
+  return const StockSearchService().investIndices();
+});
+
+/// 지수 차트용 과거 종가. key: (심볼, 기간).
+final indexSeriesProvider = FutureProvider.family<List<double>,
+    ({String symbol, String range})>((ref, args) async {
+  return const StockSearchService().indexSeries(args.symbol, args.range);
+});

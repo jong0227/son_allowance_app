@@ -111,30 +111,49 @@ class _IndexCell extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // height: 1.0 이 없으면 폰트 기본 줄높이가 고정 높이를 넘어 겹쳐 보인다.
         SizedBox(
-          height: 15,
+          height: 16,
           child: Center(
             child: Text(index.label,
-                style:
-                    TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.0,
+                    color: theme.colorScheme.onSurfaceVariant)),
           ),
         ),
+        const SizedBox(height: 3),
         SizedBox(
-          height: 21,
+          height: 18,
           child: Center(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(_indexFormat.format(index.value),
+                  maxLines: 1,
                   style: const TextStyle(
-                      fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                      fontSize: 15.5,
+                      height: 1.0,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5)),
             ),
           ),
         ),
+        const SizedBox(height: 3),
         SizedBox(
-          height: 15,
+          height: 14,
           child: Center(
-            child: Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
-                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
+                  maxLines: 1,
+                  style: TextStyle(
+                      fontSize: 11,
+                      height: 1.0,
+                      color: color,
+                      fontWeight: FontWeight.w600)),
+            ),
           ),
         ),
       ],

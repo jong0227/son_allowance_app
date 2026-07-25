@@ -104,22 +104,31 @@ class _RateCell extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // height: 1.0 을 주지 않으면 폰트 기본 줄높이(약 1.36배)가 고정 높이를
+        // 넘어서 위아래 줄이 겹쳐 보인다.
         SizedBox(
-          height: 15,
+          height: 16,
           child: Center(
             child: Text(rate.label,
-                style:
-                    TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.0,
+                    color: theme.colorScheme.onSurfaceVariant)),
           ),
         ),
+        const SizedBox(height: 3),
         SizedBox(
-          height: 23,
+          height: 20,
           child: Center(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text('${formatPercent(rate.rate)}%',
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 17,
+                    height: 1.0,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
                     color:
