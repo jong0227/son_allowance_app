@@ -160,6 +160,69 @@ void main() {
         isNull);
   });
 
+  test('평가액이 한도를 넘어도 강제로 팔지 않고, 추가 매수만 막는다', () async {
+    final child = await makeChild(); // 한도 10% = 1만원
+    await db.buyInvestment(
+      child: child,
+      indexKey: 'kospi',
+      label: '코스피',
+      symbol: '^KS11',
+      amount: 10000, // 한도를 꽉 채움
+      indexValue: 2000,
+    );
+
+    // 지수가 2배로 올라 평가액은 2만원(총 저축의 약 18%)이 됐다고 가정.
+    // 그래도 보유 포지션은 그대로 남아 있어야 한다(강제청산 없음).
+    final open = await db.openInvestments('kid1');
+    expect(open.length, 1);
+    expect(open.single.soldAt, isNull);
+
+    // 다만 추가 매수는 막힌다.
+    final err = await db.buyInvestment(
+      child: child,
+      indexKey: 'nasdaq',
+      label: '나스닥',
+      symbol: '^IXIC',
+      amount: 1000,
+      indexValue: 20000,
+    );
+    expect(err, isNotNull, reason: '한도를 채웠으면 더 못 산다');
+    expect((await db.openInvestments('kid1')).length, 1, reason: '기존 포지션은 그대로');
+  });
+
+  test('부모가 한도를 낮춰도 기존 투자는 유지되고 추가 매수만 막힌다', () async {
+    final child = await makeChild(limit: 30);
+    await db.buyInvestment(
+      child: child,
+      indexKey: 'kospi',
+      label: '코스피',
+      symbol: '^KS11',
+      amount: 30000,
+      indexValue: 2000,
+    );
+    expect((await db.computeSummary('kid1'))['invested'], 30000);
+
+    // 부모가 한도를 30% → 5%로 낮춤
+    await db.updateChildPartial(
+        'kid1', const ChildrenCompanion(investLimitPercent: Value(5)));
+    final lowered = (await db.allChildrenRaw()).first;
+
+    // 이미 넣은 3만원은 그대로 남는다
+    expect((await db.openInvestments('kid1')).length, 1);
+    expect((await db.computeSummary('kid1'))['invested'], 30000);
+
+    // 추가로는 못 넣는다
+    final err = await db.buyInvestment(
+      child: lowered,
+      indexKey: 'nasdaq',
+      label: '나스닥',
+      symbol: '^IXIC',
+      amount: 1000,
+      indexValue: 20000,
+    );
+    expect(err, isNotNull);
+  });
+
   test('잔액보다 많이 투자할 수 없다', () async {
     // 한도는 100%지만 잔액이 10만원뿐
     final child = await makeChild(limit: 100);
