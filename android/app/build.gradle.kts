@@ -34,8 +34,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.family.son_allowance_app"
+        // 플레이스토어 공개용 패키지명. 게시 후엔 변경 불가.
+        // (namespace는 내부 코드 조직용이라 안 바꿔도 됨 — Gradle에서 둘은 별개)
+        applicationId = "com.moneycraft.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // local_auth(생체인증) 플러그인이 minSdk 23 이상을 요구함. 대상 기기(폴드7/플립5)는
