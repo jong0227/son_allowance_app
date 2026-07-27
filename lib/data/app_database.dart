@@ -775,15 +775,24 @@ class AppDatabase extends _$AppDatabase {
   ///    → 못 준 주는 "밀린 용돈"으로 화면에 남고, 나중에 지급하거나 건너뛸 수 있다.
   ///    건너뛴(소프트 삭제) 날짜는 다시 만들지 않는다. 백필은 최근 12건까지만.
   Future<void> ensureUpcomingSchedule(Child child, String editedBy) {
-    // 이미 이 아이 앞으로 실행 중이면 새로 시작하지 않고 그 완료를 기다린다
-    // (동시 호출이 서로의 쓰기를 못 보고 같은 주 일정을 중복 생성하는 것 방지).
-    final inFlight = _scheduleSyncInFlight[child.id];
-    if (inFlight != null) return inFlight;
-    final future = _ensureUpcomingScheduleImpl(child, editedBy).whenComplete(() {
-      _scheduleSyncInFlight.remove(child.id);
+    // 동시 호출이 서로의 쓰기를 못 보고 같은 주 일정을 중복 생성하는 것을 막는다.
+    // 진행 중인 게 있으면 그 뒤에 "이어서" 실행한다(그냥 진행 중인 future를 돌려주면
+    // markSchedulePaid처럼 방금 바뀐 데이터 기준으로 꼭 다시 계산해야 하는 호출이
+    // 통째로 무시된다). 순차 실행이라 뒤에 오는 호출은 앞의 결과를 보고 시작한다.
+    final prev = _scheduleSyncInFlight[child.id];
+    Future<void> run() => _ensureUpcomingScheduleImpl(child, editedBy);
+    final chained = prev == null
+        ? run()
+        : prev.then((_) => run(), onError: (_, __) => run());
+    late final Future<void> tracked;
+    tracked = chained.whenComplete(() {
+      // 내 뒤에 또 붙은 호출이 없을 때만 정리(더 최신 체인을 지우지 않도록).
+      if (identical(_scheduleSyncInFlight[child.id], tracked)) {
+        _scheduleSyncInFlight.remove(child.id);
+      }
     });
-    _scheduleSyncInFlight[child.id] = future;
-    return future;
+    _scheduleSyncInFlight[child.id] = tracked;
+    return tracked;
   }
 
   Future<void> _ensureUpcomingScheduleImpl(Child child, String editedBy) async {
@@ -866,27 +875,48 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.childId.equals(child.id)))
         .get();
 
-    // ---- 2.5) 자가 치유: 동시 호출 경합으로 같은 날짜에 소프트 삭제된 중복이
-    // 2개 이상 남아있으면(정상적인 "건너뛰기"는 항상 정확히 1개만 남긴다) 사용자가
-    // 건너뛴 게 아니라 시스템이 만든 쓰레기이므로, 그 중 하나를 되살린다.
+    // ---- 2.5) 자가 치유: 예전 버전의 동시 호출 경합으로 같은 날짜에 소프트 삭제된
+    // 중복이 2개 이상 쌓인 채 살아있는 일정이 하나도 없는 경우를 복구한다.
+    // (사용자의 "건너뛰기"는 항상 정확히 1개만 남기므로 2개 이상은 시스템 산물)
+    //
+    // 되살리는 조건을 좁게 잡는 이유: 위 1.5(먼 미래 정리)와 2(지급요일 변경 정리)도
+    // 소프트 삭제를 쓰기 때문에, 조건이 넓으면 그쪽이 지운 걸 여기서 되살리고
+    // 다음 실행에 또 지우는 무한 반복이 생긴다. 그래서
+    //   - 지급요일과 일치하는 날짜만 (요일 변경으로 정리된 잔재 제외)
+    //   - 다음 지급일 이내만 (먼 미래 정리 대상 제외)
+    //   - 마지막 지급 완료일 이후만 (이미 정산이 끝난 주를 되살리지 않음)
+    //   - 미지급이었던 것만 (지급 완료 일정을 되살리면 연결된 수입 내역이 없어 어긋남)
+    // 만 되살린다.
+    DateTime? lastPaid;
+    for (final s in refreshed.where((s) => s.isPaid && s.deletedAt == null)) {
+      final d = dateOnly(s.scheduledDate);
+      if (lastPaid == null || d.isAfter(lastPaid)) lastPaid = d;
+    }
+    final aliveDatesNow = refreshed
+        .where((s) => s.deletedAt == null)
+        .map((s) => dateOnly(s.scheduledDate))
+        .toSet();
     final deletedByDay = <DateTime, List<AllowanceSchedule>>{};
     for (final s in refreshed.where((s) => s.deletedAt != null)) {
       deletedByDay.putIfAbsent(dateOnly(s.scheduledDate), () => []).add(s);
     }
     for (final entry in deletedByDay.entries) {
       if (entry.value.length < 2) continue;
-      final list = entry.value..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      await (update(allowanceSchedules)..where((t) => t.id.equals(list.first.id))).write(
+      if (aliveDatesNow.contains(entry.key)) continue;
+      if (entry.key.weekday != child.payDayOfWeek) continue;
+      if (entry.key.isAfter(nextUpcoming)) continue;
+      if (lastPaid != null && !entry.key.isAfter(lastPaid)) continue;
+      final revivable = entry.value.where((s) => !s.isPaid).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      if (revivable.isEmpty) continue;
+      await (update(allowanceSchedules)
+            ..where((t) => t.id.equals(revivable.first.id)))
+          .write(
         AllowanceSchedulesCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
       );
     }
 
-    // ---- 3) 백필: 마지막 지급 완료일 다음부터 다음 지급일까지 ----
-    DateTime? lastPaid;
-    for (final s in refreshed.where((s) => s.isPaid && s.deletedAt == null)) {
-      final d = dateOnly(s.scheduledDate);
-      if (lastPaid == null || d.isAfter(lastPaid)) lastPaid = d;
-    }
+    // ---- 3) 백필: 마지막 지급 완료일(위 2.5에서 계산) 다음부터 다음 지급일까지 ----
     // 건너뛴(삭제된) 것 포함, 이미 일정이 있는 "주"에는 만들지 않는다.
     // 지급요일이 바뀌었어도 ±3일 안에 일정이 있으면 같은 주기의 용돈으로 간주
     // (지급일 간격이 7일이라 ±3일 창은 이웃 후보와 겹치지 않는다).

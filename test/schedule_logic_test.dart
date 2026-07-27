@@ -149,6 +149,144 @@ void main() {
     expect(atToday.first.isPaid, false);
   });
 
+  test('먼 미래 일정이 중복이라 정리된 것은 자가치유가 되살리지 않는다(무한 반복 방지)', () async {
+    final child = await createChild(); // payday = 오늘 요일
+    final farFuture = today.add(const Duration(days: 14)); // 요일은 같지만 먼 미래
+    for (final id in ['far-a', 'far-b']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: farFuture,
+        amount: 3000,
+      ));
+    }
+    // 1) 중복 정리로 1개 삭제 → 2) 먼 미래 정리로 나머지도 삭제 = 같은 날 삭제 2개, 살아있는 것 0개
+    await db.ensureUpcomingSchedule(child, 'test');
+    expect((await alive()).where((s) => s.scheduledDate == farFuture).length, 0);
+    // 다시 호출해도 되살아나면 안 된다(되살아나면 매번 지웠다 살렸다 반복)
+    await db.ensureUpcomingSchedule(child, 'test');
+    expect((await alive()).where((s) => s.scheduledDate == farFuture).length, 0);
+  });
+
+  test('지급요일이 안 맞아 정리된 일정은 자가치유가 되살리지 않는다(무한 반복 방지)', () async {
+    // 지급요일을 "내일 요일"로 잡아, 오늘 날짜 일정이 요일 불일치로 정리되게 한다
+    final tomorrow = today.add(const Duration(days: 1));
+    final child = await createChild(payDay: tomorrow.weekday);
+    for (final id in ['mismatch-a', 'mismatch-b']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: today,
+        amount: 3000,
+      ));
+    }
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'at-next',
+      childId: child.id,
+      scheduledDate: tomorrow,
+      amount: 3000,
+    ));
+    await db.ensureUpcomingSchedule(child, 'test');
+    expect((await alive()).where((s) => s.scheduledDate == today).length, 0);
+    await db.ensureUpcomingSchedule(child, 'test');
+    expect((await alive()).where((s) => s.scheduledDate == today).length, 0);
+    // 정상적인 다음 지급일 일정은 그대로 1개 유지
+    expect((await alive()).where((s) => s.scheduledDate == tomorrow).length, 1);
+  });
+
+  test('지급 완료였던 일정은 자가치유가 되살리지 않는다(수입 내역 없이 지급완료로 보이는 것 방지)', () async {
+    final child = await createChild();
+    final now = DateTime.now();
+    for (final id in ['paid-a', 'paid-b']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: today,
+        amount: 3000,
+        isPaid: const Value(true),
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+    }
+    await db.ensureUpcomingSchedule(child, 'test');
+    final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
+    // 지급완료였던 건 되살리지 않고, 백필도 그 주는 이미 일정이 있는 것으로 보므로 새로 만들지 않는다
+    expect(atToday.where((s) => s.isPaid).length, 0);
+  });
+
+  test('백그라운드 정비가 도는 중에 지급 버튼을 눌러도 상태가 깨지지 않는다', () async {
+    final child = await createChild();
+    final missedDate = today.subtract(const Duration(days: 7));
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'missed',
+      childId: child.id,
+      scheduledDate: missedDate,
+      amount: 3000,
+    ));
+    final missed = (await alive()).firstWhere((s) => s.scheduledDate == missedDate);
+    // 앱 시작 정비가 도는 도중에 '지급'을 누른 상황(두 호출이 겹침)
+    final background = db.ensureUpcomingSchedule(child, 'test');
+    final pay = db.markSchedulePaid(missed, 'test', child);
+    await Future.wait([background, pay]);
+
+    final rows = await alive();
+    // 밀린 주는 지급 완료로 정확히 1건, 수입 내역도 1건만(이중 계상 없음)
+    expect(rows.where((s) => s.scheduledDate == missedDate && s.isPaid).length, 1);
+    expect(
+        (await db.allTransactionsRaw())
+            .where((t) => t.deletedAt == null && t.category == '정기용돈')
+            .length,
+        1);
+    // 이번 주 예정도 중복 없이 정확히 1건
+    expect(rows.where((s) => s.scheduledDate == today && !s.isPaid).length, 1);
+  });
+
+  test('이미 지급이 끝난 주는 자가치유가 되살리지 않는다', () async {
+    final child = await createChild();
+    final now = DateTime.now();
+    final oldWeek = today.subtract(const Duration(days: 7));
+    // 지난주(oldWeek)에 삭제 중복이 2개 쌓여있지만, 그 뒤 이번 주가 이미 지급 완료됨
+    for (final id in ['old-a', 'old-b']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: oldWeek,
+        amount: 3000,
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+    }
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'this-week-paid',
+      childId: child.id,
+      scheduledDate: today,
+      amount: 3000,
+      isPaid: const Value(true),
+    ));
+    await db.ensureUpcomingSchedule(child, 'test');
+    // 정산이 끝난 뒤의 지난주가 되살아나 "밀린 용돈"으로 뜨면 안 된다
+    expect((await alive()).where((s) => s.scheduledDate == oldWeek).length, 0);
+  });
+
+  test('자가치유 후 다시 호출해도(예: 앱을 다시 켜도) 또 하나를 되살려 중복이 생기지 않는다', () async {
+    final child = await createChild();
+    final now = DateTime.now();
+    for (final id in ['race-a', 'race-b', 'race-c']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: today,
+        amount: 3000,
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+    }
+    await db.ensureUpcomingSchedule(child, 'test'); // 1차: 하나를 되살림
+    await db.ensureUpcomingSchedule(child, 'test'); // 2차: 이미 살아있으니 또 되살리면 안 됨
+    final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
+    expect(atToday.length, 1);
+  });
+
   test('지급하면 정기용돈 내역이 생기고, 밀린 주는 메모에 원래 날짜가 남는다', () async {
     final child = await createChild();
     final missedDate = today.subtract(const Duration(days: 7));
