@@ -932,7 +932,7 @@ class OverviewScreen extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            Text(cur.icon, style: const TextStyle(fontSize: 34)),
+            TierIcon(tier: cur, size: 34),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

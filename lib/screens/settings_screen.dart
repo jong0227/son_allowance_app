@@ -1721,6 +1721,20 @@ class SettingsScreen extends ConsumerWidget {
       await ref
           .read(settingsProvider.notifier)
           .setFamilyCode(code.trim().toUpperCase());
+      // 참여 직후엔 방금 받아온 원격 데이터를 기준으로 예정 일정을 다시 맞춘다.
+      // (온보딩 때 만든 빈 프로필 기준으로 이미 한 번 계산된 상태라, 실제
+      // 가족 데이터가 들어온 지금 다시 계산하지 않으면 낡은 일정이 남는다)
+      final db = ref.read(databaseProvider);
+      final primary = await db.reconcileToSingleChild(owner);
+      if (primary != null) {
+        final kids = await db.allChildrenRaw();
+        for (final k in kids) {
+          if (k.id == primary) {
+            await db.ensureUpcomingSchedule(k, owner);
+            break;
+          }
+        }
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
