@@ -96,6 +96,10 @@ class _MainShellState extends ConsumerState<MainShell> {
           // 오프라인 등으로 실패해도 앱 사용에는 지장 없음. 재시도는 다음 실행 때.
         }
       }
+      // 정기 용돈 예정 일정 확보: 기존엔 '내역' 탭을 열어야만 갱신되어,
+      // 지급일이 지나도 아무도 내역 탭을 안 열면 홈에 새 주 일정이 안 뜨는 문제가 있었음.
+      // 앱을 켤 때마다(어느 탭이든) 항상 최신 상태로 맞춘다.
+      await db.ensureUpcomingSchedule(widget.child, owner);
     });
   }
 
