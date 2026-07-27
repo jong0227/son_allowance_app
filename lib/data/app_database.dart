@@ -301,6 +301,12 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
+  // 자녀별 ensureUpcomingSchedule 동시 실행 방지용.
+  // (하단 탭이 IndexedStack이라 내역 탭도 앱 시작과 동시에 조용히 마운트되는데,
+  // 거기서도 같은 함수를 호출한다. 홈 탭 쪽 트리거와 겹치면 두 호출이 서로의
+  // 쓰기를 못 보고 각자 같은 주의 일정을 하나씩 더 만들어 중복이 생겼었다.)
+  final Map<String, Future<void>> _scheduleSyncInFlight = {};
+
   @override
   int get schemaVersion => 16;
 
@@ -768,7 +774,19 @@ class AppDatabase extends _$AppDatabase {
   /// 3. 마지막 지급 완료일 이후 ~ 다음 지급일까지 매주 지급일마다 일정을 백필한다.
   ///    → 못 준 주는 "밀린 용돈"으로 화면에 남고, 나중에 지급하거나 건너뛸 수 있다.
   ///    건너뛴(소프트 삭제) 날짜는 다시 만들지 않는다. 백필은 최근 12건까지만.
-  Future<void> ensureUpcomingSchedule(Child child, String editedBy) async {
+  Future<void> ensureUpcomingSchedule(Child child, String editedBy) {
+    // 이미 이 아이 앞으로 실행 중이면 새로 시작하지 않고 그 완료를 기다린다
+    // (동시 호출이 서로의 쓰기를 못 보고 같은 주 일정을 중복 생성하는 것 방지).
+    final inFlight = _scheduleSyncInFlight[child.id];
+    if (inFlight != null) return inFlight;
+    final future = _ensureUpcomingScheduleImpl(child, editedBy).whenComplete(() {
+      _scheduleSyncInFlight.remove(child.id);
+    });
+    _scheduleSyncInFlight[child.id] = future;
+    return future;
+  }
+
+  Future<void> _ensureUpcomingScheduleImpl(Child child, String editedBy) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -847,6 +865,21 @@ class AppDatabase extends _$AppDatabase {
     final refreshed = await (select(allowanceSchedules)
           ..where((t) => t.childId.equals(child.id)))
         .get();
+
+    // ---- 2.5) 자가 치유: 동시 호출 경합으로 같은 날짜에 소프트 삭제된 중복이
+    // 2개 이상 남아있으면(정상적인 "건너뛰기"는 항상 정확히 1개만 남긴다) 사용자가
+    // 건너뛴 게 아니라 시스템이 만든 쓰레기이므로, 그 중 하나를 되살린다.
+    final deletedByDay = <DateTime, List<AllowanceSchedule>>{};
+    for (final s in refreshed.where((s) => s.deletedAt != null)) {
+      deletedByDay.putIfAbsent(dateOnly(s.scheduledDate), () => []).add(s);
+    }
+    for (final entry in deletedByDay.entries) {
+      if (entry.value.length < 2) continue;
+      final list = entry.value..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      await (update(allowanceSchedules)..where((t) => t.id.equals(list.first.id))).write(
+        AllowanceSchedulesCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
+      );
+    }
 
     // ---- 3) 백필: 마지막 지급 완료일 다음부터 다음 지급일까지 ----
     DateTime? lastPaid;

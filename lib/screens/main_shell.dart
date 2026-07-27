@@ -96,11 +96,24 @@ class _MainShellState extends ConsumerState<MainShell> {
           // 오프라인 등으로 실패해도 앱 사용에는 지장 없음. 재시도는 다음 실행 때.
         }
       }
-      // 정기 용돈 예정 일정 확보: 기존엔 '내역' 탭을 열어야만 갱신되어,
-      // 지급일이 지나도 아무도 내역 탭을 안 열면 홈에 새 주 일정이 안 뜨는 문제가 있었음.
-      // 앱을 켤 때마다(어느 탭이든) 항상 최신 상태로 맞춘다.
+      // 정기 용돈 예정 일정 확보. 앱을 켤 때마다 항상 최신 상태로 맞춘다.
       await db.ensureUpcomingSchedule(widget.child, owner);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant MainShell old) {
+    super.didUpdateWidget(old);
+    // _RootGate가 온보딩 직후의 임시 프로필 → 가족 동기화로 받아온 진짜 프로필로
+    // child를 바꿔치기할 때, MainShell은 State가 재사용되어 initState가 다시
+    // 실행되지 않는다(같은 위젯 트리 위치, key 없음). 그 결과 initState에서 한 번
+    // 계산됐던 예정 일정이 "진짜" 프로필 기준으로는 한 번도 재계산되지 않는
+    // 문제가 있었다. child가 바뀌면 여기서 다시 맞춰준다.
+    if (old.child.id != widget.child.id) {
+      final db = ref.read(databaseProvider);
+      final owner = ref.read(settingsProvider).deviceOwner ?? '';
+      db.ensureUpcomingSchedule(widget.child, owner);
+    }
   }
 
   @override

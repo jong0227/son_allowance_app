@@ -115,6 +115,40 @@ void main() {
     expect(atToday.length, 1);
   });
 
+  test('동시에 두 번 호출해도(하단 탭들이 동시에 마운트되는 경우) 이번 주 일정이 중복 생성되지 않는다', () async {
+    final child = await createChild();
+    // 실제 앱에서는 IndexedStack 때문에 홈/내역 탭이 앱 시작과 동시에 각자
+    // ensureUpcomingSchedule을 부른다. await 없이 동시에 쐈을 때도 안전해야 한다.
+    await Future.wait([
+      db.ensureUpcomingSchedule(child, 'test'),
+      db.ensureUpcomingSchedule(child, 'test'),
+    ]);
+    final atToday = (await alive()).where((s) => s.scheduledDate == today);
+    expect(atToday.length, 1);
+  });
+
+  test('경합으로 같은 날짜에 소프트 삭제 중복이 여러 개 남아있으면(진짜 건너뛰기는 1개뿐) 자동으로 되살린다', () async {
+    final child = await createChild();
+    final now = DateTime.now();
+    // 진짜 사용자의 "건너뛰기"라면 절대 만들어지지 않는 상태: 같은 날짜에
+    // 소프트 삭제된 중복이 2개 이상. 과거 동시 호출 경합이 남긴 쓰레기를 흉내낸다.
+    for (final id in ['race-a', 'race-b']) {
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: id,
+        childId: child.id,
+        scheduledDate: today,
+        amount: 3000,
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+    }
+    expect((await alive()).where((s) => s.scheduledDate == today).length, 0);
+    await db.ensureUpcomingSchedule(child, 'test');
+    final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
+    expect(atToday.length, 1);
+    expect(atToday.first.isPaid, false);
+  });
+
   test('지급하면 정기용돈 내역이 생기고, 밀린 주는 메모에 원래 날짜가 남는다', () async {
     final child = await createChild();
     final missedDate = today.subtract(const Duration(days: 7));
