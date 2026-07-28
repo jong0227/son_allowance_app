@@ -104,15 +104,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               data: (schedules) {
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
-                bool isOverdue(AllowanceSchedule s) => DateTime(
-                  s.scheduledDate.year,
-                  s.scheduledDate.month,
-                  s.scheduledDate.day,
-                ).isBefore(today);
+                DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+                bool isOverdue(AllowanceSchedule s) => dateOnly(s.scheduledDate).isBefore(today);
+                // 지급일이 아직 안 된 다음 주 예정(지급일 지나면 미리 만들어짐)은
+                // 여기 목록에 안 보이게 한다 — 안 그러면 매주 화~일요일 내내 다음 주
+                // 용돈을 "지금 지급 가능"으로 오해하게 만드는 버튼이 떠 있게 된다.
                 final pending = schedules.where((s) => !s.isPaid).toList()
                   ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
                 final overdue = pending.where(isOverdue).toList();
-                final upcoming = pending.where((s) => !isOverdue(s)).toList();
+                final upcoming =
+                    pending.where((s) => !isOverdue(s) && dateOnly(s.scheduledDate) == today).toList();
                 if (pending.isEmpty) return const SizedBox.shrink();
                 final overdueSum = overdue.fold<int>(0, (a, b) => a + b.amount);
                 return Column(

@@ -149,6 +149,84 @@ void main() {
     expect(atToday.first.isPaid, false);
   });
 
+  test('이번 주(오늘) 용돈을 지급해도 다음 주 일정이 미리 뜨지 않는다', () async {
+    final child = await createChild(); // payday = 오늘 요일 → nextUpcoming = 오늘
+    await db.ensureUpcomingSchedule(child, 'test'); // 앱 시작 시 오늘 일정 생성
+    final todaySchedule = (await alive()).firstWhere((s) => s.scheduledDate == today);
+    await db.markSchedulePaid(todaySchedule, 'test', child); // 실제 '지급' 버튼과 동일 경로
+
+    final rows = await alive();
+    expect(rows.where((s) => s.scheduledDate == today && s.isPaid).length, 1);
+    final nextWeek = today.add(const Duration(days: 7));
+    expect(rows.where((s) => s.scheduledDate == nextWeek).length, 0,
+        reason: '다음 지급일(+7일)이 지나기 전엔 예정 일정을 만들지 않아야 한다');
+  });
+
+  test('앱을 여러 번 다시 켠 뒤 오늘 용돈을 지급해도 다음 주 일정이 미리 뜨지 않는다', () async {
+    final child = await createChild();
+    // 실제 기기처럼 여러 번 재실행(하단 탭 동시 마운트 포함)한 뒤 지급하는 상황을 흉내낸다
+    await db.ensureUpcomingSchedule(child, 'test');
+    await Future.wait(
+        [db.ensureUpcomingSchedule(child, 'test'), db.ensureUpcomingSchedule(child, 'test')]);
+    await db.ensureUpcomingSchedule(child, 'test');
+    final todaySchedule = (await alive()).firstWhere((s) => s.scheduledDate == today);
+    await db.markSchedulePaid(todaySchedule, 'test', child);
+    // 지급 후에도 정비가 한 번 더 겹칠 수 있다(백그라운드 앱 재개 등)
+    await db.ensureUpcomingSchedule(child, 'test');
+
+    final rows = await alive();
+    expect(rows.where((s) => s.scheduledDate == today).length, 1);
+    final nextWeek = today.add(const Duration(days: 7));
+    expect(rows.where((s) => s.scheduledDate == nextWeek).length, 0);
+  });
+
+  test('예전 버전이 만들어둔 다음 주 잉여 일정이 남아있어도 재실행하면 정리된다', () async {
+    final child = await createChild();
+    final nextWeek = today.add(const Duration(days: 7));
+    // 오늘(이번 주) 정상 일정 + 예전 버그가 미리 만들어둔 다음 주(+7일) 잉여 일정
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'this-week',
+      childId: child.id,
+      scheduledDate: today,
+      amount: 3000,
+    ));
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'leftover-next-week',
+      childId: child.id,
+      scheduledDate: nextWeek,
+      amount: 3000,
+    ));
+    await db.ensureUpcomingSchedule(child, 'test');
+    expect((await alive()).where((s) => s.scheduledDate == nextWeek).length, 0,
+        reason: '다음 지급일 이후 잉여 일정은 재실행 시 정리되어야 한다');
+    expect((await alive()).where((s) => s.scheduledDate == today).length, 1);
+  });
+
+  test('다음 주 잉여 일정이 이미 있는 상태에서 오늘 용돈을 지급해도 그 잉여가 정리된다', () async {
+    final child = await createChild();
+    final nextWeek = today.add(const Duration(days: 7));
+    // ensureUpcomingSchedule을 먼저 부르지 않고, 앱이 이미 이런 상태였다고 가정
+    // (예전 버전이 만들어둔 다음 주 잉여 일정이 이미 살아있는 채로 남아있음)
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'this-week',
+      childId: child.id,
+      scheduledDate: today,
+      amount: 3000,
+    ));
+    await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+      id: 'leftover-next-week',
+      childId: child.id,
+      scheduledDate: nextWeek,
+      amount: 3000,
+    ));
+    final todaySchedule = (await alive()).firstWhere((s) => s.scheduledDate == today);
+    await db.markSchedulePaid(todaySchedule, 'test', child); // 실제 '지급' 버튼 경로
+    final rows = await alive();
+    expect(rows.where((s) => s.scheduledDate == nextWeek).length, 0,
+        reason: '지급 버튼을 눌렀을 때도 기존 잉여 일정이 정리되어야 한다');
+    expect(rows.where((s) => s.scheduledDate == today && s.isPaid).length, 1);
+  });
+
   test('먼 미래 일정이 중복이라 정리된 것은 자가치유가 되살리지 않는다(무한 반복 방지)', () async {
     final child = await createChild(); // payday = 오늘 요일
     final farFuture = today.add(const Duration(days: 14)); // 요일은 같지만 먼 미래

@@ -197,10 +197,16 @@ class OverviewScreen extends ConsumerWidget {
                 0,
                 (a, b) => a + b.amount,
               );
-              // 이번 주 카드: 오늘 이후 첫 미지급 예정, 없으면 최근 지급 완료
+              // 이번 주 카드: 오늘이 지급일인 미지급 예정만(아직 안 된 날은 제외 —
+              // 지급일 전날부터 다음 주 예정이 미리 만들어져 있어도, 그 주가 되기
+              // 전까지는 "지급 가능" 버튼을 보여주지 않는다). 없으면 최근 지급 완료.
               final upcoming =
                   schedules
-                      .where((s) => !s.isPaid && !isPastDay(s.scheduledDate))
+                      .where((s) =>
+                          !s.isPaid &&
+                          DateTime(s.scheduledDate.year, s.scheduledDate.month,
+                                  s.scheduledDate.day) ==
+                              today)
                       .toList()
                     ..sort(
                       (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
@@ -1001,7 +1007,7 @@ class OverviewScreen extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () =>
-                  ref.read(mainTabIndexProvider.notifier).state = 3,
+                  ref.read(mainTabIndexProvider.notifier).state = 4,
               child: const Text('설정으로'),
             ),
           ],
