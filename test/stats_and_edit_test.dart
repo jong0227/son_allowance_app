@@ -96,6 +96,34 @@ void main() {
     expect(s['tierScore'], 0);
   });
 
+  test('선물 받기 전에 이미 써버린 지출은, 나중에 받은 선물이 소급해서 메워주지 않는다', () async {
+    final child = await makeChild();
+    final now = DateTime.now();
+    final longAgo = now.subtract(const Duration(days: 100));
+    // 예전에 정기용돈 5만원 받고 2만2천원을 이미 써버림(선물은 아직 없음)
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-old-income', childId: child.id, date: longAgo,
+      flow: 'income', category: AppDatabase.kRegularAllowance, amount: 50000,
+      updatedAt: Value(longAgo),
+    ));
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-old-expense', childId: child.id, date: longAgo,
+      flow: 'expense', category: '기타', amount: 22000,
+      updatedAt: Value(longAgo),
+    ));
+    // 오늘 특별용돈 7만원을 받음 — 이건 100일 전 지출과 무관해야 한다
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-gift-today', childId: child.id, date: now,
+      flow: 'income', category: '사랑용돈', amount: 70000,
+      updatedAt: Value(now),
+    ));
+    final s = await db.computeSummary(child.id);
+    // 정기용돈 100% 반영분(50000-22000=28000) + 선물 10%(7000) = 35000
+    // (선물이 옛날 지출을 소급 메워주면 50000 + 7000 = 57000이 되어 버그가 재현된다)
+    expect(s['tierScore'], 35000,
+        reason: '옛날 지출은 계속 정기용돈에서 차감된 채로 남아야 하고, 선물은 10%만 별도로 더해져야 한다');
+  });
+
   test('updateChildPartial로 보너스 규칙만 부분 갱신해도 저장된다(NOT NULL 회피)', () async {
     final child = await makeChild();
     // name을 넘기지 않는 부분 갱신 — upsert였다면 NOT NULL로 실패할 케이스

@@ -1943,13 +1943,36 @@ class AppDatabase extends _$AppDatabase {
     final totalSavings = totalTransfer + balance + invested;
 
     // 저축 티어 점수: 정기용돈/보너스/이자/시작잔액은 100%, 특별용돈은 10%.
-    // 지출은 "특별용돈 먼저 쓴 것"으로 계산해 큰 선물이 티어를 수직상승시키는 걸 막는다.
-    final allowancePool = totalRegularIncome + rewardIncome + initialBalance;
-    final giftIncome = totalSpecialIncome;
-    final giftSpent = totalExpense < giftIncome ? totalExpense : giftIncome;
-    final regularSpent = totalExpense - giftSpent; // 선물 다 쓰고 남은 지출은 저축분에서
-    final giftRemaining = giftIncome - giftSpent;
-    final tierScore = (allowancePool - regularSpent) + (giftRemaining * 0.1).round();
+    // 지출은 "그 시점까지 들어와 있던 특별용돈부터 먼저 쓴 것"으로 계산해 큰
+    // 선물이 티어를 수직상승시키는 걸 막는다. 반드시 날짜 순으로 계산해야
+    // 한다 — 총합만으로 계산하면, 선물을 받기도 전에 이미 써버린 지출까지
+    // 그 선물이 메워준 것으로 소급 처리되어, 선물이 들어오는 순간 예전
+    // 지출 페널티가 통째로 사라지는 버그가 생긴다.
+    final chrono = txs.where((t) => t.category != kInitialBalance).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    int regularPool = initialBalance; // 이월잔액은 처음부터 있던 돈이라 100% 반영
+    int giftPool = 0;
+    for (final t in chrono) {
+      if (t.flow == 'income') {
+        if (t.category == kRegularAllowance ||
+            t.category == kSavingsBonus ||
+            t.category == kInterest ||
+            t.category == kQuizReward ||
+            t.category == kInvestProfit) {
+          regularPool += t.amount;
+        } else {
+          giftPool += t.amount;
+        }
+      } else {
+        if (giftPool >= t.amount) {
+          giftPool -= t.amount;
+        } else {
+          regularPool -= (t.amount - giftPool);
+          giftPool = 0;
+        }
+      }
+    }
+    final tierScore = regularPool + (giftPool * 0.1).round();
 
     return {
       'totalRegularIncome': totalRegularIncome,
