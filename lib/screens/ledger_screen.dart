@@ -565,6 +565,18 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       );
       return;
     }
+    // 자녀 모드: 지출도 1주일이 지나면 더 이상 수정할 수 없다(부모는 계속 가능).
+    if (settings.isChild && !isIncome) {
+      final now = DateTime.now();
+      final aWeekAgo = DateTime(now.year, now.month, now.day)
+          .subtract(const Duration(days: 7));
+      if (t.date.isBefore(aWeekAgo)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('1주일이 지난 내역은 수정할 수 없어요.')),
+        );
+        return;
+      }
+    }
     final base = isIncome
         ? settings.incomeCategories
         : settings.expenseCategories;

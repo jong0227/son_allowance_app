@@ -27,6 +27,11 @@ final _showDetailsProvider = StateProvider<bool>((ref) => false);
 /// 자동 지급된 이자 축하 연출을 이번 실행에서 이미 보여줬는지(중복 방지).
 final _autoInterestCelebratedProvider = StateProvider<bool>((ref) => false);
 
+/// 이체 권장 알림을 마지막으로 보낸 잔액(중복 알림 방지). 화면이 재빌드될 때마다
+/// 잔액이 기준액 이상이면 매번 다시 알림이 울리던 문제 — 그 잔액 그대로면
+/// 다시 보내지 않고, 잔액이 실제로 바뀌었을 때만(늘었든 줄었다 다시 늘었든) 재알림.
+final _lastTransferNotifiedBalanceProvider = StateProvider<int?>((ref) => null);
+
 /// 홈 + 통계를 합친 대시보드. 기본은 핵심 정보만, "상세 통계"는 접어서 보여준다.
 class OverviewScreen extends ConsumerWidget {
   final Child child;
@@ -86,13 +91,29 @@ class OverviewScreen extends ConsumerWidget {
               final overThreshold = balance >= threshold;
 
               if (overThreshold) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  NotificationService.instance.showTransferRecommended(
-                    childName: child.name,
-                    balance: balance,
-                    threshold: threshold,
-                  );
-                });
+                // 화면이 재빌드될 때마다(예: 다른 탭 갔다가 홈으로 돌아올 때) 잔액이
+                // 여전히 기준액 이상이면 매번 새로 알림이 울리던 문제. 마지막으로
+                // 알린 잔액과 같으면 다시 보내지 않는다.
+                final lastNotified = ref.read(_lastTransferNotifiedBalanceProvider);
+                if (lastNotified != balance) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    NotificationService.instance.showTransferRecommended(
+                      childName: child.name,
+                      balance: balance,
+                      threshold: threshold,
+                    );
+                    ref.read(_lastTransferNotifiedBalanceProvider.notifier).state =
+                        balance;
+                  });
+                }
+              } else {
+                // 기준액 아래로 내려가면 다음에 다시 넘을 때 새로 알릴 수 있게 초기화.
+                if (ref.read(_lastTransferNotifiedBalanceProvider) != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ref.read(_lastTransferNotifiedBalanceProvider.notifier).state =
+                        null;
+                  });
+                }
               }
 
               final txsForBudget = transactionsAsync.valueOrNull ?? const [];

@@ -66,6 +66,36 @@ void main() {
     expect(totalMonthlyIncome, 3000);
   });
 
+  test('특별용돈(선물)은 저축 티어 점수에 10%만 반영된다', () async {
+    final child = await makeChild();
+    // 정기용돈 등 "일반" 수입 없이, 특별용돈 7만원만 받은 상태
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-gift', childId: child.id, date: DateTime.now(),
+      flow: 'income', category: '설날(세뱃돈)', amount: 70000,
+      updatedAt: Value(DateTime.now()),
+    ));
+    final s = await db.computeSummary(child.id);
+    expect(s['totalSpecialIncome'], 70000);
+    expect(s['balance'], 70000, reason: '실제로 쓸 수 있는 잔액은 받은 그대로 7만원');
+    expect(s['tierScore'], 7000, reason: '티어 점수엔 10%(7000)만 반영되어야 한다');
+  });
+
+  test('특별용돈을 다 쓰면 티어 점수 기여분도 0이 된다(선물을 먼저 쓴 것으로 계산)', () async {
+    final child = await makeChild();
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-gift', childId: child.id, date: DateTime.now(),
+      flow: 'income', category: '설날(세뱃돈)', amount: 70000,
+      updatedAt: Value(DateTime.now()),
+    ));
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 't-spend', childId: child.id, date: DateTime.now(),
+      flow: 'expense', category: '기타', amount: 70000,
+      updatedAt: Value(DateTime.now()),
+    ));
+    final s = await db.computeSummary(child.id);
+    expect(s['tierScore'], 0);
+  });
+
   test('updateChildPartial로 보너스 규칙만 부분 갱신해도 저장된다(NOT NULL 회피)', () async {
     final child = await makeChild();
     // name을 넘기지 않는 부분 갱신 — upsert였다면 NOT NULL로 실패할 케이스
