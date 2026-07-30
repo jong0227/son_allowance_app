@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 
@@ -64,34 +65,34 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
           Container(
             width: double.infinity,
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppGap.lg),
             decoration:
-                BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+                BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(promise.title,
                     style: TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w800, color: pair.fg)),
-                const SizedBox(height: 6),
+                        fontSize: AppText.titleLg, fontWeight: FontWeight.w800, color: pair.fg)),
+                const SizedBox(height: AppGap.snug),
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                           color: pair.fg.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(20)),
+                          borderRadius: BorderRadius.circular(AppRadius.xl)),
                       child: Text(promise.enabled ? 'ON · 지키는 중' : 'OFF · 잠시 멈춤',
                           style: TextStyle(
-                              color: pair.fg, fontSize: 12, fontWeight: FontWeight.w800)),
+                              color: pair.fg, fontSize: AppText.label, fontWeight: FontWeight.w800)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppGap.sm),
                     Text('연 이자 +${formatPercent(promise.bonusPercent)}%p',
-                        style: TextStyle(color: pair.fg, fontSize: 12.5)),
+                        style: TextStyle(color: pair.fg, fontSize: AppText.label)),
                   ],
                 ),
                 if (!isChild) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppGap.md),
                   Row(
                     children: [
                       Expanded(
@@ -101,7 +102,7 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
                           label: const Text('ON으로'),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppGap.sm),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _showToggleDialog(promise, false),
@@ -123,7 +124,7 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
                 if (comments.isEmpty) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(32),
+                      padding: const EdgeInsets.all(AppGap.xxl),
                       child: Text(
                         isChild
                             ? '약속을 어떻게 지키고 있는지\n적어보면 부모님이 볼 수 있어요!'
@@ -163,7 +164,7 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppGap.sm),
                   IconButton.filled(
                     onPressed: _sending ? null : _send,
                     icon: const Icon(Icons.send),
@@ -192,9 +193,9 @@ class _PromiseDetailScreenState extends ConsumerState<PromiseDetailScreen> {
               enable
                   ? '약속을 잘 지켰다는 뜻이에요. 연 이자율이 +${formatPercent(promise.bonusPercent)}%p 올라가요.'
                   : '이번엔 약속을 못 지켰다는 뜻이에요. 그만큼 이자가 낮아져요.',
-              style: const TextStyle(fontSize: 13.5, height: 1.4),
+              style: const TextStyle(fontSize: AppText.body, height: 1.4),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             TextField(
               controller: reasonController,
               minLines: 1,
@@ -247,10 +248,10 @@ class _CommentTile extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppGap.md),
           decoration: BoxDecoration(
             color: pair.bg,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,19 +260,19 @@ class _CommentTile extends StatelessWidget {
                 children: [
                   Icon(on ? Icons.check_circle : Icons.pause_circle,
                       size: 16, color: pair.fg),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppGap.snug),
                   Expanded(
                     child: Text('$author님이 ${on ? 'ON으로 했어요' : 'OFF로 했어요'}',
                         style: TextStyle(
-                            color: pair.fg, fontSize: 13, fontWeight: FontWeight.w800)),
+                            color: pair.fg, fontSize: AppText.body, fontWeight: FontWeight.w800)),
                   ),
-                  Text(when, style: TextStyle(fontSize: 11, color: pair.fg)),
+                  Text(when, style: TextStyle(fontSize: AppText.caption, color: pair.fg)),
                 ],
               ),
               if (comment.message != null && comment.message!.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppGap.xs),
                 Text(comment.message!,
-                    style: TextStyle(color: pair.fg, fontSize: 13, height: 1.4)),
+                    style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4)),
               ],
             ],
           ),
@@ -292,7 +293,7 @@ class _CommentTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: mine ? pair.bg : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,20 +303,20 @@ class _CommentTile extends StatelessWidget {
                     children: [
                       Text(author,
                           style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: AppText.caption,
                               fontWeight: FontWeight.w800,
                               color: mine ? pair.fg : theme.colorScheme.onSurfaceVariant)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppGap.sm),
                       Text(when,
                           style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: AppText.micro,
                               color: theme.colorScheme.onSurfaceVariant)),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: AppGap.xs),
                   Text(comment.message ?? '',
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: AppText.bodyLg,
                           height: 1.4,
                           color: mine ? pair.fg : theme.colorScheme.onSurface)),
                 ],

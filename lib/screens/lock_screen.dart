@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   final VoidCallback onUnlocked;
@@ -65,14 +66,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppGap.xxl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.lock_outline, size: 48),
-                const SizedBox(height: 16),
-                const Text('PIN을 입력하세요', style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppGap.lg),
+                const Text('PIN을 입력하세요', style: TextStyle(fontSize: AppText.heading)),
+                const SizedBox(height: AppGap.xl),
                 TextField(
                   controller: _pinController,
                   obscureText: true,
@@ -86,7 +87,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   onSubmitted: (_) => _submitPin(),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 FilledButton(onPressed: _submitPin, child: const Text('확인')),
                 TextButton.icon(
                   onPressed: () => _tryBiometric(manual: true),

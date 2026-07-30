@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
+import '../theme/app_theme.dart';
 
 /// 티어 축하 시네마틱(풀스크린).
 /// 블럭 낙하 → 채굴 → 파괴 → 아이템 등장 → 칭호 + 폭죽 5단계로 이어지는 연출.
@@ -147,7 +148,7 @@ class _TierCinematicState extends State<_TierCinematic>
                       child: Text('화면을 누르면 닫혀요',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                              color: Colors.white.withValues(alpha: 0.8), fontSize: AppText.label)),
                     ),
                   ),
               ],
@@ -176,7 +177,7 @@ class _TierCinematicState extends State<_TierCinematic>
       offset: Offset(0, (1 - rise) * 90 + (t > 0.62 ? float : 0)),
       child: Transform.scale(
         scale: 0.4 + rise * 0.6,
-        child: Text(widget.tier.icon, style: const TextStyle(fontSize: 96)),
+        child: Text(widget.tier.icon, style: const TextStyle(fontSize: AppEmoji.hero)),
       ),
     );
   }
@@ -195,7 +196,7 @@ class _TierCinematicState extends State<_TierCinematic>
             Text(widget.tier.title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 34,
+                  fontSize: AppText.numHero,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
                   color: pal.light,
@@ -207,26 +208,26 @@ class _TierCinematicState extends State<_TierCinematic>
                   ],
                 )),
             if (en != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppGap.xs),
               Text(en.toUpperCase(),
                   style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppText.body,
                       letterSpacing: 3,
                       fontWeight: FontWeight.w700,
                       color: Colors.white.withValues(alpha: 0.75))),
             ],
             if (widget.tier.reward != null && widget.tier.reward!.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppGap.md),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: pal.base.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
                   border: Border.all(color: pal.light.withValues(alpha: 0.55), width: 1.5),
                 ),
                 child: Text('🎁 ${widget.tier.reward}',
                     style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700, color: pal.light)),
+                        fontSize: AppText.bodyLg, fontWeight: FontWeight.w700, color: pal.light)),
               ),
             ],
           ],

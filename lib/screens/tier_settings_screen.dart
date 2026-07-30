@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/tier_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/tier_widgets.dart';
 
@@ -23,10 +24,10 @@ class TierSettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           Text('아이에게 보이는 칭호·금액·아이콘·보상을 바꿀 수 있어요. 바꾸면 가족 폰에 자동 반영됩니다.',
-              style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 12),
-          const Text('누적 저축 티어', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
+              style: TextStyle(fontSize: AppText.body, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: AppGap.md),
+          const Text('누적 저축 티어', style: TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w800)),
+          const SizedBox(height: AppGap.sm),
           savings.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('오류: $e'),
@@ -37,9 +38,9 @@ class TierSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          const Text('주간 저축률 티어', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.xl),
+          const Text('주간 저축률 티어', style: TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w800)),
+          const SizedBox(height: AppGap.sm),
           weekly.when(
             loading: () => const SizedBox.shrink(),
             error: (e, _) => Text('오류: $e'),
@@ -90,7 +91,7 @@ class TierSettingsScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: Row(children: [
           TierIcon(tier: t, size: 22),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppGap.sm),
           Flexible(child: Text('${t.title} 수정', overflow: TextOverflow.ellipsis)),
         ]),
         content: SingleChildScrollView(
@@ -102,7 +103,7 @@ class TierSettingsScreen extends ConsumerWidget {
                 Row(
                   children: [
                     TierIcon(tier: t, size: 34),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppGap.cozy),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,14 +131,14 @@ class TierSettingsScreen extends ConsumerWidget {
                 ),
                 Text('내 이미지는 이 기기에만 저장돼요(동기화 안 됨).',
                     style: TextStyle(
-                        fontSize: 11.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        fontSize: AppText.caption, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 const Divider(height: 20),
               ],
               TextField(
                 controller: titleController,
                 decoration: const InputDecoration(labelText: '칭호'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppGap.cozy),
               TextField(
                 controller: iconController,
                 decoration: InputDecoration(
@@ -145,7 +146,7 @@ class TierSettingsScreen extends ConsumerWidget {
                     helperText: isPercent ? null : '블럭 이미지가 있으면 이미지가 먼저 표시돼요',
                     helperMaxLines: 2),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppGap.cozy),
               TextField(
                 controller: thresholdController,
                 keyboardType: TextInputType.number,
@@ -153,7 +154,7 @@ class TierSettingsScreen extends ConsumerWidget {
                     InputDecoration(labelText: isPercent ? '도달 저축률(%)' : '도달 금액(원)'),
               ),
               if (!isPercent) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: rewardController,
                   decoration: const InputDecoration(labelText: '보상', hintText: '예: 치킨 한 마리'),

@@ -6,6 +6,7 @@ import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/stock_search_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/market_index_strip.dart';
 import '../widgets/stock_search.dart';
@@ -30,7 +31,7 @@ class StockTransferScreen extends ConsumerWidget {
 
     return Scaffold(
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppGap.lg),
         children: [
           const MarketIndexStrip(),
 
@@ -42,16 +43,16 @@ class StockTransferScreen extends ConsumerWidget {
             data: (s) => Card(
               color: Theme.of(context).colorScheme.secondaryContainer,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppGap.xl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('${child.stockAccountLabel ?? '${child.name} 주식계좌'} 누적 이체액',
-                        style: const TextStyle(fontSize: 14)),
-                    const SizedBox(height: 6),
+                        style: const TextStyle(fontSize: AppText.bodyLg)),
+                    const SizedBox(height: AppGap.snug),
                     Text(formatWon(s['totalTransfer'] ?? 0),
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
+                        style: const TextStyle(fontSize: AppText.numXl, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: AppGap.xs),
                     Text('현재 잔액: ${formatWon(s['balance'] ?? 0)}'),
                   ],
                 ),
@@ -60,7 +61,7 @@ class StockTransferScreen extends ConsumerWidget {
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('오류: $e'),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppGap.lg),
 
           // 자녀: 주식 사달라고 요청하는 버튼
           if (isChild) ...[
@@ -69,14 +70,14 @@ class StockTransferScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_shopping_cart),
               label: const Text('주식 사달라고 요청하기'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppGap.lg),
           ],
 
           // 주식 매수 요청 (자녀: 내 요청 상태 / 부모: 승인+구매결과 입력)
           if (pendingStock.isNotEmpty) ...[
             Text(isChild ? '내 주식 요청' : '${child.name}의 주식 요청',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+                style: const TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppGap.sm),
             for (final r in pendingStock)
               Card(
                 color: palette.special.bg,
@@ -98,11 +99,11 @@ class StockTransferScreen extends ConsumerWidget {
                         ),
                 ),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppGap.lg),
           ],
 
-          const Text('이체 이력', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const Text('이체 이력', style: TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w700)),
+          const SizedBox(height: AppGap.sm),
           transfersAsync.when(
             data: (list) {
               if (list.isEmpty) return const Text('아직 이체 기록이 없습니다.');
@@ -175,9 +176,9 @@ class StockTransferScreen extends ConsumerWidget {
                 children: [
                   Text('${quote.symbol}${quote.exchange.isNotEmpty ? ' · ${quote.exchange}' : ''}',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   _priceLine(context, price),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppGap.md),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
@@ -185,7 +186,7 @@ class StockTransferScreen extends ConsumerWidget {
                     onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(labelText: '얼마치 사달라고 할까요? (원)'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   Wrap(
                     spacing: 8,
                     children: [
@@ -201,7 +202,7 @@ class StockTransferScreen extends ConsumerWidget {
                     ],
                   ),
                   if (approxShares != null && amount > 0) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppGap.cozy),
                     Text('이 금액이면 약 ${approxShares.toStringAsFixed(approxShares >= 10 ? 0 : 2)}주',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                   ],
@@ -255,7 +256,7 @@ class StockTransferScreen extends ConsumerWidget {
               children: [
                 Text('요청: ${formatWon(r.amount)}어치 · $ticker',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppGap.sm),
                 _priceLine(context, price),
                 if (maxShares != null)
                   Padding(
@@ -263,7 +264,7 @@ class StockTransferScreen extends ConsumerWidget {
                     child: Text('요청 금액으로 최대 $maxShares주 살 수 있어요',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 TextField(
                   controller: sharesController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -291,13 +292,13 @@ class StockTransferScreen extends ConsumerWidget {
                       child: Text('최대 $maxShares주'),
                     ),
                   ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppGap.xs),
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: '실제 매수 금액(원)'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: memoController,
                   decoration: const InputDecoration(labelText: '메모(선택)'),
@@ -352,7 +353,7 @@ class StockTransferScreen extends ConsumerWidget {
   Widget _priceLine(BuildContext context, StockPrice? price) {
     if (price == null) {
       return Text('현재가를 불러오지 못했어요(수동 입력 가능)',
-          style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant));
+          style: TextStyle(fontSize: AppText.label, color: Theme.of(context).colorScheme.onSurfaceVariant));
     }
     final native = price.currency == 'KRW'
         ? formatWon(price.native.round())
@@ -381,8 +382,8 @@ class StockTransferScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('실제 이체/매수는 증권 앱에서 진행한 뒤, 완료된 내용을 여기에 기록해주세요.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 12),
+                    style: TextStyle(fontSize: AppText.label, color: Colors.grey)),
+                const SizedBox(height: AppGap.md),
                 // 종목 선택(선택 사항)
                 OutlinedButton.icon(
                   onPressed: () async {

@@ -147,34 +147,34 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppGap.md),
               // 요약 카드
               Card(
                 color: palette.allowance.bg,
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(AppGap.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(_periodLabel(range, customRange),
                           style: TextStyle(
-                              fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.8))),
-                      const SizedBox(height: 4),
+                              fontSize: AppText.body, color: palette.allowance.fg.withValues(alpha: 0.8))),
+                      const SizedBox(height: AppGap.xs),
                       Text(formatWon(totalReceived),
                           style: TextStyle(
-                              fontSize: 26,
+                              fontSize: AppText.numLg,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.8,
                               color: palette.allowance.fg)),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppGap.sm),
                       Text('받은 횟수 ${received.length}회',
                           style: TextStyle(
-                              fontSize: 13, color: palette.allowance.fg.withValues(alpha: 0.9))),
+                              fontSize: AppText.body, color: palette.allowance.fg.withValues(alpha: 0.9))),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppGap.sm),
 
               // 아직 안 준 용돈 — 여기서 바로 지급 (부모만)
               if (unpaid.isNotEmpty && !isChild) ...[
@@ -191,7 +191,7 @@ class AllowanceHistoryScreen extends ConsumerWidget {
                       await ref.read(databaseProvider).markSchedulePaid(s, owner, child);
                     },
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppGap.sm),
               ],
 
               // 받은 정기용돈 이력 (과거 전부)
@@ -277,7 +277,7 @@ class _ReceivedRow extends StatelessWidget {
         leading: CircleAvatar(backgroundColor: pair.bg, child: Icon(Icons.check_circle, color: pair.fg)),
         title: Text(formatWon(tx.amount),
             style: TextStyle(fontWeight: FontWeight.w800, color: pair.fg, letterSpacing: -0.3)),
-        subtitle: Text(sub, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+        subtitle: Text(sub, style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
       ),
     );
   }
@@ -317,22 +317,22 @@ class _LumpReceivedRow extends ConsumerWidget {
                   '과거 정기용돈 · ${list.length}회 · ${formatDate(tx.date)}부터 (눌러서 펼치기)',
               orElse: () => '과거 정기용돈 · ${formatDate(tx.date)}부터',
             ),
-            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant),
           ),
           children: [
             paymentsAsync.when(
               loading: () => const Padding(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(AppGap.md),
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (e, _) => Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppGap.md),
                 child: Text('불러오기 오류: $e'),
               ),
               data: (list) {
                 if (list.isEmpty) {
                   return const Padding(
-                    padding: EdgeInsets.all(12),
+                    padding: EdgeInsets.all(AppGap.md),
                     child: Text('주 단위 내역을 계산할 수 없어요.'),
                   );
                 }
@@ -348,10 +348,10 @@ class _LumpReceivedRow extends ConsumerWidget {
                         title: Text(
                             '${formatDate(p.date)} (${weekdayName(p.date.weekday)})',
                             style: const TextStyle(
-                                fontSize: 13.5, fontWeight: FontWeight.w600)),
+                                fontSize: AppText.body, fontWeight: FontWeight.w600)),
                         trailing: Text(formatWon(p.amount),
                             style: TextStyle(
-                                fontSize: 13.5,
+                                fontSize: AppText.body,
                                 fontWeight: FontWeight.w700,
                                 color: pair.fg)),
                       ),
@@ -373,7 +373,7 @@ class _Muted extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppGap.xl),
         child: Text(text,
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ),

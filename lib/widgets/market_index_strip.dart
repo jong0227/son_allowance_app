@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/market_provider.dart';
 import '../services/stock_search_service.dart';
+import '../theme/app_theme.dart';
 
 /// 오르면 빨강/내리면 파랑 (한국식). 라이트·다크 모두 읽히는 중간 톤.
 const _upColor = Color(0xFFE0574A);
@@ -33,16 +34,16 @@ class MarketIndexStrip extends ConsumerWidget {
             Row(
               children: [
                 Icon(Icons.trending_up, size: 17, color: textSecondary),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppGap.snug),
                 Text('오늘의 지수',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppGap.snug),
                 // 등락률이 "하루치"임을 분명히 (1개월 등과 헷갈리지 않게)
                 Text('어제 대비',
-                    style: TextStyle(fontSize: 11, color: textSecondary)),
+                    style: TextStyle(fontSize: AppText.caption, color: textSecondary)),
                 const Spacer(),
                 Text(DateFormat('M월 d일').format(DateTime.now()),
-                    style: TextStyle(fontSize: 11.5, color: textSecondary)),
+                    style: TextStyle(fontSize: AppText.caption, color: textSecondary)),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   iconSize: 18,
@@ -53,7 +54,7 @@ class MarketIndexStrip extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             async.when(
               loading: () => const SizedBox(
                 height: 44,
@@ -87,7 +88,7 @@ class MarketIndexStrip extends ConsumerWidget {
 
   Widget _message(String text, Color color) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+        child: Text(text, style: TextStyle(fontSize: AppText.label, color: color)),
       );
 }
 
@@ -123,12 +124,12 @@ class _IndexCell extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppText.caption,
                     height: 1.0,
                     color: theme.colorScheme.onSurfaceVariant)),
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppGap.xs),
         SizedBox(
           height: 18,
           child: Center(
@@ -137,14 +138,14 @@ class _IndexCell extends StatelessWidget {
               child: Text(_indexFormat.format(index.value),
                   maxLines: 1,
                   style: const TextStyle(
-                      fontSize: 15.5,
+                      fontSize: AppText.title,
                       height: 1.0,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5)),
             ),
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppGap.xs),
         SizedBox(
           height: 14,
           child: Center(
@@ -153,7 +154,7 @@ class _IndexCell extends StatelessWidget {
               child: Text('$arrow $sign${index.changePercent.toStringAsFixed(2)}%',
                   maxLines: 1,
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppText.caption,
                       height: 1.0,
                       color: color,
                       fontWeight: FontWeight.w600)),

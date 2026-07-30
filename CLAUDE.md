@@ -5,7 +5,16 @@
 대상 기기: 갤럭시 Z 폴드7 / 플립5 (안드로이드 전용).
 
 ## 📍 현재 진행 상황 / 다음 할 일 (이어받기용)
-현재 버전: **v1.24.1+32** (앱 표시명 "Moneycraft", GitHub Release까지 배포됨).
+현재 버전: **v1.25.0+40** (앱 표시명 "Moneycraft"). 배포된 마지막 버전은 v1.24.8.
+
+- **v1.25.0 작업 중** (브랜치 `design-tokens`, 아직 기기 확인 전)
+  - 홈의 "이번 주 용돈" 섹션을 없애고 `AllowanceHomeCard`로 전환. 절약보너스·이자 카드와
+    같은 묶음에서 용돈 → 절약보너스 → 이자 → 약속 순으로 흐른다. 지급 완료되면 한 줄로
+    접히고, 누르면 펼쳐지며 밀린 용돈 건수·날짜도 여기서 보여준다.
+    **지급 "취소" 버튼은 일부러 없앴다** — 홈에 있으면 실수로 누르기 쉬워서, 되돌리려면
+    내역 탭에서 그 내역을 삭제한다(내역 삭제 = 지급 취소).
+  - 디자인 토큰 전면 도입(아래 "디자인 토큰" 항목 참고). 826곳 적용.
+  - **남은 일**: 폴드·플립 실기기에서 눈으로 확인 → 이상한 곳 수정 → 릴리스.
 
 - **플레이스토어 공개 준비 중** (최신 커밋 `0c38d19`, 아직 버전 태그 없음)
   - applicationId를 `com.family.son_allowance_app` → **`com.moneycraft.app`** 으로 변경 (게시 전 확정).
@@ -71,6 +80,28 @@ Set-Location "C:\dev\son_allowance_app"
   `tier_cinematic`, `interest_celebration`, `child_avatar`, `stock_search`, `responsive_scaffold`
 - 테마: `lib/theme/app_theme.dart` — 파스텔 + Noto Sans KR, `AppPalette` ThemeExtension
   (income/expense/savings/special/allowance + tags 팔레트). 카테고리 색은 원 등분 방식으로 배정.
+
+### 디자인 토큰 (v1.25.0~) ⚠️ 새 화면 만들 때 반드시 지킬 것
+숫자를 직접 쓰지 말고 `lib/theme/app_theme.dart`의 토큰을 쓴다. 전에는 fontSize가 34가지,
+라운드가 12가지로 흩어져 있어서 같은 뜻의 글씨가 화면마다 12 / 12.5 / 13으로 달랐다
+(두 사람이 각자 화면을 만들다 보니 더 벌어졌다).
+
+- `AppText` — micro 10 / caption 11 / label 12 / body 13 / bodyLg 14 / title 15 /
+  titleLg 16 / heading 18 / numSm 20 / numMd 22 / numLg 24 / numXl 28 / numHero 34
+- `AppEmoji` — sm 32 / md 40 / lg 48 / hero 96. 이모지는 읽는 글자가 아니라 그림이라
+  글씨 스케일과 섞지 않는다.
+- `AppRadius` — xs 6 / sm 10 / md 12 / lg 16(카드 기본) / xl 20
+- `AppGap` — 2 / 4 / 6 / 8 / 10 / 12 / 16 / 20 / 24. `SizedBox`와 `EdgeInsets.all`에 쓴다.
+- `FontWeight`는 **w600 / w700 / w800 / w900 네 가지만**. `FontWeight.bold`는 w700과 같은
+  값인데 이름만 달라 헷갈리므로 쓰지 않는다.
+
+예외로 남겨둔 것:
+- `EdgeInsets.symmetric` · `only` · `fromLTRB`는 숫자를 그대로 쓴다. "칩 안쪽 여백 가로 9
+  세로 4"처럼 그 컴포넌트에서만 의미 있는 미세조정이라 공통 스케일로 묶으면 뜻이 흐려진다.
+- 차트 높이(`SizedBox(height: 520)` 등)도 간격이 아니라 크기라 토큰 대상이 아니다.
+
+애매하면 **한 단계 작은 쪽**을 고른다(폴드·플립 좁은 화면에서 잘리는 걸 피하려고).
+"본문 글씨를 키우자" 같은 요구는 `AppText.body` 한 줄만 고치면 앱 전체가 따라온다.
 - 데이터 서비스 (`lib/services/`): `export_import`(스마트 병합), `sync`(Firebase), `interest_calc`,
   `rates`(ECOS), `cofix`(은행연합회), `stock_search`(야후), `notification`, `backup`, `update`
 

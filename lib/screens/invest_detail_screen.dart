@@ -5,6 +5,7 @@ import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 import 'invest_screen.dart';
@@ -71,20 +72,20 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
         children: [
           // 현재 지수
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppGap.lg),
             decoration: BoxDecoration(
-                color: palette.savings.bg, borderRadius: BorderRadius.circular(18)),
+                color: palette.savings.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.note,
                     style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: AppText.label,
                         color: palette.savings.fg.withValues(alpha: 0.85))),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppGap.snug),
                 if (idx == null)
                   Text('지수를 불러오는 중...',
-                      style: TextStyle(fontSize: 18, color: palette.savings.fg))
+                      style: TextStyle(fontSize: AppText.heading, color: palette.savings.fg))
                 else
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -92,16 +93,16 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                     children: [
                       Text(indexFormat.format(idx.value),
                           style: TextStyle(
-                              fontSize: 28,
+                              fontSize: AppText.numXl,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -1,
                               color: palette.savings.fg)),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppGap.cozy),
                       Text(
                           '어제보다 ${idx.isUp ? '▲' : (idx.isDown ? '▼' : '–')} '
                           '${idx.change > 0 ? '+' : ''}${idx.changePercent.toStringAsFixed(2)}%',
                           style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppText.body,
                               fontWeight: FontWeight.w800,
                               color: idx.isUp
                                   ? investUp
@@ -111,7 +112,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           // 기간 선택
           SegmentedButton<String>(
             segments: [
@@ -121,7 +122,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
             showSelectedIcon: false,
             onSelectionChanged: (s) => setState(() => _range = s.first),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           // 차트
           SizedBox(
             height: 200,
@@ -174,12 +175,12 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                       '${((s.last / s.first - 1) * 100).toStringAsFixed(1)}% '
                       '${s.last >= s.first ? '올랐어요' : '내렸어요'}',
                       style: TextStyle(
-                          fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                          fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ),
             orElse: () => const SizedBox.shrink(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppGap.lg),
           // 사기
           FilledButton.icon(
             onPressed: (nowValue == null || canInvest <= 0)
@@ -227,20 +228,20 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                 children: [
                   Text('${widget.label}에 투자하기',
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
-                  const SizedBox(height: 4),
+                          fontSize: AppText.heading, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+                  const SizedBox(height: AppGap.xs),
                   Text('지금 지수 ${indexFormat.format(indexValue)} · '
                       '최대 ${formatWon(maxAmount)}',
                       style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: AppText.label,
                           color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppGap.md),
                   TextField(
                     controller: controller,
                     keyboardType: TextInputType.number,
                     autofocus: true,
                     style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+                        fontSize: AppText.numLg, fontWeight: FontWeight.w800, letterSpacing: -0.8),
                     decoration: const InputDecoration(
                       isDense: true,
                       hintText: '0',
@@ -248,7 +249,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                     ),
                     onChanged: (_) => setSheet(() {}),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppGap.cozy),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -273,7 +274,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppGap.lg),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -323,10 +324,10 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${p.label} · 투자한 돈 ${formatWon(p.amount)}'),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppGap.snug),
             Text('지금 팔면 ${formatWon(value)}을 받아요.',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             Text(
                 diff >= 0
                     ? '${formatWon(diff)} 벌었어요 🎉'
@@ -382,23 +383,23 @@ class _MyPositionCard extends StatelessWidget {
                 children: [
                   Text('${formatWon(position.amount)} → ${formatWon(value)}',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 14.5)),
-                  const SizedBox(height: 2),
+                          fontWeight: FontWeight.w800, fontSize: AppText.bodyLg)),
+                  const SizedBox(height: AppGap.xxs),
                   Text(
                       '${formatDateShort(position.buyAt)} 투자 · '
                       '지수 ${indexFormat.format(position.buyValue)}',
                       style: TextStyle(
-                          fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 2),
+                          fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: AppGap.xxs),
                   Text(
                       '${diff >= 0 ? '+' : ''}${formatWon(diff)} '
                       '(${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%)',
                       style: TextStyle(
-                          fontSize: 12.5, fontWeight: FontWeight.w800, color: color)),
+                          fontSize: AppText.label, fontWeight: FontWeight.w800, color: color)),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppGap.sm),
             FilledButton(onPressed: onSell, child: const Text('팔기')),
           ],
         ),

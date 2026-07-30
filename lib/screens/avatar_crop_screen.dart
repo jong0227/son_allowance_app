@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// 갤러리에서 고른 이미지를 원형으로 크롭하는 전용 화면.
 /// 완료 시 크롭된 PNG 바이트를 Navigator.pop 으로 반환한다.
@@ -27,7 +28,7 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
         actions: [
           if (_cropping)
             const Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(AppGap.lg),
               child: SizedBox(
                   width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
             )

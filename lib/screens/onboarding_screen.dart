@@ -6,6 +6,7 @@ import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
+import '../theme/app_theme.dart';
 
 /// 최초 실행 시: 이 기기의 사용자(아빠/엄마/아들)와 자녀 정보를 입력받는다.
 /// - 부모(아빠/엄마): 자녀 정보를 직접 만든다. 이후 설정에서 가족 동기화/부모 암호 설정.
@@ -41,12 +42,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       appBar: AppBar(title: const Text('처음 설정')),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppGap.xl),
           child: ListView(
             children: [
               const Text('이 기기는 누가 사용하나요?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
+                  style: TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w700)),
+              const SizedBox(height: AppGap.md),
               SegmentedButton<String>(
                 emptySelectionAllowed: true,
                 segments: const [
@@ -57,17 +58,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 selected: _owner == null ? const {} : {_owner!},
                 onSelectionChanged: (s) => setState(() => _owner = s.first),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppGap.xxl),
               if (_isChild) ...[
                 const Text('가족 연결',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                    style: TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppGap.sm),
                 Text('부모님 앱의 설정 > 실시간 자동 동기화에서 발급한 6자리 코드를 입력하면 '
                     '용돈 정보를 함께 볼 수 있어요.',
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppText.body,
                         color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 TextField(
                   controller: _familyCodeController,
                   textCapitalization: TextCapitalization.characters,
@@ -77,21 +78,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ] else ...[
                 const Text('자녀 정보',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                    style: TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppGap.md),
                 TextField(
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: '이름', border: OutlineInputBorder()),
                   onChanged: (_) => setState(() {}),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 TextField(
                   controller: _amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                       labelText: '기본 주간 용돈(원)', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 DropdownButtonFormField<int>(
                   initialValue: _payDayOfWeek,
                   decoration:
@@ -108,7 +109,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   onChanged: (v) => setState(() => _payDayOfWeek = v ?? DateTime.monday),
                 ),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: AppGap.xxl),
               FilledButton(
                 onPressed: (_canSubmit && !_busy) ? _submit : null,
                 child: Padding(

@@ -172,7 +172,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               isDense: true,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           // 기간 칩
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -196,7 +196,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: SegmentedButton<_Filter>(
@@ -211,10 +211,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                   ref.read(_filterProvider.notifier).state = s.first,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.snug),
           txsAsync.when(
             loading: () => const Padding(
-              padding: EdgeInsets.all(32),
+              padding: EdgeInsets.all(AppGap.xxl),
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (e, _) => Text('오류: $e'),
@@ -241,7 +241,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               if (filtered.isEmpty) {
                 return Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(AppGap.xl),
                     child: Text(
                       (query.isNotEmpty || period != _Period.all)
                           ? '조건에 맞는 내역이 없어요.'
@@ -437,7 +437,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                 _showPastAllowanceDialog();
               },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppGap.sm),
           ],
         ),
       ),
@@ -471,9 +471,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                   '예전에 주지 못한 정기용돈을 지급일(과거 날짜)로 기록해요. '
                   '그 날짜로 지급 완료 처리되고 잔액에 합산됩니다.',
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppGap.lg),
                 InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -492,12 +492,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outline,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today, size: 16),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppGap.cozy),
                         Text(
                           '${formatDate(date)} (${weekdayName(date.weekday)}요일)',
                         ),
@@ -505,7 +505,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppGap.md),
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
@@ -697,7 +697,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           child: Text(
                             title,
                             style: const TextStyle(
-                              fontSize: 19,
+                              fontSize: AppText.heading,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
                             ),
@@ -718,7 +718,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppGap.md),
                     _FieldLabel(flow == 'income' ? '종류' : '카테고리'),
                     Builder(
                       builder: (context) {
@@ -740,7 +740,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       },
                     ),
                     if (withGiver) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppGap.md),
                       _FieldLabel('누가 줬어요?'),
                       Wrap(
                         spacing: 8,
@@ -756,21 +756,21 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ],
                       ),
                       if (giver == '기타') ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppGap.cozy),
                         TextField(
                           controller: customGiverController,
                           decoration: const InputDecoration(labelText: '직접 입력'),
                         ),
                       ],
                     ],
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppGap.md),
                     _FieldLabel('금액'),
                     TextField(
                       controller: amountController,
                       keyboardType: TextInputType.number,
                       autofocus: true,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: AppText.numLg,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.8,
                       ),
@@ -779,12 +779,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         hintText: '0',
                         suffixText: '원',
                         suffixStyle: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppText.titleLg,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppGap.sm),
                     // 빠른 금액 추가 칩. 누를 때마다 현재 금액에 더해진다(만원 두 번 = 2만원).
                     Wrap(
                       spacing: 6,
@@ -819,10 +819,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppGap.md),
                     _FieldLabel('날짜'),
                     InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -845,7 +845,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           color: Theme.of(
                             context,
                           ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           border: Border.all(
                             color: Theme.of(context).colorScheme.outline,
                           ),
@@ -859,7 +859,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                                 context,
                               ).colorScheme.onSurfaceVariant,
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: AppGap.cozy),
                             Text(
                               formatDate(date),
                               style: const TextStyle(
@@ -870,7 +870,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppGap.md),
                     _FieldLabel('메모 (선택)'),
                     TextField(
                       controller: memoController,
@@ -882,7 +882,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       ),
                     ),
                     if (isEdit) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppGap.sm),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
@@ -1087,25 +1087,25 @@ class _FilterSummary extends StatelessWidget {
         children: [
           Text(
             '$count건',
-            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant),
           ),
           const Spacer(),
           if (income > 0) ...[
             Text(
               '수입 +${formatWon(income)}',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: AppText.label,
                 fontWeight: FontWeight.w700,
                 color: palette.income.fg,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppGap.cozy),
           ],
           if (expense > 0)
             Text(
               '지출 -${formatWon(expense)}',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: AppText.label,
                 fontWeight: FontWeight.w700,
                 color: palette.expense.fg,
               ),
@@ -1127,7 +1127,7 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: AppText.body,
           fontWeight: FontWeight.w600,
           letterSpacing: -0.2,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1159,7 +1159,7 @@ class _SelectChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
           color: selected ? pair.bg : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: selected ? pair.fg.withValues(alpha: 0.5) : border,
           ),
@@ -1167,7 +1167,7 @@ class _SelectChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: AppText.bodyLg,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             letterSpacing: -0.2,
             color: selected

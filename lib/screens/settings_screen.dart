@@ -42,11 +42,11 @@ class SettingsScreen extends ConsumerWidget {
         // 프로필 헤더
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppGap.lg),
             child: Row(
               children: [
                 ChildAvatar(child: child, size: 60),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppGap.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,16 +54,16 @@ class SettingsScreen extends ConsumerWidget {
                       Text(
                         child.name,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: AppText.heading,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.4,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppGap.xxs),
                       Text(
                         '기본 용돈 ${formatWon(child.weeklyAllowanceDefault)} · ${weekdayName(child.payDayOfWeek)}요일',
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: AppText.label,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -239,7 +239,7 @@ class SettingsScreen extends ConsumerWidget {
         const SectionHeader('실시간 자동 동기화'),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppGap.lg),
             child: _buildSyncPanel(context, ref, settings),
           ),
         ),
@@ -374,7 +374,7 @@ class SettingsScreen extends ConsumerWidget {
         const SectionHeader('화면 테마'),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppGap.md),
             child: SegmentedButton<ThemeMode>(
               segments: const [
                 ButtonSegment(
@@ -560,7 +560,7 @@ class SettingsScreen extends ConsumerWidget {
               '아이 폰에서 부모 모드로 전환하려면 이 암호가 필요해요. '
               '가족 동기화로 다른 부모 폰에도 자동 적용됩니다.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             TextField(
               controller: pinController,
               obscureText: true,
@@ -628,13 +628,13 @@ class SettingsScreen extends ConsumerWidget {
                   controller: nameController,
                   decoration: const InputDecoration(labelText: '이름'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: '기본 주간 용돈(원)'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 // 용돈을 바꾸는 경우에만 사유를 남길 수 있게 안내
                 TextField(
                   controller: reasonController,
@@ -643,7 +643,7 @@ class SettingsScreen extends ConsumerWidget {
                     hintText: '예: 초등학교 입학, 심부름 잘함',
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: thresholdController,
                   keyboardType: TextInputType.number,
@@ -651,12 +651,12 @@ class SettingsScreen extends ConsumerWidget {
                     labelText: '이체 권장 기준 금액(원)',
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: stockLabelController,
                   decoration: const InputDecoration(labelText: '주식계좌 별칭'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 DropdownButtonFormField<int>(
                   initialValue: payDay,
                   decoration: const InputDecoration(labelText: '지급 요일'),
@@ -737,23 +737,23 @@ class SettingsScreen extends ConsumerWidget {
                   const Text(
                     '기본 용돈 변경 이력',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: AppText.heading,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppGap.xs),
                   Text(
                     '현재 ${formatWon(child.weeklyAllowanceDefault)}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppText.body,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppGap.md),
                   ratesAsync.when(
                     loading: () => const Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: EdgeInsets.all(AppGap.xxl),
                       child: Center(child: CircularProgressIndicator()),
                     ),
                     error: (e, _) => Text('오류: $e'),
@@ -837,12 +837,12 @@ class SettingsScreen extends ConsumerWidget {
                 hintText: '예: 10',
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             Text(
               '모의 투자에 한 번에 넣어둘 수 있는 저축 포인트의 최대 비율이에요.\n'
               '지수가 내리면 저축 포인트가 실제로 줄어드니, 너무 높게 잡지 않는 걸 권해요.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: AppText.label,
                 height: 1.4,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -894,12 +894,12 @@ class SettingsScreen extends ConsumerWidget {
                 hintText: '예: 10',
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             Text(
               '주 $kQuizPerWeek문제라 다 맞히면 이 금액의 $kQuizPerWeek배를 받아요.\n'
               '틀렸다가 해설을 읽고 다시 맞히면 절반만 지급돼요.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: AppText.label,
                 height: 1.4,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -981,7 +981,7 @@ class SettingsScreen extends ConsumerWidget {
                     showSelectedIcon: false,
                     onSelectionChanged: (s) => setState(() => period = s.first),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('진짜 은행 금리에 연동'),
@@ -1018,41 +1018,41 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppGap.md),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppGap.md),
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
                       ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '미리보기 (잔액 ${formatWon(balance)})',
-                          style: TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(fontSize: AppText.label, color: muted),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppGap.xs),
                         Text(
                           '연 ${formatPercent(preview.annualPercent)}%'
                           ' · ${period == 0 ? '이번 주' : '이번 달'} ${formatWon(preview.amount)}',
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: AppText.title,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         if (preview.hasBankRate)
                           Text(
                             '은행 정기예금은 연 ${formatPercent(preview.bankAnnualPercent)}%',
-                            style: TextStyle(fontSize: 12, color: muted),
+                            style: TextStyle(fontSize: AppText.label, color: muted),
                           ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppGap.xs),
                         Text(
                           '약속을 지키면 약속 1개당 연 +0.3%p가 더해져요',
-                          style: TextStyle(fontSize: 11.5, color: muted),
+                          style: TextStyle(fontSize: AppText.caption, color: muted),
                         ),
                       ],
                     ),
@@ -1105,11 +1105,11 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           promisesAsync.when(
             loading: () => const Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(AppGap.lg),
               child: LinearProgressIndicator(),
             ),
             error: (e, _) => Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppGap.lg),
               child: Text('오류: $e'),
             ),
             data: (promises) {
@@ -1119,7 +1119,7 @@ class SettingsScreen extends ConsumerWidget {
                   child: Text(
                     '약속을 추가하면, 켜진(ON) 약속마다 이자율이 올라가요.\n'
                     '약속 안 지킨 주엔 OFF로 바꿔 낮은 이자를 적용하세요.',
-                    style: TextStyle(fontSize: 13, height: 1.4),
+                    style: TextStyle(fontSize: AppText.body, height: 1.4),
                   ),
                 );
               }
@@ -1180,7 +1180,7 @@ class SettingsScreen extends ConsumerWidget {
                 hintText: '예: 매일 이 닦기',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             TextField(
               controller: bonusController,
               keyboardType: const TextInputType.numberWithOptions(
@@ -1309,7 +1309,7 @@ class SettingsScreen extends ConsumerWidget {
                 hintText: '예: 3.05',
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -1356,9 +1356,9 @@ class SettingsScreen extends ConsumerWidget {
             const Text(
               '기준금리·정기예금은 기본 인증키로 이미 자동 표시돼요. '
               '내 인증키로 바꾸고 싶을 때만 넣으면 돼요. (COFIX는 키 없이 자동)',
-              style: TextStyle(fontSize: 13, height: 1.4),
+              style: TextStyle(fontSize: AppText.body, height: 1.4),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             TextField(
               controller: controller,
               decoration: const InputDecoration(
@@ -1366,7 +1366,7 @@ class SettingsScreen extends ConsumerWidget {
                 hintText: '비우면 기본키 사용',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppGap.sm),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -1431,23 +1431,23 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                   onChanged: (v) => setState(() => day = v ?? day),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: thresholdController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: '유지 목표 금액(원)'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: '보너스 금액(원)'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppGap.sm),
                 Text(
                   '예: 매주 목요일까지 1,000원 이상 남아있으면 500원 지급',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppText.label,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -1536,7 +1536,7 @@ class SettingsScreen extends ConsumerWidget {
         return Text(
           '아직 가족 연결이 안 돼 있어요. 부모님께 말씀드리면 연결해 주실 거예요.',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppText.body,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         );
@@ -1547,17 +1547,17 @@ class SettingsScreen extends ConsumerWidget {
           Text(
             '앱을 켜두면 아내/남편 폰과 자동으로 동기화돼요. 파일을 주고받을 필요 없어요.',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppText.body,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppGap.md),
           FilledButton.icon(
             onPressed: () => _handleCreateFamily(context, ref),
             icon: const Icon(Icons.add_link),
             label: const Text('동기화 시작하기 (코드 발급)'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           OutlinedButton.icon(
             onPressed: () => _handleJoinFamily(context, ref),
             icon: const Icon(Icons.link),
@@ -1588,7 +1588,7 @@ class SettingsScreen extends ConsumerWidget {
         Row(
           children: [
             const Icon(Icons.sync, size: 18),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppGap.cozy),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1598,14 +1598,14 @@ class SettingsScreen extends ConsumerWidget {
                     isChild ? '가족과 연결됨' : '가족 코드: $code',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 15.5,
+                      fontSize: AppText.title,
                       letterSpacing: 1,
                     ),
                   ),
                   Text(
                     statusText,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: AppText.label,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -1624,7 +1624,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         // 동기화 끊기는 부모만 (아이가 끊으면 기록이 부모 폰과 어긋남)
         if (!isChild) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.snug),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -1657,12 +1657,12 @@ class SettingsScreen extends ConsumerWidget {
               Text(
                 code,
                 style: const TextStyle(
-                  fontSize: 28,
+                  fontSize: AppText.numXl,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 3,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppGap.cozy),
               const Text(
                 '이 코드를 상대방에게 알려주고, 상대방 폰의 설정 > 실시간 자동 동기화 > '
                 '"상대방 코드로 참여하기"에 입력하면 자동으로 연결돼요.',
@@ -1908,9 +1908,9 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
               '① 용돈을 처음 주기 시작한 날짜와 ② 지금까지 모아둔 돈만 넣으면, '
               '그동안 받은 정기용돈을 자동 계산하고 쓴 돈을 뭉텅이로 내역에 넣어드려요.',
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppGap.md),
             InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               onTap: () async {
                 final p = await showDatePicker(
                   context: context,
@@ -1930,31 +1930,31 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(color: scheme.outline),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.calendar_today, size: 16),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppGap.cozy),
                     Text('① 시작 날짜: ${formatDate(_start)}'),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             TextField(
               controller: _savedController,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(labelText: '② 지금까지 모은 돈 (원)'),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppGap.md),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppGap.md),
               decoration: BoxDecoration(
                 color: scheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1968,21 +1968,21 @@ class _PastAllowanceDialogState extends ConsumerState<_PastAllowanceDialog> {
                       color: scheme.onSecondaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppGap.xxs),
                   Text(
                     '자동 계산된 소비 ≈ ${formatWon(spent)}',
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: AppText.label,
                       color: scheme.onSecondaryContainer,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppGap.sm),
             Text(
               '적용하면 기존 시작 잔액은 대체돼요.',
-              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: AppText.caption, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -2172,7 +2172,7 @@ class _CategoryExpansion extends StatelessWidget {
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: AppText.label,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
@@ -2231,7 +2231,7 @@ class _RemovableChip extends StatelessWidget {
       padding: const EdgeInsets.only(left: 12, right: 6, top: 7, bottom: 7),
       decoration: BoxDecoration(
         color: pair.bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2257,7 +2257,7 @@ class _RemovableChip extends StatelessWidget {
               ),
             )
           else
-            const SizedBox(width: 6),
+            const SizedBox(width: AppGap.snug),
         ],
       ),
     );
@@ -2300,7 +2300,7 @@ class _AddCategoryChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Row(
@@ -2311,7 +2311,7 @@ class _AddCategoryChip extends StatelessWidget {
               size: 16,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppGap.xs),
             Text(
               '추가',
               style: TextStyle(

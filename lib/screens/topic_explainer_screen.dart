@@ -49,22 +49,22 @@ class _TopicExplainerScreenState extends ConsumerState<TopicExplainerScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
             decoration:
-                BoxDecoration(color: heroPair.bg, borderRadius: BorderRadius.circular(20)),
+                BoxDecoration(color: heroPair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
             child: Column(
               children: [
-                Text(topic.emoji, style: const TextStyle(fontSize: 46)),
-                const SizedBox(height: 8),
+                Text(topic.emoji, style: const TextStyle(fontSize: AppEmoji.lg)),
+                const SizedBox(height: AppGap.sm),
                 Text(topic.title,
                     style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.w900, color: heroPair.fg)),
-                const SizedBox(height: 6),
+                        fontSize: AppText.numMd, fontWeight: FontWeight.w900, color: heroPair.fg)),
+                const SizedBox(height: AppGap.snug),
                 Text(topic.summary,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, height: 1.4, color: heroPair.fg)),
+                    style: TextStyle(fontSize: AppText.bodyLg, height: 1.4, color: heroPair.fg)),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppGap.xl),
           for (var i = 0; i < topic.sections.length; i++) ...[
             _SectionCard(
               section: topic.sections[i],
@@ -78,23 +78,23 @@ class _TopicExplainerScreenState extends ConsumerState<TopicExplainerScreen> {
                         size: 26, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: AppGap.xl),
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppGap.lg),
             decoration: BoxDecoration(
               color: palette.income.bg,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(color: palette.income.fg.withValues(alpha: 0.3)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('⭐', style: TextStyle(fontSize: 22)),
-                const SizedBox(width: 10),
+                const Text('⭐', style: TextStyle(fontSize: AppText.numMd)),
+                const SizedBox(width: AppGap.cozy),
                 Expanded(
                   child: Text(topic.callout,
                       style: TextStyle(
-                          fontSize: 14.5, height: 1.5, color: palette.income.fg)),
+                          fontSize: AppText.bodyLg, height: 1.5, color: palette.income.fg)),
                 ),
               ],
             ),
@@ -113,23 +113,23 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.all(AppGap.lg),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(section.emoji, style: const TextStyle(fontSize: 36)),
-          const SizedBox(width: 14),
+          Text(section.emoji, style: const TextStyle(fontSize: AppEmoji.sm)),
+          const SizedBox(width: AppGap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(section.title,
                     style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: pair.fg)),
-                const SizedBox(height: 6),
+                        TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w800, color: pair.fg)),
+                const SizedBox(height: AppGap.snug),
                 Text(section.body,
-                    style: TextStyle(fontSize: 14, height: 1.5, color: pair.fg)),
+                    style: TextStyle(fontSize: AppText.bodyLg, height: 1.5, color: pair.fg)),
               ],
             ),
           ),

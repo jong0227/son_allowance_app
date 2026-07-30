@@ -7,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/tier_provider.dart';
 import '../services/backup_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/child_avatar.dart';
 import '../widgets/responsive_scaffold.dart';
 import '../widgets/tier_widgets.dart';
@@ -149,18 +150,18 @@ class _MainShellState extends ConsumerState<MainShell> {
       titleWidget: Row(
         children: [
           ChildAvatar(child: child, size: 36),
-          const SizedBox(width: 9),
+          const SizedBox(width: AppGap.sm),
           Flexible(
             child: Text('${child.name}의 용돈',
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.4)),
           ),
           if (savingsTier != null) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: AppGap.snug),
             TierEasterEggTap(tier: savingsTier, child: TierBadge(tier: savingsTier)),
           ],
           if (weeklyTier != null) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: AppGap.xs),
             TierEasterEggTap(tier: weeklyTier, child: TierBadge(tier: weeklyTier)),
           ],
         ],

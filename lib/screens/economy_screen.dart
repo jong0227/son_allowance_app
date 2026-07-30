@@ -35,16 +35,16 @@ class EconomyScreen extends ConsumerWidget {
             loading: () => const Card(
                 child: SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))),
             error: (e, _) => Card(
-                child: Padding(padding: const EdgeInsets.all(16), child: Text('오류: $e'))),
+                child: Padding(padding: const EdgeInsets.all(AppGap.lg), child: Text('오류: $e'))),
             data: (state) => Column(
               children: [
                 _QuizCard(child: child, state: state),
                 // 부모에게만: 문제은행이 바닥나기 전에 알려준다.
                 if (!isChild && state.bankRunningLow) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   _LowBankNotice(remaining: state.remainingInBank),
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: AppGap.sm),
                 // 준비된 문제 / 푼 문제 + 기록 보기 (부모가 아이 풀이 내역 확인)
                 _NavCard(
                   emoji: '📋',
@@ -92,16 +92,16 @@ class _TodayTopicCard extends ConsumerWidget {
     final pair = appPalette(context).allowance;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.xl),
       onTap: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => TopicExplainerScreen(topic: topic))),
       child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.all(AppGap.lg),
+        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
         child: Row(
           children: [
-            Text(topic.emoji, style: const TextStyle(fontSize: 40)),
-            const SizedBox(width: 14),
+            Text(topic.emoji, style: const TextStyle(fontSize: AppEmoji.md)),
+            const SizedBox(width: AppGap.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,23 +111,23 @@ class _TodayTopicCard extends ConsumerWidget {
                       Flexible(
                         child: Text(topic.title,
                             style: TextStyle(
-                                fontSize: 17,
+                                fontSize: AppText.titleLg,
                                 fontWeight: FontWeight.w900,
                                 color: pair.fg)),
                       ),
                       if (read) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppGap.snug),
                         Icon(Icons.check_circle, size: 15, color: pair.fg),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: AppGap.xs),
                   Text(topic.summary,
-                      style: TextStyle(fontSize: 13, height: 1.35, color: pair.fg)),
-                  const SizedBox(height: 6),
+                      style: TextStyle(fontSize: AppText.body, height: 1.35, color: pair.fg)),
+                  const SizedBox(height: AppGap.snug),
                   Text(read ? '다시 읽어보기' : '오늘은 이거 하나만 읽어볼까?',
                       style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: AppText.caption,
                           fontWeight: FontWeight.w700,
                           color: pair.fg.withValues(alpha: 0.85))),
                 ],
@@ -162,22 +162,22 @@ class _TopicProgressCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text(all ? '🏅' : '📚', style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
+                Text(all ? '🏅' : '📚', style: const TextStyle(fontSize: AppText.numSm)),
+                const SizedBox(width: AppGap.sm),
                 Expanded(
                   child: Text(all ? '경제상식 마스터!' : '$total개 중 $done개 읽었어요',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                      style: const TextStyle(fontSize: AppText.bodyLg, fontWeight: FontWeight.w800)),
                 ),
                 Text('${total == 0 ? 0 : ((done / total) * 100).round()}%',
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppText.body,
                         fontWeight: FontWeight.w800,
                         color: palette.income.fg)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.xs),
               child: LinearProgressIndicator(
                 value: total == 0 ? 0 : done / total,
                 minHeight: 8,
@@ -186,9 +186,9 @@ class _TopicProgressCard extends ConsumerWidget {
               ),
             ),
             if (all) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppGap.sm),
               Text('모든 경제상식을 다 읽었어요. 대단해요! 🎉',
-                  style: TextStyle(fontSize: 12.5, color: palette.income.fg)),
+                  style: TextStyle(fontSize: AppText.label, color: palette.income.fg)),
             ],
           ],
         ),
@@ -216,14 +216,14 @@ class _AllTopicsSectionState extends ConsumerState<_AllTopicsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AppGap.sm),
         OutlinedButton.icon(
           onPressed: () => setState(() => _expanded = !_expanded),
           icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
           label: Text(_expanded ? '접기' : '경제상식 전체 보기'),
         ),
         if (_expanded) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           for (final topic in kEconomyTopics)
             _NavCard(
               emoji: topic.emoji,
@@ -237,7 +237,7 @@ class _AllTopicsSectionState extends ConsumerState<_AllTopicsSection> {
             padding: const EdgeInsets.only(top: 6, bottom: 4),
             child: Text('더 깊이 알고 싶다면',
                 style:
-                    TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                    TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
           ),
           _NavCard(
             emoji: '💰',
@@ -273,43 +273,43 @@ class _QuizCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.all(AppGap.xl),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('🏆', style: TextStyle(fontSize: 32)),
-              const SizedBox(width: 10),
+              const Text('🏆', style: TextStyle(fontSize: AppEmoji.sm)),
+              const SizedBox(width: AppGap.cozy),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('도전! 경제왕 Quiz',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w900, color: pair.fg)),
-                    const SizedBox(height: 2),
+                            fontSize: AppText.heading, fontWeight: FontWeight.w900, color: pair.fg)),
+                    const SizedBox(height: AppGap.xxs),
                     Text(
                       state.weekDone
                           ? '이번 주 완료! 다음 주 월요일에 또 만나요'
                           : '이번 주 ${state.leftThisWeek}문제 남았어요 · 맞히면 ${formatWon(child.quizReward)}',
-                      style: TextStyle(fontSize: 12.5, color: pair.fg, height: 1.3),
+                      style: TextStyle(fontSize: AppText.label, color: pair.fg, height: 1.3),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppGap.md),
           Row(
             children: [
               _Stat(label: '이번 주', value: '${state.correctThisWeek}개 정답', pair: pair),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppGap.sm),
               _Stat(label: '모은 돈', value: formatWon(state.totalEarned), pair: pair),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppGap.md),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -341,18 +341,18 @@ class _Stat extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
             color: pair.fg.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(AppRadius.md)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 11, color: pair.fg)),
-            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: AppText.caption, color: pair.fg)),
+            const SizedBox(height: AppGap.xxs),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(value,
                   style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w900, color: pair.fg)),
+                      fontSize: AppText.title, fontWeight: FontWeight.w900, color: pair.fg)),
             ),
           ],
         ),
@@ -370,18 +370,18 @@ class _LowBankNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final pair = appPalette(context).expense;
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Row(
         children: [
           Icon(Icons.notifications_active_outlined, color: pair.fg, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppGap.cozy),
           Expanded(
             child: Text(
               remaining == 0
                   ? '퀴즈 문제를 모두 풀었어요. 새 문제를 추가해 주세요!'
                   : '퀴즈 문제가 $remaining개 남았어요. 곧 새 문제가 필요해요.',
-              style: TextStyle(color: pair.fg, fontSize: 13, height: 1.4),
+              style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4),
             ),
           ),
         ],
@@ -409,7 +409,7 @@ class _IndicatorsCard extends ConsumerWidget {
             Row(
               children: [
                 Icon(Icons.public, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppGap.snug),
                 Text('물가와 환율',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
@@ -444,7 +444,7 @@ class _IndicatorsCard extends ConsumerWidget {
                         pair: palette.expense,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppGap.sm),
                     Expanded(
                       child: _Cell(
                         label: '1달러',
@@ -466,7 +466,7 @@ class _IndicatorsCard extends ConsumerWidget {
   Widget _msg(String text, ThemeData theme) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Text(text,
-            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
       );
 }
 
@@ -481,22 +481,22 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 11.5, color: pair.fg)),
-          const SizedBox(height: 3),
+          Text(label, style: TextStyle(fontSize: AppText.caption, color: pair.fg)),
+          const SizedBox(height: AppGap.xs),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(value,
                 style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w900, color: pair.fg)),
+                    fontSize: AppText.heading, fontWeight: FontWeight.w900, color: pair.fg)),
           ),
-          const SizedBox(height: 3),
-          Text(hint, style: TextStyle(fontSize: 10.5, height: 1.3, color: pair.fg)),
+          const SizedBox(height: AppGap.xs),
+          Text(hint, style: TextStyle(fontSize: AppText.micro, height: 1.3, color: pair.fg)),
         ],
       ),
     );
@@ -520,7 +520,7 @@ class _NavCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: Text(emoji, style: const TextStyle(fontSize: 28)),
+        leading: Text(emoji, style: const TextStyle(fontSize: AppText.numXl)),
         title: Row(
           children: [
             Flexible(
@@ -528,7 +528,7 @@ class _NavCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700))),
             if (read) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: AppGap.snug),
               Icon(Icons.check_circle, size: 14, color: appPalette(context).income.fg),
             ],
           ],

@@ -41,40 +41,40 @@ class QuizHistoryScreen extends ConsumerWidget {
             children: [
               // 요약: 준비된 문제 / 푼 문제 / 모은 돈
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(AppGap.lg),
                 decoration: BoxDecoration(
-                    color: palette.income.bg, borderRadius: BorderRadius.circular(18)),
+                    color: palette.income.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('$childName의 퀴즈 성적',
                         style: TextStyle(
-                            fontSize: 13, color: palette.income.fg.withValues(alpha: 0.85))),
-                    const SizedBox(height: 10),
+                            fontSize: AppText.body, color: palette.income.fg.withValues(alpha: 0.85))),
+                    const SizedBox(height: AppGap.cozy),
                     Row(
                       children: [
                         _Stat(label: '푼 문제', value: '$solved / $total개', pair: palette.income),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppGap.sm),
                         _Stat(label: '정답', value: '$correct개', pair: palette.income),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppGap.sm),
                         _Stat(
                             label: '모은 돈',
                             value: formatWon(state.totalEarned),
                             pair: palette.income),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppGap.cozy),
                     Text(
                       isChild
                           ? '한 번에 맞춘 문제 $firstTry개'
                           : '한 번에 맞춘 문제 $firstTry개 · 남은 문제 ${state.remainingInBank}개',
                       style: TextStyle(
-                          fontSize: 12.5, color: palette.income.fg.withValues(alpha: 0.9)),
+                          fontSize: AppText.label, color: palette.income.fg.withValues(alpha: 0.9)),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppGap.sm),
               if (!isChild && state.remainingInBank <= kQuizLowBankThreshold)
                 _Notice(
                   pair: palette.expense,
@@ -139,16 +139,16 @@ class _UnsolvedSection extends StatelessWidget {
             child: Icon(Icons.visibility_outlined, color: palette.allowance.fg),
           ),
           title: Text('안 푼 문제 ${questions.length}개',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppText.bodyLg)),
           subtitle: Text('주제별로 정답·해설까지 미리 확인할 수 있어요',
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+              style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
           children: [
             for (final entry in byTopic.entries) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text('${entry.key} · ${entry.value.length}개',
                     style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: AppText.label,
                         fontWeight: FontWeight.w800,
                         color: scheme.onSurfaceVariant)),
               ),
@@ -174,7 +174,7 @@ class _UnsolvedTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -182,7 +182,7 @@ class _UnsolvedTile extends StatelessWidget {
           tilePadding: const EdgeInsets.symmetric(horizontal: 12),
           childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           title: Text(question.question,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppText.body)),
           children: [
             for (var i = 0; i < question.options.length; i++)
               _OptionRow(
@@ -193,18 +193,18 @@ class _UnsolvedTile extends StatelessWidget {
               ),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppGap.md),
               decoration: BoxDecoration(
-                  color: palette.allowance.bg, borderRadius: BorderRadius.circular(12)),
+                  color: palette.allowance.bg, borderRadius: BorderRadius.circular(AppRadius.md)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('💡', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
+                  const Text('💡', style: TextStyle(fontSize: AppText.titleLg)),
+                  const SizedBox(width: AppGap.sm),
                   Expanded(
                     child: Text(question.explanation,
                         style: TextStyle(
-                            fontSize: 13, height: 1.5, color: palette.allowance.fg)),
+                            fontSize: AppText.body, height: 1.5, color: palette.allowance.fg)),
                   ),
                 ],
               ),
@@ -228,17 +228,17 @@ class _Stat extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-            color: pair.fg.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+            color: pair.fg.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.md)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 11, color: pair.fg)),
-            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: AppText.caption, color: pair.fg)),
+            const SizedBox(height: AppGap.xxs),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(value,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: pair.fg)),
+                  style: TextStyle(fontSize: AppText.title, fontWeight: FontWeight.w900, color: pair.fg)),
             ),
           ],
         ),
@@ -289,19 +289,19 @@ class _AttemptTile extends StatelessWidget {
             child: Icon(correct ? Icons.check : Icons.close, color: pair.fg),
           ),
           title: Text(q?.question ?? '(삭제된 문제)',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppText.bodyLg)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(
               '${q?.topic ?? ''} · $resultText · ${formatDate(answeredAt)}'
               '${reward > 0 ? ' · +${formatWon(reward)}' : ''}',
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant),
             ),
           ),
           children: [
             if (q == null)
               Text('문제 내용을 찾을 수 없어요.',
-                  style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant))
+                  style: TextStyle(fontSize: AppText.body, color: scheme.onSurfaceVariant))
             else ...[
               // 보기를 전부 보여주고 "내가 고른 답"과 정답을 표시한다.
               for (var i = 0; i < q.options.length; i++)
@@ -315,24 +315,24 @@ class _AttemptTile extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 2, bottom: 6),
                   child: Text('(이 기록엔 고른 답이 저장되어 있지 않아요)',
-                      style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                      style: TextStyle(fontSize: AppText.caption, color: scheme.onSurfaceVariant)),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppGap.sm),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppGap.md),
                 decoration: BoxDecoration(
                     color: palette.allowance.bg,
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(AppRadius.md)),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('💡', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
+                    const Text('💡', style: TextStyle(fontSize: AppText.titleLg)),
+                    const SizedBox(width: AppGap.sm),
                     Expanded(
                       child: Text(q.explanation,
                           style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: AppText.body,
                               height: 1.5,
                               color: palette.allowance.fg)),
                     ),
@@ -370,7 +370,7 @@ class _OptionRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: pair?.bg ?? scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         children: [
@@ -381,18 +381,18 @@ class _OptionRow extends StatelessWidget {
             size: 16,
             color: pair?.fg ?? scheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppGap.sm),
           Expanded(
             child: Text(text,
                 style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: AppText.body,
                     fontWeight: (isAnswer || isPicked) ? FontWeight.w700 : null,
                     color: pair?.fg ?? scheme.onSurface)),
           ),
           if (isPicked)
             Text(isAnswer ? '내 답 ✓' : '내가 고른 답',
                 style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppText.caption,
                     fontWeight: FontWeight.w700,
                     color: pair?.fg ?? scheme.onSurfaceVariant)),
         ],
@@ -410,9 +410,9 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(14)),
-      child: Text(text, style: TextStyle(color: pair.fg, fontSize: 13, height: 1.4)),
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
+      child: Text(text, style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4)),
     );
   }
 }

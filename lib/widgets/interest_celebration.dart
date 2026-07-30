@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/interest_calc.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'ui_kit.dart';
 
@@ -52,7 +53,7 @@ class _InterestCelebrationDialogState extends State<_InterestCelebrationDialog>
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
+      insetPadding: const EdgeInsets.all(AppGap.xxl),
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {
@@ -64,7 +65,7 @@ class _InterestCelebrationDialogState extends State<_InterestCelebrationDialog>
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
               decoration: BoxDecoration(
                 color: pair.bg,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppRadius.xl),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -77,48 +78,48 @@ class _InterestCelebrationDialogState extends State<_InterestCelebrationDialog>
                       child: Center(
                         child: Transform.scale(
                           scale: 0.8 + 0.4 * t,
-                          child: const Text('💰', style: TextStyle(fontSize: 46)),
+                          child: const Text('💰', style: TextStyle(fontSize: AppEmoji.lg)),
                         ),
                       ),
                     ),
                   ),
                   Text(widget.auto ? '이자가 들어왔어요!' : '이자를 받았어요!',
                       style: TextStyle(
-                          fontSize: 19, fontWeight: FontWeight.w900, color: pair.fg)),
-                  const SizedBox(height: 8),
+                          fontSize: AppText.heading, fontWeight: FontWeight.w900, color: pair.fg)),
+                  const SizedBox(height: AppGap.sm),
                   Text('+${formatWon(amountShown)}',
                       style: TextStyle(
-                          fontSize: 34,
+                          fontSize: AppText.numHero,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -1,
                           color: pair.fg)),
                   if (multiple != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppGap.cozy),
                     Opacity(
                       opacity: (t - 0.4).clamp(0.0, 1.0) / 0.6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
                             color: pair.fg.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(20)),
+                            borderRadius: BorderRadius.circular(AppRadius.xl)),
                         child: Text('은행의 ${formatPercent(multiple)}배!',
                             style: TextStyle(
-                                fontSize: 14.5,
+                                fontSize: AppText.bodyLg,
                                 fontWeight: FontWeight.w900,
                                 color: pair.fg)),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppGap.snug),
                     Text('은행에 맡겼다면 ${formatWon(b.bankAmount)}였어요',
-                        style: TextStyle(fontSize: 12.5, color: pair.fg)),
+                        style: TextStyle(fontSize: AppText.label, color: pair.fg)),
                   ],
                   if (widget.auto) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppGap.sm),
                     Text('지난 주에 안 받아서 자동으로 넣어뒀어요',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12.5, height: 1.4, color: pair.fg)),
+                        style: TextStyle(fontSize: AppText.label, height: 1.4, color: pair.fg)),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppGap.lg),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(

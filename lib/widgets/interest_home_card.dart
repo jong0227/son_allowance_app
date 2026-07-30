@@ -55,7 +55,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
     if (given && !_open) {
       return Padding(
         padding: const EdgeInsets.only(top: 12),
-        child: _MiniBar(
+        child: MiniBar(
           pair: pair,
           text: '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
           onTap: () => setState(() => _open = true),
@@ -66,8 +66,8 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.all(AppGap.lg),
+        decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -76,11 +76,11 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
               children: [
                 Icon(given ? Icons.check_circle : Icons.savings_outlined,
                     color: pair.fg, size: 22),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppGap.sm),
                 Expanded(
                   child: Text(given ? '${b.periodName} 이자 받음' : '${b.periodName} 저축 이자',
                       style: TextStyle(
-                          color: pair.fg, fontWeight: FontWeight.w800, fontSize: 15)),
+                          color: pair.fg, fontWeight: FontWeight.w800, fontSize: AppText.title)),
                 ),
                 if (given)
                   InkWell(
@@ -94,7 +94,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                           builder: (_) => InterestExplainerScreen(breakdown: b)))),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             // 연이율(크게) + 은행 정기예금 이율(작게, 오른쪽) 한 줄
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -102,7 +102,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                 Text('연 ${formatPercent(b.annualPercent)}%',
                     style: TextStyle(
                         color: pair.fg,
-                        fontSize: 24,
+                        fontSize: AppText.numLg,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5)),
                 const Spacer(),
@@ -111,7 +111,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                     padding: const EdgeInsets.only(bottom: 3),
                     child: Text('은행예금이자는 연 ${formatPercent(b.bankAnnualPercent)}%',
                         style: TextStyle(
-                            color: pair.fg.withValues(alpha: 0.85), fontSize: 12)),
+                            color: pair.fg.withValues(alpha: 0.85), fontSize: AppText.label)),
                   ),
               ],
             ),
@@ -120,9 +120,9 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
                     style: TextStyle(
-                        color: pair.fg.withValues(alpha: 0.85), fontSize: 11.5)),
+                        color: pair.fg.withValues(alpha: 0.85), fontSize: AppText.caption)),
               ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             // 이번 주 이자 금액(왼쪽) + 받기 버튼 / 받음+이자설명(오른쪽)
             Row(
               children: [
@@ -132,7 +132,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                           ? '${b.periodName} 이자 ${formatWon(b.amount)} 받음'
                           : '${b.periodName} 이자 ${formatWon(b.amount)}',
                       style: TextStyle(
-                          color: pair.fg, fontSize: 14, fontWeight: FontWeight.w700)),
+                          color: pair.fg, fontSize: AppText.bodyLg, fontWeight: FontWeight.w700)),
                 ),
                 if (given)
                   _link(context, '이자가 뭐야?',
@@ -147,7 +147,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             Align(
               alignment: Alignment.centerRight,
               child: _link(context, '이자지급이력보기', () => _openHistory(context)),
@@ -164,7 +164,7 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
       onTap: onTap,
       child: Text(text,
           style: TextStyle(
-              color: pair.fg, fontSize: 11.5, decoration: TextDecoration.underline)),
+              color: pair.fg, fontSize: AppText.caption, decoration: TextDecoration.underline)),
     );
   }
 
@@ -190,39 +190,3 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
   }
 }
 
-/// 접힌 상태의 작은 한 줄 카드.
-class _MiniBar extends StatelessWidget {
-  final PastelPair pair;
-  final String text;
-  final VoidCallback onTap;
-  const _MiniBar({required this.pair, required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: pair.bg,
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle, size: 19, color: pair.fg),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600, color: pair.fg)),
-              ),
-              Icon(Icons.expand_more, size: 18, color: pair.fg.withValues(alpha: 0.7)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

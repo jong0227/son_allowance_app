@@ -5,6 +5,7 @@ import '../providers/database_provider.dart';
 import '../providers/rates_provider.dart';
 import '../screens/promise_detail_screen.dart';
 import '../services/interest_calc.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'ui_kit.dart';
 
@@ -60,7 +61,7 @@ class PromisesHomeCard extends ConsumerWidget {
               children: [
                 Icon(Icons.handshake_outlined,
                     size: 17, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppGap.snug),
                 Text('부모님과 약속',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
@@ -68,11 +69,11 @@ class PromisesHomeCard extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                     decoration: BoxDecoration(
-                        color: palette.income.bg, borderRadius: BorderRadius.circular(20)),
+                        color: palette.income.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
                     child: Text('최종 이자 연 ${formatPercent(finalAnnualPercent)}%',
                         style: TextStyle(
                             color: palette.income.fg,
-                            fontSize: 11.5,
+                            fontSize: AppText.caption,
                             fontWeight: FontWeight.w800)),
                   ),
               ],
@@ -82,9 +83,9 @@ class PromisesHomeCard extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 2, bottom: 2),
                 child: Text('약속 보너스 연 +${formatPercent(bonus)}%p 포함',
                     style: TextStyle(
-                        fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                        fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
               ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             for (final p in promises)
               _PromiseRow(promise: p, comments: commentCount[p.id] ?? 0),
           ],
@@ -107,7 +108,7 @@ class _PromiseRow extends StatelessWidget {
     final pair = on ? palette.income : palette.expense;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => PromiseDetailScreen(promise: promise)),
       ),
@@ -117,13 +118,13 @@ class _PromiseRow extends StatelessWidget {
           children: [
             Icon(on ? Icons.check_circle : Icons.pause_circle_outlined,
                 size: 18, color: pair.fg),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppGap.sm),
             Expanded(
               child: Text(promise.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppText.bodyLg,
                     fontWeight: FontWeight.w600,
                     color: on ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
                   )),
@@ -131,19 +132,19 @@ class _PromiseRow extends StatelessWidget {
             if (comments > 0) ...[
               Icon(Icons.chat_bubble_outline,
                   size: 13, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 3),
+              const SizedBox(width: AppGap.xs),
               Text('$comments',
                   style: TextStyle(
-                      fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
-              const SizedBox(width: 8),
+                      fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(width: AppGap.sm),
             ],
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration:
-                  BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+                  BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
               child: Text(on ? 'ON +${formatPercent(promise.bonusPercent)}%' : 'OFF',
                   style: TextStyle(
-                      color: pair.fg, fontSize: 11, fontWeight: FontWeight.w800)),
+                      color: pair.fg, fontSize: AppText.caption, fontWeight: FontWeight.w800)),
             ),
             Icon(Icons.chevron_right, size: 18, color: theme.colorScheme.onSurfaceVariant),
           ],

@@ -1,6 +1,118 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// ─────────────────────────────────────────────────────────────
+/// 디자인 토큰
+///
+/// 화면에서 숫자를 직접 쓰지 말고 여기 이름을 쓴다. "본문 글씨를 키우자" 같은
+/// 요구가 오면 이 파일 한 줄만 고치면 앱 전체가 따라온다.
+/// (예전엔 fontSize가 34가지·라운드가 12가지로 흩어져 있어서, 같은 뜻의 글씨가
+///  화면마다 12 / 12.5 / 13으로 미묘하게 달랐다. 부부가 각자 화면을 만들다 보니
+///  더 벌어졌다.)
+/// ─────────────────────────────────────────────────────────────
+
+/// 글씨 크기. 용도로 고르고, 애매하면 한 단계 작은 쪽을 쓴다.
+class AppText {
+  AppText._();
+
+  /// 아주 작은 보조(티어 배지 안 글씨, 차트 축 등)
+  static const micro = 10.0;
+
+  /// 보조 설명, 밑줄 링크, 각주
+  static const caption = 11.0;
+
+  /// 태그·칩·통계 타일 라벨
+  static const label = 12.0;
+
+  /// 본문 기본
+  static const body = 13.0;
+
+  /// 강조 본문, 카드 안 금액 한 줄
+  static const bodyLg = 14.0;
+
+  /// 카드 제목
+  static const title = 15.0;
+
+  /// 큰 카드 제목, 리스트 헤더
+  static const titleLg = 16.0;
+
+  /// 화면 제목, 다이얼로그 제목
+  static const heading = 18.0;
+
+  /// 숫자 강조 (작은 것부터)
+  static const numSm = 20.0;
+  static const numMd = 22.0;
+  static const numLg = 24.0;
+  static const numXl = 28.0;
+
+  /// 히어로 숫자(축하 연출, 시뮬레이터 결과 등)
+  static const numHero = 34.0;
+}
+
+/// 이모지를 일러스트처럼 크게 쓸 때. 글씨 스케일과 섞지 않는다
+/// (이건 읽는 글자가 아니라 그림이라 위계 기준이 다르다).
+class AppEmoji {
+  AppEmoji._();
+
+  static const sm = 32.0;
+  static const md = 40.0;
+  static const lg = 48.0;
+
+  /// 티어 시네마틱처럼 화면을 꽉 채우는 연출용
+  static const hero = 96.0;
+}
+
+/// 모서리 둥글기.
+class AppRadius {
+  AppRadius._();
+
+  /// 진행바, 아주 작은 배지
+  static const xs = 6.0;
+
+  /// 칩, 세그먼트 버튼, 작은 블록
+  static const sm = 10.0;
+
+  /// 입력창, 버튼
+  static const md = 12.0;
+
+  /// 카드 기본
+  static const lg = 16.0;
+
+  /// 다이얼로그, 큰 시트
+  static const xl = 20.0;
+}
+
+/// 간격. `SizedBox`와 `EdgeInsets.all`에 쓴다.
+///
+/// 4의 배수가 기본이지만, 촘촘한 카드 안에서 실제로 많이 쓰던 6(snug)·10(cozy)은
+/// 남겨뒀다. 이 둘을 없애고 8/12로 흡수하려면 여기서 값만 바꾸면 앱 전체가 따라온다
+/// (토큰으로 묶어둔 덕분에 300곳을 다시 고칠 필요가 없다).
+///
+/// ⚠️ `EdgeInsets.symmetric`·`only`·`fromLTRB`는 일부러 숫자를 그대로 둔다.
+/// 이쪽은 "칩 안쪽 여백 가로 9 세로 4"처럼 그 컴포넌트에서만 의미 있는 미세조정이라,
+/// 공통 스케일로 묶으면 오히려 뜻이 흐려진다.
+class AppGap {
+  AppGap._();
+
+  static const xxs = 2.0;
+  static const xs = 4.0;
+  static const snug = 6.0;
+  static const sm = 8.0;
+  static const cozy = 10.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 20.0;
+  static const xxl = 24.0;
+}
+
+/// 글씨 굵기는 Flutter의 FontWeight를 그대로 쓰되, 아래 네 가지만 사용한다.
+/// (`FontWeight.bold` 같은 별칭은 w700과 같은 값인데 이름만 달라 헷갈리므로 쓰지 않는다)
+///
+///   w600 — 라벨, 보조 강조
+///   w700 — 제목, 버튼
+///   w800 — 카드 제목, 통계값
+///   w900 — 히어로 숫자 전용(잔액, 축하 연출)
+///
 /// 카테고리/태그용 파스텔 색 한 쌍 (배경 + 글자/아이콘).
 class PastelPair {
   final Color bg;
@@ -260,7 +372,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
       titleSpacing: 16,
       titleTextStyle: GoogleFonts.notoSansKr(
         color: textPrimary,
-        fontSize: 19,
+        fontSize: AppText.heading,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
       ),
@@ -271,7 +383,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
       surfaceTintColor: Colors.transparent,
       margin: const EdgeInsets.symmetric(vertical: 5),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         side: BorderSide(color: border),
       ),
     ),
@@ -279,13 +391,13 @@ ThemeData _buildTheme({required Brightness brightness}) {
       iconColor: textSecondary,
       titleTextStyle: GoogleFonts.notoSansKr(
         color: textPrimary,
-        fontSize: 15,
+        fontSize: AppText.title,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
       ),
       subtitleTextStyle: GoogleFonts.notoSansKr(
         color: textSecondary,
-        fontSize: 12.5,
+        fontSize: AppText.label,
         letterSpacing: -0.1,
       ),
     ),
@@ -294,15 +406,15 @@ ThemeData _buildTheme({required Brightness brightness}) {
       fillColor: surfaceMuted,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: accent, width: 1.6),
       ),
       labelStyle: TextStyle(color: textSecondary, letterSpacing: -0.2),
@@ -313,11 +425,11 @@ ThemeData _buildTheme({required Brightness brightness}) {
         backgroundColor: accent,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
         textStyle: const TextStyle(
           fontWeight: FontWeight.w700,
           letterSpacing: -0.2,
-          fontSize: 15,
+          fontSize: AppText.title,
         ),
       ),
     ),
@@ -328,7 +440,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
           fontWeight: FontWeight.w600,
           letterSpacing: -0.2,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -339,7 +451,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: surface,
@@ -350,7 +462,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return TextStyle(
-          fontSize: 11.5,
+          fontSize: AppText.caption,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           letterSpacing: -0.2,
           color: selected ? accent : textSecondary,
@@ -388,7 +500,7 @@ ThemeData _buildTheme({required Brightness brightness}) {
           ),
         ),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
         ),
         side: WidgetStatePropertyAll(BorderSide(color: border)),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
@@ -407,26 +519,26 @@ ThemeData _buildTheme({required Brightness brightness}) {
       backgroundColor: surfaceMuted,
       side: BorderSide(color: border),
       labelStyle: GoogleFonts.notoSansKr(
-        fontSize: 13,
+        fontSize: AppText.body,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
         color: textPrimary,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
       titleTextStyle: GoogleFonts.notoSansKr(
         color: textPrimary,
-        fontSize: 18,
+        fontSize: AppText.heading,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
       ),
     ),
     checkboxTheme: CheckboxThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
       fillColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) return accent;
         return Colors.transparent;

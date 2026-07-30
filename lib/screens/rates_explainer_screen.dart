@@ -16,13 +16,13 @@ class RatesExplainerScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
           _Hero(pair: palette.savings),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppGap.xl),
           Text('오늘의 금리에 나오는 3가지',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
                   ?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           _Step(
             pair: palette.allowance,
             emoji: '🏛️',
@@ -46,7 +46,7 @@ class RatesExplainerScreen extends StatelessWidget {
             body: '여러 은행이 돈을 빌려올 때 내는 이자의 평균값이에요. '
                 '"은행이 돈을 구하는 값"이라, 이게 오르면 대출 이자가 올라요. (대출의 기준)',
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppGap.xl),
           _Callout(pair: palette.savings),
         ],
       ),
@@ -63,19 +63,19 @@ class _Hero extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
       child: Column(
         children: [
-          const Text('💰  ↔️  🏦', style: TextStyle(fontSize: 30)),
-          const SizedBox(height: 10),
+          const Text('💰  ↔️  🏦', style: TextStyle(fontSize: AppText.numXl)),
+          const SizedBox(height: AppGap.cozy),
           Text('금리 = 돈을 빌리고\n빌려줄 때의 값',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 20, height: 1.35, fontWeight: FontWeight.w900, color: pair.fg)),
-          const SizedBox(height: 6),
+                  fontSize: AppText.numSm, height: 1.35, fontWeight: FontWeight.w900, color: pair.fg)),
+          const SizedBox(height: AppGap.snug),
           Text('돈에도 "값"이 있어요. 그 값이 바로 금리예요.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13.5, height: 1.4, color: pair.fg)),
+              style: TextStyle(fontSize: AppText.body, height: 1.4, color: pair.fg)),
         ],
       ),
     );
@@ -94,21 +94,21 @@ class _Step extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.all(AppGap.lg),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 38)),
-          const SizedBox(width: 14),
+          Text(emoji, style: const TextStyle(fontSize: AppEmoji.md)),
+          const SizedBox(width: AppGap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: pair.fg)),
-                const SizedBox(height: 6),
-                Text(body, style: TextStyle(fontSize: 14, height: 1.5, color: pair.fg)),
+                    style: TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w800, color: pair.fg)),
+                const SizedBox(height: AppGap.snug),
+                Text(body, style: TextStyle(fontSize: AppText.bodyLg, height: 1.5, color: pair.fg)),
               ],
             ),
           ),
@@ -135,10 +135,10 @@ class _Callout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppGap.lg),
       decoration: BoxDecoration(
         color: pair.bg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: pair.fg.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -146,16 +146,16 @@ class _Callout extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('⭐', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
+              const Text('⭐', style: TextStyle(fontSize: AppText.numMd)),
+              const SizedBox(width: AppGap.sm),
               Text('그래서 우리 저축은?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: pair.fg)),
+                  style: TextStyle(fontSize: AppText.titleLg, fontWeight: FontWeight.w800, color: pair.fg)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           Text('우리 저축 이자는 "정기예금 1년" 금리에 맞춰져 있어요. '
               '진짜 은행 금리가 오르내리면 서원이 이자도 같이 움직인답니다!',
-              style: TextStyle(fontSize: 14, height: 1.5, color: pair.fg)),
+              style: TextStyle(fontSize: AppText.bodyLg, height: 1.5, color: pair.fg)),
         ],
       ),
     );

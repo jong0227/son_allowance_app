@@ -87,11 +87,11 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-                color: palette.income.bg, borderRadius: BorderRadius.circular(14)),
+                color: palette.income.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Row(
               children: [
                 Icon(Icons.percent, size: 18, color: palette.income.fg),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppGap.sm),
                 Expanded(
                   child: Text(
                     hasPromise
@@ -99,7 +99,7 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
                             '(기본 ${formatPercent(b.baseAnnualPercent)}% + 약속 ${formatPercent(b.promiseBonusAnnualPercent)}%p)'
                         : '지금 이자: 연 ${formatPercent(b.annualPercent)}%',
                     style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: AppText.label,
                         height: 1.35,
                         fontWeight: FontWeight.w700,
                         color: palette.income.fg),
@@ -110,24 +110,24 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppGap.xl),
             decoration: BoxDecoration(
-                color: palette.savings.bg, borderRadius: BorderRadius.circular(20)),
+                color: palette.savings.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
             child: Column(
               children: [
                 Text('${_weeksLabel(weeks)} 뒤에는',
-                    style: TextStyle(fontSize: 14, color: palette.savings.fg)),
-                const SizedBox(height: 6),
+                    style: TextStyle(fontSize: AppText.bodyLg, color: palette.savings.fg)),
+                const SizedBox(height: AppGap.snug),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(formatWon(finalAmount),
                       style: TextStyle(
-                          fontSize: 34,
+                          fontSize: AppText.numHero,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -1,
                           color: palette.savings.fg)),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppGap.cozy),
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 8,
@@ -151,7 +151,7 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppGap.lg),
           SizedBox(
             height: 190,
             child: LineChart(
@@ -192,15 +192,15 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.snug),
           Center(
             child: Text(
                 hasPromise
                     ? '실선 = 약속 지켰을 때 · 점선 = 약속 안 지켰을 때'
                     : '점선 = 이자 없이 모으기만 했을 때',
-                style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+                style: TextStyle(fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppGap.xl),
           _SliderRow(
             label: '매주 모으는 돈',
             value: formatWon(_weeklySave.round()),
@@ -223,22 +223,22 @@ class _CompoundSimulatorScreenState extends ConsumerState<CompoundSimulatorScree
               onChanged: (v) => setState(() => _weeks = v),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppGap.lg),
             decoration: BoxDecoration(
-                color: palette.allowance.bg, borderRadius: BorderRadius.circular(16)),
+                color: palette.allowance.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('💡', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 10),
+                const Text('💡', style: TextStyle(fontSize: AppText.numSm)),
+                const SizedBox(width: AppGap.cozy),
                 Expanded(
                   child: Text(
                     '이자를 받으면 그 이자에 또 이자가 붙어요. 이걸 복리라고 해요. '
                     '오래 둘수록 초록 선이 점선에서 점점 더 멀어지는 걸 볼 수 있어요!',
                     style: TextStyle(
-                        fontSize: 13.5, height: 1.5, color: palette.allowance.fg),
+                        fontSize: AppText.body, height: 1.5, color: palette.allowance.fg),
                   ),
                 ),
               ],
@@ -288,9 +288,9 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration:
-          BoxDecoration(color: pair.fg.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+          BoxDecoration(color: pair.fg.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(AppRadius.xl)),
       child: Text('$label $value',
-          style: TextStyle(color: pair.fg, fontSize: 12.5, fontWeight: FontWeight.w800)),
+          style: TextStyle(color: pair.fg, fontSize: AppText.label, fontWeight: FontWeight.w800)),
     );
   }
 }
@@ -308,10 +308,10 @@ class _SliderRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text(label, style: const TextStyle(fontSize: AppText.body, fontWeight: FontWeight.w600)),
             const Spacer(),
             Text(value,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                style: const TextStyle(fontSize: AppText.bodyLg, fontWeight: FontWeight.w800)),
           ],
         ),
         slider,

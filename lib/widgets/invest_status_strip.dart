@@ -4,6 +4,7 @@ import '../providers/database_provider.dart';
 import '../providers/market_provider.dart';
 import '../screens/invest_screen.dart' show positionValue, investUp, investDown;
 import '../screens/main_shell.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 /// 홈의 "오늘의 투자현황" 스트립.
@@ -49,14 +50,14 @@ class InvestStatusStrip extends ConsumerWidget {
               Row(
                 children: [
                   Icon(Icons.public, size: 16, color: textSecondary),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppGap.snug),
                   Text('오늘의 투자현황',
                       style:
                           theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
                   if (open.isNotEmpty)
                     Text('${open.length}개 보유',
-                        style: TextStyle(fontSize: 11.5, color: textSecondary)),
+                        style: TextStyle(fontSize: AppText.caption, color: textSecondary)),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
@@ -67,7 +68,7 @@ class InvestStatusStrip extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppGap.xs),
               if (open.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
@@ -75,7 +76,7 @@ class InvestStatusStrip extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text('아직 투자한 게 없어요. 주식 탭에서 저축 포인트로 시작해보세요.',
-                            style: TextStyle(fontSize: 12.5, color: textSecondary)),
+                            style: TextStyle(fontSize: AppText.label, color: textSecondary)),
                       ),
                       Icon(Icons.chevron_right, size: 18, color: textSecondary),
                     ],
@@ -142,10 +143,10 @@ class _Cell extends StatelessWidget {
             child: Text(label,
                 maxLines: 1,
                 style: TextStyle(
-                    fontSize: 11.5, height: 1.0, color: theme.colorScheme.onSurfaceVariant)),
+                    fontSize: AppText.caption, height: 1.0, color: theme.colorScheme.onSurfaceVariant)),
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppGap.xs),
         SizedBox(
           height: 20,
           child: Center(
@@ -154,7 +155,7 @@ class _Cell extends StatelessWidget {
               child: Text(value,
                   maxLines: 1,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: AppText.titleLg,
                     height: 1.0,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,

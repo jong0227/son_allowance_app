@@ -10,7 +10,9 @@ import '../providers/settings_provider.dart';
 import '../providers/tier_provider.dart';
 import '../services/interest_calc.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/allowance_home_card.dart';
 import '../widgets/bonus_home_card.dart';
 import '../widgets/interest_celebration.dart';
 import '../widgets/interest_home_card.dart';
@@ -40,7 +42,6 @@ class OverviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summaryAsync = ref.watch(summaryProvider(child.id));
-    final schedulesAsync = ref.watch(schedulesProvider(child.id));
     final transactionsAsync = ref.watch(transactionsProvider(child.id));
     final expenseByCategoryAsync = ref.watch(
       expenseByCategoryProvider(child.id),
@@ -136,7 +137,7 @@ class OverviewScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppGap.cozy),
                         Expanded(
                           child: _WeeklyBudgetMiniCard(
                             txs: txsForBudget,
@@ -149,7 +150,7 @@ class OverviewScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppGap.md),
                   Row(
                     children: [
                       Expanded(
@@ -160,7 +161,7 @@ class OverviewScreen extends ConsumerWidget {
                           icon: Icons.south_west,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppGap.cozy),
                       Expanded(
                         child: StatTile(
                           label: '총 소비',
@@ -169,7 +170,7 @@ class OverviewScreen extends ConsumerWidget {
                           icon: Icons.north_east,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppGap.cozy),
                       Expanded(
                         child: StatTile(
                           label: '저축',
@@ -181,132 +182,24 @@ class OverviewScreen extends ConsumerWidget {
                     ],
                   ),
                   if (overThreshold) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppGap.md),
                     _TransferBanner(threshold: threshold),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   _SavingsRateCard(
                     income: income,
                     expense: expense,
                     savings: savings,
                     rate: rate,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppGap.sm),
                   const RatesStrip(),
+                  // 용돈 → 절약보너스 → 이자 순. 돈이 들어오는 순서대로 읽힌다.
+                  AllowanceHomeCard(child: child, isChild: isChild),
                   BonusHomeCard(child: child, isChild: isChild),
                   InterestHomeCard(child: child),
                   // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
                   PromisesHomeCard(child: child),
-                ],
-              );
-            },
-          ),
-          const SectionHeader('이번 주 용돈'),
-          schedulesAsync.when(
-            loading: () => const _LoadingBox(height: 72),
-            error: (e, _) => Text('오류: $e'),
-            data: (schedules) {
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              bool isPastDay(DateTime d) =>
-                  DateTime(d.year, d.month, d.day).isBefore(today);
-              // 밀린 용돈(지난 미지급) 요약 — 내역 탭에서 지급/건너뛰기 처리
-              final overdueList = schedules
-                  .where((s) => !s.isPaid && isPastDay(s.scheduledDate))
-                  .toList();
-              final overdueSum = overdueList.fold<int>(
-                0,
-                (a, b) => a + b.amount,
-              );
-              // 이번 주 카드: 오늘이 지급일인 미지급 예정만(아직 안 된 날은 제외 —
-              // 지급일 전날부터 다음 주 예정이 미리 만들어져 있어도, 그 주가 되기
-              // 전까지는 "지급 가능" 버튼을 보여주지 않는다). 없으면 최근 지급 완료.
-              final upcoming =
-                  schedules
-                      .where((s) =>
-                          !s.isPaid &&
-                          DateTime(s.scheduledDate.year, s.scheduledDate.month,
-                                  s.scheduledDate.day) ==
-                              today)
-                      .toList()
-                    ..sort(
-                      (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
-                    );
-              final paid =
-                  schedules
-                      .where(
-                        (s) =>
-                            s.isPaid &&
-                            s.scheduledDate.difference(now).inDays.abs() <= 7,
-                      )
-                      .toList()
-                    ..sort(
-                      (a, b) => b.scheduledDate.compareTo(a.scheduledDate),
-                    );
-              final s = upcoming.isNotEmpty
-                  ? upcoming.first
-                  : (paid.isNotEmpty ? paid.first : null);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (overdueList.isNotEmpty)
-                    Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: palette.expense.bg,
-                          child: Icon(Icons.history, color: palette.expense.fg),
-                        ),
-                        title: Text(
-                          '밀린 용돈 ${overdueList.length}건 · ${formatWon(overdueSum)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: const Text('내역 탭에서 지급하거나 건너뛸 수 있어요'),
-                      ),
-                    ),
-                  if (s == null)
-                    const _MutedCard(text: '지급 요일이 되면 자동으로 일정이 만들어져요.')
-                  else
-                    Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: s.isPaid
-                              ? palette.income.bg
-                              : palette.allowance.bg,
-                          child: Icon(
-                            s.isPaid ? Icons.check_rounded : Icons.schedule,
-                            color: s.isPaid
-                                ? palette.income.fg
-                                : palette.allowance.fg,
-                          ),
-                        ),
-                        title: Text(
-                          formatWon(s.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          '${formatDate(s.scheduledDate)} · ${s.isPaid ? '지급 완료' : '지급 예정'}',
-                        ),
-                        trailing: isChild
-                            ? null
-                            : (s.isPaid
-                                  ? TextButton(
-                                      onPressed: () => _undoPay(ref, s),
-                                      child: const Text('취소'),
-                                    )
-                                  : FilledButton(
-                                      onPressed: () => _payNow(ref, s),
-                                      child: const Text('지급'),
-                                    )),
-                      ),
-                    ),
                 ],
               );
             },
@@ -347,7 +240,7 @@ class OverviewScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           // 최근 내역은 내역 탭으로 이동(홈을 간결하게).
           Card(
             child: ListTile(
@@ -368,14 +261,14 @@ class OverviewScreen extends ConsumerWidget {
               onTap: () => ref.read(mainTabIndexProvider.notifier).state = 1,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           // 상세 통계 바로가기 — 크고 눈에 띄게(접근성 ↑). 누르면 아래 통계가 펼쳐진다.
           _DetailsToggleButton(
             expanded: showDetails,
             onTap: () =>
                 ref.read(_showDetailsProvider.notifier).state = !showDetails,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           if (showDetails) ...[
             const SectionHeader('카테고리별 지출'),
             expenseByCategoryAsync.when(
@@ -393,7 +286,7 @@ class OverviewScreen extends ConsumerWidget {
                 final tagMap = palette.tagsFor(map.keys);
                 return Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppGap.lg),
                     child: Row(
                       children: [
                         SizedBox(
@@ -415,7 +308,7 @@ class OverviewScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: AppGap.lg),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,16 +326,16 @@ class OverviewScreen extends ConsumerWidget {
                                         decoration: BoxDecoration(
                                           color: tagMap[e.key]!.fg,
                                           borderRadius: BorderRadius.circular(
-                                            3,
+                                            AppRadius.xs,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: AppGap.sm),
                                       Expanded(
                                         child: Text(
                                           e.key,
                                           style: const TextStyle(
-                                            fontSize: 13,
+                                            fontSize: AppText.body,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -450,7 +343,7 @@ class OverviewScreen extends ConsumerWidget {
                                       Text(
                                         '${(e.value / total * 100).toStringAsFixed(0)}%',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: AppText.label,
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.onSurfaceVariant,
@@ -486,7 +379,7 @@ class OverviewScreen extends ConsumerWidget {
                     final tagMap = palette.tagsFor(map.keys);
                     return Card(
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(AppGap.lg),
                         child: Column(
                           children: [
                             for (final e in entries)
@@ -502,15 +395,15 @@ class OverviewScreen extends ConsumerWidget {
                                         e.key,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize: 13,
+                                          fontSize: AppText.body,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppGap.sm),
                                     Expanded(
                                       child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(AppRadius.xs),
                                         child: LinearProgressIndicator(
                                           value: maxV == 0 ? 0 : e.value / maxV,
                                           minHeight: 10,
@@ -523,7 +416,7 @@ class OverviewScreen extends ConsumerWidget {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(width: AppGap.cozy),
                                     Text(
                                       formatWon(e.value),
                                       style: const TextStyle(
@@ -600,14 +493,14 @@ class OverviewScreen extends ConsumerWidget {
                                         .toDouble(),
                                     color: palette.income.fg,
                                     width: 9,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(AppRadius.xs),
                                   ),
                                   BarChartRodData(
                                     toY: (map[recent[i]]!['expense'] ?? 0)
                                         .toDouble(),
                                     color: palette.expense.fg,
                                     width: 9,
-                                    borderRadius: BorderRadius.circular(3),
+                                    borderRadius: BorderRadius.circular(AppRadius.xs),
                                   ),
                                 ],
                               ),
@@ -626,7 +519,7 @@ class OverviewScreen extends ConsumerWidget {
                                     child: Text(
                                       recent[idx].substring(5),
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: AppText.caption,
                                         color: Theme.of(
                                           context,
                                         ).colorScheme.onSurfaceVariant,
@@ -661,16 +554,6 @@ class OverviewScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _payNow(WidgetRef ref, AllowanceSchedule s) async {
-    final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref.read(databaseProvider).markSchedulePaid(s, owner, child);
-  }
-
-  Future<void> _undoPay(WidgetRef ref, AllowanceSchedule s) async {
-    final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    await ref.read(databaseProvider).markScheduleUnpaid(s, owner, child);
-  }
-
   void _showWishlistRequestDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
@@ -689,7 +572,7 @@ class OverviewScreen extends ConsumerWidget {
                 hintText: '예: 레고 세트',
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
@@ -788,7 +671,7 @@ class OverviewScreen extends ConsumerWidget {
                               : Icons.card_giftcard),
                     color: palette.special.fg,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppGap.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,7 +690,7 @@ class OverviewScreen extends ConsumerWidget {
                                     ? '주식이체 탭에서 구매 결과를 입력해요'
                                     : '승인하면 저축 목표로 등록돼요'),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: AppText.label,
                             color: palette.special.fg.withValues(alpha: 0.85),
                           ),
                         ),
@@ -919,7 +802,7 @@ class OverviewScreen extends ConsumerWidget {
               value: tierScore,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppGap.xs),
           Expanded(
             child: TierSummaryCard(
               label: '주간 저축률',
@@ -955,12 +838,12 @@ class OverviewScreen extends ConsumerWidget {
           gradient: LinearGradient(
             colors: [scheme.tertiaryContainer, scheme.primaryContainer],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         child: Row(
           children: [
             TierIcon(tier: cur, size: 34),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppGap.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -969,7 +852,7 @@ class OverviewScreen extends ConsumerWidget {
                     '🎉 "${cur.title}" 티어 달성!',
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      fontSize: 15,
+                      fontSize: AppText.title,
                       color: scheme.onPrimaryContainer,
                     ),
                   ),
@@ -977,7 +860,7 @@ class OverviewScreen extends ConsumerWidget {
                     Text(
                       '보상: ${cur.reward}',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: AppText.label,
                         color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
                       ),
                     ),
@@ -1012,18 +895,18 @@ class OverviewScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(
           color: pair.bg,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         child: Row(
           children: [
             Icon(Icons.backup_outlined, color: pair.fg, size: 20),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppGap.cozy),
             Expanded(
               child: Text(
                 last == null
                     ? '아직 백업을 공유한 적이 없어요. 가족과 데이터를 맞춰보세요.'
                     : '백업 공유한 지 2주가 지났어요. 최신 내용을 공유해보세요.',
-                style: TextStyle(color: pair.fg, fontSize: 12.5),
+                style: TextStyle(color: pair.fg, fontSize: AppText.label),
               ),
             ),
             TextButton(
@@ -1058,7 +941,7 @@ class OverviewScreen extends ConsumerWidget {
                 hintText: '예: 레고 세트',
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
@@ -1140,7 +1023,7 @@ class _BalanceMiniCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         gradient: LinearGradient(
           colors: [palette.heroFrom, palette.heroTo],
           begin: Alignment.topLeft,
@@ -1158,21 +1041,21 @@ class _BalanceMiniCard extends StatelessWidget {
                 size: 15,
                 color: palette.heroText.withValues(alpha: 0.85),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: AppGap.xs),
               Flexible(
                 child: Text(
                   '$childName의 잔액',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: palette.heroText.withValues(alpha: 0.78),
-                    fontSize: 12.5,
+                    fontSize: AppText.label,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1180,7 +1063,7 @@ class _BalanceMiniCard extends StatelessWidget {
               formatWon(balance),
               style: TextStyle(
                 color: palette.heroText,
-                fontSize: 28,
+                fontSize: AppText.numXl,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -1.1,
               ),
@@ -1193,28 +1076,28 @@ class _BalanceMiniCard extends StatelessWidget {
                 '저축 이자 연 ${formatPercent(interestAnnualPercent!)}%',
                 style: TextStyle(
                   color: palette.heroText.withValues(alpha: 0.8),
-                  fontSize: 11,
+                  fontSize: AppText.caption,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: palette.heroText.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadius.xl),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.trending_up, size: 13, color: palette.heroText),
-                const SizedBox(width: 5),
+                const SizedBox(width: AppGap.xs),
                 Text(
                   '저축비율 ${rate.toStringAsFixed(0)}%',
                   style: TextStyle(
                     color: palette.heroText,
-                    fontSize: 12,
+                    fontSize: AppText.label,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1269,7 +1152,7 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
@@ -1283,13 +1166,13 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
                 size: 14,
                 color: scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: AppGap.xs),
               Flexible(
                 child: Text(
                   over ? '이번 주 예산 초과' : '이번 주 남은 예산',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: AppText.label,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurfaceVariant,
                   ),
@@ -1297,23 +1180,23 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               '${over ? '-' : ''}${formatWon(remaining.abs())}',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: AppText.numXl,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -1.1,
                 color: over ? palette.expense.fg : scheme.onSurface,
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadius.xs),
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 7,
@@ -1321,14 +1204,14 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation(barColor),
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: AppGap.sm),
           if (weeklyTier != null && !over)
             Text(
               '${weeklyTier.icon} ${weeklyTier.title} · 저축 $savePct%',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: AppText.caption,
                 fontWeight: FontWeight.w700,
                 color: scheme.onSurfaceVariant,
               ),
@@ -1338,7 +1221,7 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
               '용돈 ${formatWon(weeklyBudget)} · 지출 ${formatWon(spent)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: AppText.caption, color: scheme.onSurfaceVariant),
             ),
         ],
       ),
@@ -1357,7 +1240,7 @@ class _DetailsToggleButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: scheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -1370,13 +1253,13 @@ class _DetailsToggleButton extends StatelessWidget {
                 size: 20,
                 color: scheme.onSecondaryContainer,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppGap.cozy),
               Expanded(
                 child: Text(
                   expanded ? '상세 통계 접기' : '상세 통계 보기',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
+                    fontSize: AppText.bodyLg,
                     color: scheme.onSecondaryContainer,
                   ),
                 ),
@@ -1410,7 +1293,7 @@ class _SavingsRateCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppGap.xl),
         child: Row(
           children: [
             SizedBox(
@@ -1444,14 +1327,14 @@ class _SavingsRateCard extends StatelessWidget {
                         Text(
                           '${rate.toStringAsFixed(0)}%',
                           style: const TextStyle(
-                            fontSize: 25,
+                            fontSize: AppText.numLg,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         Text(
                           '저축비율',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: AppText.caption,
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
@@ -1461,7 +1344,7 @@ class _SavingsRateCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 22),
+            const SizedBox(width: AppGap.xl),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1486,7 +1369,7 @@ class _SavingsRateCard extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppText.body,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
@@ -1510,15 +1393,15 @@ class _TransferBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final pair = appPalette(context).savings;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppGap.md),
       decoration: BoxDecoration(
         color: pair.bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Row(
         children: [
           Icon(Icons.account_balance, color: pair.fg, size: 22),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppGap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1528,12 +1411,12 @@ class _TransferBanner extends StatelessWidget {
                   style: TextStyle(
                     color: pair.fg,
                     fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                    fontSize: AppText.bodyLg,
                   ),
                 ),
                 Text(
                   '잔액이 기준 금액(${formatWon(threshold)})을 넘었어요.',
-                  style: TextStyle(color: pair.fg, fontSize: 12.5),
+                  style: TextStyle(color: pair.fg, fontSize: AppText.label),
                 ),
               ],
             ),
@@ -1552,7 +1435,7 @@ class _MutedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppGap.lg),
         child: Text(
           text,
           style: TextStyle(
@@ -1597,9 +1480,9 @@ class _GoalCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onEdit,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppGap.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1610,7 +1493,7 @@ class _GoalCard extends StatelessWidget {
                     size: 18,
                     color: reached ? palette.special.fg : pair.fg,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppGap.sm),
                   Expanded(
                     child: Text(
                       goal.title,
@@ -1629,9 +1512,9 @@ class _GoalCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppGap.cozy),
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadius.xs),
                 child: LinearProgressIndicator(
                   value: ratio,
                   minHeight: 9,
@@ -1641,12 +1524,12 @@ class _GoalCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppGap.snug),
               Text(
                 reached
                     ? '목표 달성! ${formatWon(goal.targetAmount)} 모았어요 🎉'
                     : '${formatWon(balance)} / ${formatWon(goal.targetAmount)} · ${formatWon(goal.targetAmount - balance)} 남음',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -1692,7 +1575,7 @@ class _MonthlyBreakdownCardState extends State<_MonthlyBreakdownCard> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppGap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1709,7 +1592,7 @@ class _MonthlyBreakdownCardState extends State<_MonthlyBreakdownCard> {
                 Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: AppText.titleLg,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1722,7 +1605,7 @@ class _MonthlyBreakdownCardState extends State<_MonthlyBreakdownCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             _row('총 수입', formatWon(income), palette.income.fg, true),
             const Divider(height: 18),
             _row('정기 용돈', formatWon(regular), null, false),
@@ -1806,7 +1689,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppGap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1823,7 +1706,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
                 Text(
                   '$_year년',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: AppText.titleLg,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1836,7 +1719,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             _bigRow(context, '총 수입', formatWon(income), palette.income.fg),
             const Divider(height: 18),
             _sub(context, '정기 용돈', formatWon(regular)),
@@ -1865,7 +1748,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppText.bodyLg),
         ),
         Text(
           value,
@@ -1873,7 +1756,7 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
             fontWeight: FontWeight.w800,
             letterSpacing: -0.4,
             color: color,
-            fontSize: 15,
+            fontSize: AppText.title,
           ),
         ),
       ],
@@ -1888,13 +1771,13 @@ class _YearSummaryCardState extends State<_YearSummaryCard> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppText.body,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         Text(
           value,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: AppText.body, fontWeight: FontWeight.w600),
         ),
       ],
     ),
@@ -1927,16 +1810,16 @@ class _MonthSummaryCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppGap.xs),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: AppText.titleLg,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
                 color: valueColor ?? scheme.onSurface,
@@ -1956,7 +1839,7 @@ class _MonthSummaryCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppGap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1966,11 +1849,11 @@ class _MonthSummaryCard extends StatelessWidget {
                 cell('하루 평균', formatWon(dailyAvg)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppGap.md),
             Text(
               diffText,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppText.body,
                 fontWeight: FontWeight.w600,
                 color: diffColor,
               ),

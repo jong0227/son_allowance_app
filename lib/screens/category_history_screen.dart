@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 
@@ -41,34 +42,34 @@ class CategoryHistoryScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(AppGap.lg),
                 decoration: BoxDecoration(
-                    color: pair.bg, borderRadius: BorderRadius.circular(18)),
+                    color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('지금까지 받은 $title',
                         style: TextStyle(
-                            fontSize: 13, color: pair.fg.withValues(alpha: 0.85))),
-                    const SizedBox(height: 4),
+                            fontSize: AppText.body, color: pair.fg.withValues(alpha: 0.85))),
+                    const SizedBox(height: AppGap.xs),
                     Text(formatWon(total),
                         style: TextStyle(
-                            fontSize: 26,
+                            fontSize: AppText.numLg,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.8,
                             color: pair.fg)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppGap.snug),
                     Text('받은 횟수 ${list.length}회',
                         style: TextStyle(
-                            fontSize: 13, color: pair.fg.withValues(alpha: 0.9))),
+                            fontSize: AppText.body, color: pair.fg.withValues(alpha: 0.9))),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppGap.sm),
               if (list.isEmpty)
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(AppGap.xl),
                     child: Text('아직 받은 $title이 없어요.',
                         style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurfaceVariant)),
@@ -91,7 +92,7 @@ class CategoryHistoryScreen extends ConsumerWidget {
                       subtitle: Text(
                         '${formatDate(t.date)}${(t.memo ?? '').isNotEmpty ? ' · ${t.memo}' : ''}',
                         style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: AppText.label,
                             color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),

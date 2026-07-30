@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'tier_cinematic.dart';
 
@@ -217,14 +218,14 @@ class _TierBurstState extends State<_TierBurst> with SingleTickerProviderStateMi
                       Text('🎉 ${widget.tier.title}! 🎉',
                           style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 26,
+                              fontSize: AppText.numLg,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5)),
                       if (en != null)
                         Text(en,
                             style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 14,
+                                fontSize: AppText.bodyLg,
                                 fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -285,16 +286,16 @@ class TierBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           TierIcon(tier: tier, size: 13),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppGap.xs),
           Text(tier.title,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppText.label,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
                   color: scheme.onPrimaryContainer)),
@@ -308,10 +309,10 @@ class TierBadge extends StatelessWidget {
       children: [
         Text(label!,
             style: TextStyle(
-                fontSize: 8.5,
+                fontSize: AppText.micro,
                 fontWeight: FontWeight.w700,
                 color: scheme.onSurfaceVariant)),
-        const SizedBox(height: 1),
+        const SizedBox(height: AppGap.xxs),
         badge,
       ],
     );
@@ -353,15 +354,15 @@ class TierSummaryCard extends StatelessWidget {
               children: [
                 Text(label,
                     style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: AppText.micro,
                         fontWeight: FontWeight.w800,
                         color: scheme.onPrimaryContainer.withValues(alpha: 0.8))),
                 const Spacer(),
                 InkWell(
                   onTap: () => showTierTable(context, tiers, value, isPercent: isPercent),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(AppGap.xs),
                     child: Icon(Icons.help_outline,
                         size: 17, color: scheme.onPrimaryContainer.withValues(alpha: 0.9)),
                   ),
@@ -373,7 +374,7 @@ class TierSummaryCard extends StatelessWidget {
               Row(
                 children: [
                   if (cur != null) TierIcon(tier: cur, size: 26) else const Text('🟫'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppGap.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,14 +383,14 @@ class TierSummaryCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 16,
+                                fontSize: AppText.titleLg,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -0.4,
                                 color: scheme.onPrimaryContainer)),
                         if (en != null)
                           Text(en,
                               style: TextStyle(
-                                  fontSize: 10.5,
+                                  fontSize: AppText.micro,
                                   fontWeight: FontWeight.w600,
                                   color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
                       ],
@@ -398,9 +399,9 @@ class TierSummaryCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppGap.sm),
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.xs),
               child: LinearProgressIndicator(
                 // 주간 카드는 이번 주 저축률(0~100%)만큼 채운다. 누적은 다음 티어까지 진행률.
                 value: isPercent ? (value / 100).clamp(0.0, 1.0) : pos.progress,
@@ -409,12 +410,12 @@ class TierSummaryCard extends StatelessWidget {
                 valueColor: AlwaysStoppedAnimation(scheme.primary),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: AppGap.xs),
             Text(
               _footer(pos),
               maxLines: 2,
               style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: AppText.micro,
                   fontWeight: FontWeight.w600,
                   color: scheme.onPrimaryContainer.withValues(alpha: 0.95)),
             ),
@@ -460,14 +461,14 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
           children: [
             Text(isPercent ? '주간 저축률 티어표' : '누적 저축 티어표',
                 style: const TextStyle(
-                    fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-            const SizedBox(height: 2),
+                    fontSize: AppText.heading, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+            const SizedBox(height: AppGap.xxs),
             Text(
                 isPercent
                     ? '이번 주 저축률 $value% · 현재 "${pos.current?.title ?? '-'}"'
                     : '저축 점수 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
-                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
-            const SizedBox(height: 12),
+                style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: AppGap.md),
             for (final t in tiers)
               Card(
                 color: t.id == currentId ? scheme.primaryContainer : null,
@@ -483,10 +484,10 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
                                 color: t.id == currentId ? scheme.onPrimaryContainer : null)),
                       ),
                       if (tierEnglishName(t.id) != null) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppGap.snug),
                         Text(tierEnglishName(t.id)!,
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: AppText.label,
                                 fontWeight: FontWeight.w500,
                                 color: (t.id == currentId
                                         ? scheme.onPrimaryContainer
@@ -494,7 +495,7 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
                                     .withValues(alpha: 0.7))),
                       ],
                       if (t.id == currentId) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppGap.snug),
                         Icon(Icons.check_circle, size: 16, color: scheme.primary),
                       ],
                     ],

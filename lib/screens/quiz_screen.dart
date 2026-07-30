@@ -7,6 +7,7 @@ import '../data/quiz_bank.dart';
 import '../providers/database_provider.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 
@@ -162,27 +163,27 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         : (i == done
                             ? palette.income.bg
                             : theme.colorScheme.surfaceContainerHighest),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
                   ),
                 ),
               ),
-              if (i < kQuizPerWeek - 1) const SizedBox(width: 6),
+              if (i < kQuizPerWeek - 1) const SizedBox(width: AppGap.snug),
             ],
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppGap.sm),
         Row(
           children: [
             TagChip(label: q.topic),
             const Spacer(),
             Text('${done + 1} / $kQuizPerWeek 문제',
-                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppGap.lg),
         Text(q.question,
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.4)),
-        const SizedBox(height: 20),
+            style: const TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w800, height: 1.4)),
+        const SizedBox(height: AppGap.xl),
 
         if (showingOptions)
           for (final idx in _order)
@@ -196,9 +197,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
         if (_phase == _Phase.explaining) ...[
           _WrongCard(picked: _picked == null ? '' : q.options[_picked!]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           _ExplanationCard(explanation: q.explanation),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppGap.lg),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -212,17 +213,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
         if (_phase == _Phase.correct) ...[
           _CorrectCard(reward: _reward, firstTry: _reward == widget.child.quizReward),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           _ExplanationCard(explanation: q.explanation),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppGap.lg),
           _NextButton(state: state, onNext: () => setState(() => _questionId = null)),
         ],
 
         if (_phase == _Phase.failed) ...[
           _AnswerRevealCard(answer: q.answerText),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           _ExplanationCard(explanation: q.explanation),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppGap.lg),
           _NextButton(state: state, onNext: () => setState(() => _questionId = null)),
         ],
       ],
@@ -239,7 +240,7 @@ class _OptionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       onTap: onTap,
       child: Container(
         width: double.infinity,
@@ -247,9 +248,9 @@ class _OptionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           border: Border.all(color: theme.dividerColor, width: 1.4),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        child: Text(text, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+        child: Text(text, style: const TextStyle(fontSize: AppText.title, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -263,22 +264,22 @@ class _WrongCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final pair = appPalette(context).expense;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(AppGap.lg),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Row(
         children: [
-          const Text('🤔', style: TextStyle(fontSize: 30)),
-          const SizedBox(width: 12),
+          const Text('🤔', style: TextStyle(fontSize: AppText.numXl)),
+          const SizedBox(width: AppGap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('아쉬워요!',
                     style: TextStyle(
-                        color: pair.fg, fontSize: 16, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
+                        color: pair.fg, fontSize: AppText.titleLg, fontWeight: FontWeight.w800)),
+                const SizedBox(height: AppGap.xxs),
                 Text('아래 설명을 읽고 다시 풀어보면 절반을 받을 수 있어요.',
-                    style: TextStyle(color: pair.fg, fontSize: 13, height: 1.4)),
+                    style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4)),
               ],
             ),
           ),
@@ -296,23 +297,23 @@ class _ExplanationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final pair = appPalette(context).allowance;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(AppGap.lg),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('💡', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 6),
+              const Text('💡', style: TextStyle(fontSize: AppText.heading)),
+              const SizedBox(width: AppGap.snug),
               Text('알아두기',
                   style:
-                      TextStyle(color: pair.fg, fontSize: 14, fontWeight: FontWeight.w800)),
+                      TextStyle(color: pair.fg, fontSize: AppText.bodyLg, fontWeight: FontWeight.w800)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           Text(explanation,
-              style: TextStyle(color: pair.fg, fontSize: 14.5, height: 1.55)),
+              style: TextStyle(color: pair.fg, fontSize: AppText.bodyLg, height: 1.55)),
         ],
       ),
     );
@@ -330,32 +331,32 @@ class _CorrectCard extends StatelessWidget {
     final pair = appPalette(context).income;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.all(AppGap.xl),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Column(
         children: [
-          Text(firstTry ? '🎉' : '👏', style: const TextStyle(fontSize: 42)),
-          const SizedBox(height: 6),
+          Text(firstTry ? '🎉' : '👏', style: const TextStyle(fontSize: AppEmoji.md)),
+          const SizedBox(height: AppGap.snug),
           Text(firstTry ? '정답이에요!' : '다시 풀어서 맞췄어요!',
               style:
-                  TextStyle(color: pair.fg, fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
+                  TextStyle(color: pair.fg, fontSize: AppText.numSm, fontWeight: FontWeight.w900)),
+          const SizedBox(height: AppGap.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
                 color: pair.fg.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20)),
+                borderRadius: BorderRadius.circular(AppRadius.xl)),
             child: Text('+${formatWon(reward)} 저금통에 쏙!',
                 style: TextStyle(
-                    color: pair.fg, fontSize: 15, fontWeight: FontWeight.w900)),
+                    color: pair.fg, fontSize: AppText.title, fontWeight: FontWeight.w900)),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.cozy),
           Text(
             firstTry
                 ? '경제 지식이 쑥쑥 자라고 있어요. 이 돈도 이자를 받아요!'
                 : '틀려도 배우면 그게 진짜 실력이에요. 잘했어요!',
             textAlign: TextAlign.center,
-            style: TextStyle(color: pair.fg, fontSize: 13.5, height: 1.45),
+            style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.45),
           ),
         ],
       ),
@@ -372,19 +373,19 @@ class _AnswerRevealCard extends StatelessWidget {
     final pair = appPalette(context).special;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(AppGap.lg),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Column(
         children: [
-          const Text('📘', style: TextStyle(fontSize: 32)),
-          const SizedBox(height: 6),
+          const Text('📘', style: TextStyle(fontSize: AppEmoji.sm)),
+          const SizedBox(height: AppGap.snug),
           Text('정답은 "$answer" 였어요',
               textAlign: TextAlign.center,
-              style: TextStyle(color: pair.fg, fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
+              style: TextStyle(color: pair.fg, fontSize: AppText.titleLg, fontWeight: FontWeight.w800)),
+          const SizedBox(height: AppGap.snug),
           Text('괜찮아요! 오늘 하나 배웠으니 다음엔 맞출 수 있어요.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: pair.fg, fontSize: 13.5, height: 1.4)),
+              style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4)),
         ],
       ),
     );
@@ -422,30 +423,30 @@ class _WeekDoneView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
       children: [
         Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.all(AppGap.xxl),
+          decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.xl)),
           child: Column(
             children: [
-              const Text('🏆', style: TextStyle(fontSize: 52)),
-              const SizedBox(height: 8),
+              const Text('🏆', style: TextStyle(fontSize: AppEmoji.lg)),
+              const SizedBox(height: AppGap.sm),
               Text('이번 주 퀴즈 끝!',
                   style: TextStyle(
-                      color: pair.fg, fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 10),
+                      color: pair.fg, fontSize: AppText.numMd, fontWeight: FontWeight.w900)),
+              const SizedBox(height: AppGap.cozy),
               Text('$kQuizPerWeek문제 중 ${state.correctThisWeek}문제 정답',
-                  style: TextStyle(color: pair.fg, fontSize: 15)),
-              const SizedBox(height: 4),
+                  style: TextStyle(color: pair.fg, fontSize: AppText.title)),
+              const SizedBox(height: AppGap.xs),
               Text('이번 주에 모은 돈 ${formatWon(state.earnedThisWeek)}',
                   style: TextStyle(
-                      color: pair.fg, fontSize: 18, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
+                      color: pair.fg, fontSize: AppText.heading, fontWeight: FontWeight.w900)),
+              const SizedBox(height: AppGap.md),
               Text('다음 주 월요일에 새 문제가 열려요!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: pair.fg, fontSize: 13.5, height: 1.4)),
+                  style: TextStyle(color: pair.fg, fontSize: AppText.body, height: 1.4)),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppGap.lg),
         Card(
           child: ListTile(
             leading: const Icon(Icons.savings_outlined),
@@ -466,15 +467,15 @@ class _BankEmptyView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppGap.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('📚', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 12),
+            const Text('📚', style: TextStyle(fontSize: AppEmoji.lg)),
+            const SizedBox(height: AppGap.md),
             const Text('문제를 모두 풀었어요!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
+                style: TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppGap.sm),
             Text('대단해요. 부모님이 새 문제를 준비해 주실 거예요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),

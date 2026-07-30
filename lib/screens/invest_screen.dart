@@ -80,14 +80,14 @@ class InvestSection extends ConsumerWidget {
           text: '진짜 돈이 아니라 저축 포인트로 연습하는 투자예요. '
               '지수가 오르면 포인트가 늘고, 내리면 줄어요.',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppGap.md),
         Text('지수를 눌러 차트를 보고 투자할 수 있어요',
             style: TextStyle(
-                fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 6),
+                fontSize: AppText.label, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: AppGap.snug),
         if (indicesAsync.isLoading && indices.isEmpty)
           const Padding(
-            padding: EdgeInsets.all(28),
+            padding: EdgeInsets.all(AppGap.xxl),
             child: Center(child: CircularProgressIndicator()),
           )
         else if (indices.isEmpty)
@@ -155,15 +155,15 @@ class _SummaryCard extends StatelessWidget {
     final gainColor = gain > 0 ? investUp : (gain < 0 ? investDown : pair.fg);
     final rate = invested == 0 ? 0.0 : gain / invested * 100;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppGap.lg),
       decoration:
-          BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(18)),
+          BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('지금 투자한 돈 (평가액)',
-              style: TextStyle(fontSize: 13, color: pair.fg.withValues(alpha: 0.85))),
-          const SizedBox(height: 4),
+              style: TextStyle(fontSize: AppText.body, color: pair.fg.withValues(alpha: 0.85))),
+          const SizedBox(height: AppGap.xs),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -173,26 +173,26 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 Text(formatWon(openValue),
                     style: TextStyle(
-                        fontSize: 26,
+                        fontSize: AppText.numLg,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.8,
                         color: pair.fg)),
                 if (invested > 0) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppGap.sm),
                   Text(
                       '${gain >= 0 ? '+' : ''}${formatWon(gain)} '
                       '(${gain >= 0 ? '+' : ''}${rate.toStringAsFixed(1)}%)',
                       style: TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w800, color: gainColor)),
+                          fontSize: AppText.bodyLg, fontWeight: FontWeight.w800, color: gainColor)),
                 ],
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           Row(
             children: [
               _Cell(label: '원금', value: formatWon(invested), pair: pair),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppGap.sm),
               _Cell(
                 label: '평가손익',
                 value: invested == 0
@@ -201,7 +201,7 @@ class _SummaryCard extends StatelessWidget {
                 pair: pair,
                 valueColor: invested == 0 ? null : gainColor,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppGap.sm),
               _Cell(
                 label: '수익률',
                 value: invested == 0
@@ -212,7 +212,7 @@ class _SummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           Row(
             children: [
               Expanded(
@@ -220,7 +220,7 @@ class _SummaryCard extends StatelessWidget {
                     '더 넣을 수 있는 돈 ${formatWon(canInvest)} · '
                     '한도 총 저축의 ${formatPercent(limitPercent)}%(${formatWon(cap)})',
                     style:
-                        TextStyle(fontSize: 11.5, color: pair.fg.withValues(alpha: 0.8))),
+                        TextStyle(fontSize: AppText.caption, color: pair.fg.withValues(alpha: 0.8))),
               ),
             ],
           ),
@@ -248,19 +248,19 @@ class _Cell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
             color: pair.fg.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(AppRadius.md)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 11, color: pair.fg)),
-            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: AppText.caption, color: pair.fg)),
+            const SizedBox(height: AppGap.xxs),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(value,
                   maxLines: 1,
                   style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: AppText.bodyLg,
                       fontWeight: FontWeight.w900,
                       color: valueColor ?? pair.fg)),
             ),
@@ -297,17 +297,17 @@ class _IndexTile extends StatelessWidget {
         title: Row(
           children: [
             Text(index.label,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppText.title)),
             if (holdingCount > 0) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: AppGap.snug),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20)),
+                    borderRadius: BorderRadius.circular(AppRadius.xl)),
                 child: Text('보유 $holdingCount',
                     style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: AppText.micro,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.primary)),
               ),
@@ -315,19 +315,19 @@ class _IndexTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(note,
-            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(indexFormat.format(index.value),
                 style: const TextStyle(
-                    fontSize: 15, height: 1.1, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 2),
+                    fontSize: AppText.title, height: 1.1, fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppGap.xxs),
             // "어제" 를 붙여 하루 등락률임을 분명히 한다.
             Text('어제 $arrow $sign${index.changePercent.toStringAsFixed(2)}%',
                 style: TextStyle(
-                    fontSize: 11.5, height: 1.1, color: color, fontWeight: FontWeight.w600)),
+                    fontSize: AppText.caption, height: 1.1, color: color, fontWeight: FontWeight.w600)),
           ],
         ),
         onTap: onTap,
@@ -360,16 +360,16 @@ class _OpenPositionTile extends StatelessWidget {
           child: Icon(Icons.show_chart, color: palette.savings.fg),
         ),
         title: Text('${position.label} · ${formatWon(position.amount)}',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppText.bodyLg)),
         subtitle: Text(
             '${formatDateShort(position.buyAt)} 투자 · 지금 ${formatWon(value)}',
-            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
         trailing: Text(
             '${diff >= 0 ? '+' : ''}${formatWon(diff)}\n'
             '${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
             textAlign: TextAlign.right,
             style: TextStyle(
-                fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w800, color: color)),
+                fontSize: AppText.label, height: 1.35, fontWeight: FontWeight.w800, color: color)),
       ),
     );
   }
@@ -395,13 +395,13 @@ class _ClosedPositionTile extends StatelessWidget {
         leading: Icon(diff >= 0 ? Icons.trending_up : Icons.trending_down,
             color: color),
         title: Text('${position.label} · ${formatWon(position.amount)} → ${formatWon(returned)}',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppText.body)),
         subtitle: Text(
             '${formatDateShort(position.buyAt)} ~ ${formatDateShort(position.soldAt!)}',
-            style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant)),
+            style: TextStyle(fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
         trailing: Text('${diff >= 0 ? '+' : ''}${formatWon(diff)}',
             style: TextStyle(
-                fontSize: 12.5, fontWeight: FontWeight.w800, color: color)),
+                fontSize: AppText.label, fontWeight: FontWeight.w800, color: color)),
       ),
     );
   }
@@ -416,9 +416,9 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(14)),
-      child: Text(text, style: TextStyle(color: pair.fg, fontSize: 12.5, height: 1.45)),
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
+      child: Text(text, style: TextStyle(color: pair.fg, fontSize: AppText.label, height: 1.45)),
     );
   }
 }

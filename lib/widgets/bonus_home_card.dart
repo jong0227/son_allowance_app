@@ -68,7 +68,7 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
     if (given && !_open) {
       return Padding(
         padding: const EdgeInsets.only(top: 12),
-        child: _MiniBar(
+        child: MiniBar(
           pair: palette.income,
           text: '이번 주 절약 보너스 ${formatWon(child.bonusAmount)} 받음',
           onTap: () => setState(() => _open = true),
@@ -77,7 +77,7 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
     }
 
     Widget progressBar(Color color) => ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadius.xs),
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 8,
@@ -140,8 +140,8 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.all(AppGap.lg),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -149,28 +149,28 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(icon, color: fg, size: 22),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppGap.sm),
                 Expanded(
                   child: Text(title,
-                      style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 15)),
+                      style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: AppText.title)),
                 ),
                 if (trailing != null) trailing,
               ],
             ),
-            const SizedBox(height: 8),
-            Text(sub, style: TextStyle(color: fg, fontSize: 13, height: 1.5)),
+            const SizedBox(height: AppGap.sm),
+            Text(sub, style: TextStyle(color: fg, fontSize: AppText.body, height: 1.5)),
             if (!given) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppGap.md),
               progressBar(fg),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: AppGap.cozy),
             Align(
               alignment: Alignment.centerRight,
               child: InkWell(
                 onTap: () => _openHistory(context),
                 child: Text('달성 이력 보기',
                     style: TextStyle(
-                        color: fg, fontSize: 11.5, decoration: TextDecoration.underline)),
+                        color: fg, fontSize: AppText.caption, decoration: TextDecoration.underline)),
               ),
             ),
           ],
@@ -204,38 +204,3 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
   }
 }
 
-class _MiniBar extends StatelessWidget {
-  final PastelPair pair;
-  final String text;
-  final VoidCallback onTap;
-  const _MiniBar({required this.pair, required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: pair.bg,
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle, size: 19, color: pair.fg),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600, color: pair.fg)),
-              ),
-              Icon(Icons.expand_more, size: 18, color: pair.fg.withValues(alpha: 0.7)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

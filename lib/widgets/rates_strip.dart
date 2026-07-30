@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/rates_provider.dart';
 import '../screens/rates_explainer_screen.dart';
 import '../services/rates_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 /// 홈 화면의 "오늘의 금리" 스트립 (기준금리 / 정기예금 1년 / COFIX).
@@ -26,7 +27,7 @@ class RatesStrip extends ConsumerWidget {
             Row(
               children: [
                 Icon(Icons.account_balance_outlined, size: 16, color: textSecondary),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppGap.snug),
                 Text('오늘의 금리',
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
@@ -38,7 +39,7 @@ class RatesStrip extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     child: Text('금리란?',
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: AppText.caption,
                           color: theme.colorScheme.primary,
                           decoration: TextDecoration.underline,
                         )),
@@ -54,7 +55,7 @@ class RatesStrip extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppGap.xs),
             async.when(
               loading: () => const SizedBox(
                 height: 40,
@@ -87,7 +88,7 @@ class RatesStrip extends ConsumerWidget {
 
   Widget _message(String text, Color color) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-        child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+        child: Text(text, style: TextStyle(fontSize: AppText.label, color: color)),
       );
 }
 
@@ -113,12 +114,12 @@ class _RateCell extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppText.caption,
                     height: 1.0,
                     color: theme.colorScheme.onSurfaceVariant)),
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppGap.xs),
         SizedBox(
           height: 20,
           child: Center(
@@ -127,7 +128,7 @@ class _RateCell extends StatelessWidget {
               child: Text('${formatPercent(rate.rate)}%',
                   maxLines: 1,
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: AppText.titleLg,
                     height: 1.0,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,

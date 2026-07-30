@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/stock_search_service.dart';
+import '../theme/app_theme.dart';
 
 /// 회사명(한글/영어)이나 티커로 종목을 검색해 하나 고르는 모달.
 /// 선택하면 StockQuote를 반환, 취소하면 null.
@@ -83,8 +84,8 @@ class _StockSearchBodyState extends State<_StockSearchBody> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('종목 검색',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
-          const SizedBox(height: 10),
+              style: TextStyle(fontSize: AppText.heading, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+          const SizedBox(height: AppGap.cozy),
           TextField(
             controller: _controller,
             autofocus: true,
@@ -106,7 +107,7 @@ class _StockSearchBodyState extends State<_StockSearchBody> {
                     ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           Expanded(child: _buildResults(scheme)),
         ],
       ),
@@ -120,7 +121,7 @@ class _StockSearchBodyState extends State<_StockSearchBody> {
     if (_error) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppGap.xxl),
           child: Text('검색 중 문제가 생겼어요. 인터넷 연결을 확인하거나 잠시 후 다시 시도해주세요.',
               textAlign: TextAlign.center,
               style: TextStyle(color: scheme.onSurfaceVariant)),
@@ -137,7 +138,7 @@ class _StockSearchBodyState extends State<_StockSearchBody> {
       final hasHangul = RegExp(r'[가-힣]').hasMatch(_controller.text);
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppGap.xxl),
           child: Text(
               hasHangul
                   ? '한글로 안 나올 때는 영어 이름(예: samsung)이나 종목 코드(예: 005930)로 검색해보세요.'
@@ -158,10 +159,10 @@ class _StockSearchBodyState extends State<_StockSearchBody> {
           title: Text(q.name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${q.symbol}${q.exchange.isNotEmpty ? ' · ${q.exchange}' : ''}',
-              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+              style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
           trailing: q.isKorea
-              ? const Text('🇰🇷', style: TextStyle(fontSize: 16))
-              : const Text('🇺🇸', style: TextStyle(fontSize: 16)),
+              ? const Text('🇰🇷', style: TextStyle(fontSize: AppText.titleLg))
+              : const Text('🇺🇸', style: TextStyle(fontSize: AppText.titleLg)),
           onTap: () => Navigator.pop(context, q),
         );
       },
@@ -184,7 +185,7 @@ class _StockLogo extends StatelessWidget {
       child: Text(
         quote.baseSymbol.characters.take(3).toString().toUpperCase(),
         style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w800, color: scheme.onSecondaryContainer),
+            fontSize: AppText.caption, fontWeight: FontWeight.w800, color: scheme.onSecondaryContainer),
       ),
     );
     if (quote.isKorea) return badge;
