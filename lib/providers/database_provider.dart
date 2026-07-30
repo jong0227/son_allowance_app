@@ -114,6 +114,14 @@ final interestGivenProvider =
   return ref.watch(databaseProvider).interestGivenThisPeriod(args.childId, args.period);
 });
 
+/// 이번 주기에 실제로 지급된 이자 금액(원). 아직 안 받았으면 null.
+/// 화면에 "○○원 받음"을 보여줄 때는 계산값이 아니라 이 값을 써야 한다.
+final grantedInterestProvider =
+    FutureProvider.family<int?, ({String childId, int period})>((ref, args) async {
+  ref.watch(transactionsProvider(args.childId));
+  return ref.watch(databaseProvider).grantedInterestAmount(args.childId, args.period);
+});
+
 /// 과거 정기용돈 "일괄" 한 건을 주 단위 지급 목록으로 복원.
 /// key: (자녀 id, 일괄 시작일, 일괄 총액)
 /// 앱을 열 때, 못 받고 넘어간 "직전 주기" 이자를 자동으로 지급한다.

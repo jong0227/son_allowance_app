@@ -63,6 +63,15 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
     if (b.amount <= 0) return _promisesOnly(hasPromises);
     final pair = appPalette(context).savings;
 
+    // 이미 받았다면 "실제로 받은 금액"을 보여준다. b.amount는 지금 잔액으로 다시
+    // 계산한 값이라, 받은 뒤에 용돈이 들어오면 받지도 않은 큰 금액이 표시된다
+    // (87원 받았는데 341원 받았다고 나오던 버그).
+    final granted = ref
+        .watch(grantedInterestProvider(
+            (childId: child.id, period: child.interestPeriod)))
+        .valueOrNull;
+    final shownAmount = given ? (granted ?? b.amount) : b.amount;
+
     // 받은 뒤 + 접힘 상태: 작은 한 줄 카드. 약속도 이 안에 같이 접힌다.
     // 약속이 있으면 연이율 대신 약속 개수를 보여준다. 연이율은 잔액 카드에도
     // 있지만 약속이 여기 숨어 있다는 건 이 줄에만 표시할 수 있어서다.
@@ -72,8 +81,8 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
         child: MiniBar(
           pair: pair,
           text: hasPromises
-              ? '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 약속 ${promises.length}개'
-              : '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
+              ? '${b.periodName} 이자 ${formatWon(shownAmount)} 받음 · 약속 ${promises.length}개'
+              : '${b.periodName} 이자 ${formatWon(shownAmount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
           onTap: () => setState(() => _open = true),
         ),
       );
@@ -148,8 +157,8 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                 Expanded(
                   child: Text(
                       given
-                          ? '${b.periodName} 이자 ${formatWon(b.amount)} 받음'
-                          : '${b.periodName} 이자 ${formatWon(b.amount)}',
+                          ? '${b.periodName} 이자 ${formatWon(shownAmount)} 받음'
+                          : '${b.periodName} 이자 ${formatWon(shownAmount)}',
                       style: TextStyle(
                           color: pair.fg, fontSize: AppText.bodyLg, fontWeight: FontWeight.w700)),
                 ),

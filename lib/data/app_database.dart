@@ -1101,6 +1101,25 @@ class AppDatabase extends _$AppDatabase {
     return _interestGivenIn(childId, _periodStart(period, DateTime.now()), null);
   }
 
+  /// 이번 주기에 **실제로 지급된** 이자 합계(원). 아직 안 받았으면 null.
+  ///
+  /// ⚠️ "이번 달 이자 ○○원 받음"처럼 이미 받은 금액을 보여줄 때는 반드시 이 값을 쓴다.
+  /// `computeInterest`의 amount는 "지금 잔액으로 계산하면 얼마"라서, 이자를 받은 뒤에
+  /// 용돈이 들어와 잔액이 늘면 실제로 받은 금액과 달라진다.
+  /// (실제로 87원 받았는데 홈에는 341원 받았다고 표시되던 버그의 원인)
+  Future<int?> grantedInterestAmount(String childId, int period) async {
+    final start = _periodStart(period, DateTime.now());
+    final rows = await (select(transactionEntries)
+          ..where((t) =>
+              t.childId.equals(childId) &
+              t.deletedAt.isNull() &
+              t.category.equals(kInterest) &
+              t.date.isBiggerOrEqualValue(start)))
+        .get();
+    if (rows.isEmpty) return null;
+    return rows.fold<int>(0, (sum, t) => sum + t.amount);
+  }
+
   /// [start] 이상 [end] 미만 구간에 이자 내역이 있는지. [end]가 null이면 이후 전체.
   Future<bool> _interestGivenIn(String childId, DateTime start, DateTime? end) async {
     final rows = await (select(transactionEntries)

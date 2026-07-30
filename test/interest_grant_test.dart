@@ -78,4 +78,34 @@ void main() {
     final child = await makeChild(); // createdAt = 지금
     expect(await db.autoGrantMissedInterest(child, '아빠'), isNull);
   });
+
+  test('받은 뒤 잔액이 늘어도 "받은 금액"은 그대로다', () async {
+    final child = await makeChild(); // 잔액 35,000 → 이자 350원
+    await db.giveInterest(child, '아빠');
+    expect(await db.grantedInterestAmount('kid1', 0), 350);
+
+    // 이자를 받은 뒤 용돈이 크게 들어와 잔액이 3배가 됐다.
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 'tx_income2',
+      childId: 'kid1',
+      date: DateTime.now(),
+      flow: 'income',
+      category: '용돈',
+      amount: 70000,
+    ));
+
+    // 지금 잔액으로 계산하면 훨씬 큰 금액이 나오지만,
+    final recomputed = await db.pendingInterestAmount(child);
+    expect(recomputed, greaterThan(350));
+
+    // 실제로 받은 금액은 350원 그대로여야 한다.
+    // (이 값을 안 쓰고 계산값을 보여줘서 87원 받고 341원 받았다고 뜨던 버그)
+    expect(await db.grantedInterestAmount('kid1', 0), 350,
+        reason: '받은 금액은 지급 시점에 기록된 값이지 다시 계산할 값이 아니다');
+  });
+
+  test('아직 안 받았으면 받은 금액은 null이다', () async {
+    await makeChild();
+    expect(await db.grantedInterestAmount('kid1', 0), isNull);
+  });
 }
