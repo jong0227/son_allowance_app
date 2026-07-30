@@ -63,12 +63,17 @@ class MiniBar extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
 
+  /// 있으면 [text] 아래에 작은 글씨로 한 줄 더 붙는다(예: "다음 달엔 약 341원").
+  /// 한 줄에 다 밀어넣으면 폴드를 접거나 플립에서 잘리므로 줄을 나눈다.
+  final String? subtext;
+
   const MiniBar({
     super.key,
     required this.pair,
     required this.text,
     required this.onTap,
     this.icon = Icons.check_circle,
+    this.subtext,
   });
 
   @override
@@ -86,11 +91,26 @@ class MiniBar extends StatelessWidget {
               Icon(icon, size: 19, color: pair.fg),
               const SizedBox(width: AppGap.cozy),
               Expanded(
-                child: Text(text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: AppText.body, fontWeight: FontWeight.w600, color: pair.fg)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: AppText.body,
+                            fontWeight: FontWeight.w600,
+                            color: pair.fg)),
+                    if (subtext != null)
+                      Text(subtext!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: AppText.caption,
+                              color: pair.fg.withValues(alpha: 0.8))),
+                  ],
+                ),
               ),
               Icon(Icons.expand_more, size: 18, color: pair.fg.withValues(alpha: 0.7)),
             ],

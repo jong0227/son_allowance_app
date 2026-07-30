@@ -83,6 +83,9 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
           text: hasPromises
               ? '${b.periodName} 이자 ${formatWon(shownAmount)} 받음 · 약속 ${promises.length}개'
               : '${b.periodName} 이자 ${formatWon(shownAmount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
+          // 앞으로 받을 이자는 "지금 잔액으로 계산하면" 이만큼이라는 예상치다.
+          // 실제 금액은 받는 날의 잔액으로 다시 정해지므로 "약"을 붙인다.
+          subtext: '${b.nextPeriodName}엔 약 ${formatWon(b.amount)}',
           onTap: () => setState(() => _open = true),
         ),
       );
@@ -175,6 +178,18 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
                   ),
               ],
             ),
+            // 이미 받았으면 다음 회차 예상 금액을 작게 덧붙인다.
+            // 지금 잔액으로 계산한 값이라 받는 날의 잔액에 따라 달라진다 — 그래서 "약".
+            // (이 값을 "받음"으로 쓰면 안 된다. 받은 금액은 shownAmount)
+            if (given)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                    '${b.nextPeriodName}엔 약 ${formatWon(b.amount)} · 지금 잔액 기준이라 달라질 수 있어요',
+                    style: TextStyle(
+                        color: pair.fg.withValues(alpha: 0.85),
+                        fontSize: AppText.caption)),
+              ),
             const SizedBox(height: AppGap.cozy),
             Align(
               alignment: Alignment.centerRight,

@@ -49,6 +49,10 @@ class InterestBreakdown {
   double? get multipleOfBank => hasBankRate ? totalPercent / bankPeriodPercent : null;
 
   String get periodName => period == 0 ? '이번 주' : '이번 달';
+
+  /// 다음 회차 이름. 이미 이번 회차를 받았을 때 "다음엔 얼마" 안내에 쓴다.
+  String get nextPeriodName => period == 0 ? '다음 주' : '다음 달';
+
   String get periodUnit => period == 0 ? '주' : '월';
 }
 
