@@ -19,6 +19,8 @@ class RatesStrip extends ConsumerWidget {
     final textSecondary = theme.colorScheme.onSurfaceVariant;
 
     return Card(
+      // 간격은 이 카드를 놓는 화면이 정한다(홈 카드 간격 통일).
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         child: Column(

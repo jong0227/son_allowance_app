@@ -13,8 +13,7 @@ import '../utils/formatters.dart';
 class InvestStatusStrip extends ConsumerWidget {
   final String childId;
   /// 바로 위 카드와 붙여 보이도록 위쪽 마진을 없앤다(홈의 등급 카드 아래).
-  final bool tightTop;
-  const InvestStatusStrip({super.key, required this.childId, this.tightTop = false});
+  const InvestStatusStrip({super.key, required this.childId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,7 +36,8 @@ class InvestStatusStrip extends ConsumerWidget {
         gain > 0 ? investUp : (gain < 0 ? investDown : theme.colorScheme.onSurface);
 
     return Card(
-      margin: tightTop ? const EdgeInsets.only(bottom: 5) : null,
+      // 간격은 이 카드를 놓는 화면이 정한다(홈 카드 간격 통일).
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         // 주식 탭(모의 투자)으로 이동

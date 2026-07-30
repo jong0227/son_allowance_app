@@ -18,10 +18,14 @@ String _shortWon(int won) {
 
 enum _Filter { all, income, expense }
 
-enum _Period { all, thisMonth, lastMonth, thisYear }
+/// 화면에 칩으로 보이는 순서대로 둔다(이번 달 → 지난 달 → 올해 → 전체 기간).
+enum _Period { thisMonth, lastMonth, thisYear, all }
 
 final _filterProvider = StateProvider<_Filter>((ref) => _Filter.all);
-final _periodProvider = StateProvider<_Period>((ref) => _Period.all);
+
+/// 기본은 이번 달. 내역은 보통 "요즘 얼마 썼지"를 보러 오는 화면이라,
+/// 전체 기간으로 열면 옛 내역까지 다 나와서 스크롤부터 해야 했다.
+final _periodProvider = StateProvider<_Period>((ref) => _Period.thisMonth);
 final _queryProvider = StateProvider<String>((ref) => '');
 
 bool _inPeriod(DateTime d, _Period p) {
@@ -152,7 +156,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                 );
               },
             ),
-          const SectionHeader('전체 내역'),
+          // 고른 기간을 제목에 반영한다(기본이 이번 달이라 "전체 내역"으로 고정하면
+          // 화면에 보이는 것과 제목이 어긋난다).
+          SectionHeader(switch (period) {
+            _Period.thisMonth => '이번 달 내역',
+            _Period.lastMonth => '지난 달 내역',
+            _Period.thisYear => '올해 내역',
+            _Period.all => '전체 내역',
+          }),
           // 검색창
           TextField(
             controller: _searchController,
@@ -179,10 +190,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             child: Row(
               children: [
                 for (final e in const [
-                  (_Period.all, '전체 기간'),
                   (_Period.thisMonth, '이번 달'),
                   (_Period.lastMonth, '지난 달'),
                   (_Period.thisYear, '올해'),
+                  (_Period.all, '전체 기간'),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(right: 8),

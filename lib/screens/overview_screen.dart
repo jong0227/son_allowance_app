@@ -29,10 +29,21 @@ final _showDetailsProvider = StateProvider<bool>((ref) => false);
 /// 자동 지급된 이자 축하 연출을 이번 실행에서 이미 보여줬는지(중복 방지).
 final _autoInterestCelebratedProvider = StateProvider<bool>((ref) => false);
 
-/// 이체 권장 알림을 마지막으로 보낸 잔액(중복 알림 방지). 화면이 재빌드될 때마다
-/// 잔액이 기준액 이상이면 매번 다시 알림이 울리던 문제 — 그 잔액 그대로면
-/// 다시 보내지 않고, 잔액이 실제로 바뀌었을 때만(늘었든 줄었다 다시 늘었든) 재알림.
-final _lastTransferNotifiedBalanceProvider = StateProvider<int?>((ref) => null);
+/// 홈 카드 하나를 감싸 아래쪽에 일정한 간격(12)을 준다.
+///
+/// 홈은 카드가 세로로 쭉 흐르는 화면인데, 카드마다 자기 여백을 들고 있으면
+/// 조건에 따라 어떤 카드는 숨겨지므로 간격이 금방 제각각이 된다. 그래서 간격은
+/// 카드가 아니라 홈 화면이 통제한다.
+///
+/// 숨겨진 카드는 `SizedBox.shrink()`를 돌려주는 것이 이 화면의 규칙이라,
+/// 그때는 감싸지 않고 그대로 통과시켜 빈 간격이 남지 않게 한다.
+Widget _homeGap(Widget child) {
+  if (child is SizedBox && child.height == 0 && child.width == 0) return child;
+  return Padding(
+    padding: const EdgeInsets.only(bottom: AppGap.md),
+    child: child,
+  );
+}
 
 /// 홈 + 통계를 합친 대시보드. 기본은 핵심 정보만, "상세 통계"는 접어서 보여준다.
 class OverviewScreen extends ConsumerWidget {
@@ -50,7 +61,8 @@ class OverviewScreen extends ConsumerWidget {
     final goalsAsync = ref.watch(goalsProvider(child.id));
     final palette = appPalette(context);
     final balanceNow = summaryAsync.valueOrNull?['balance'] ?? 0;
-    final isChild = ref.watch(settingsProvider).isChild;
+    final settings = ref.watch(settingsProvider);
+    final isChild = settings.isChild;
     final showDetails = ref.watch(_showDetailsProvider);
 
     // 못 받고 넘어간 이자가 자동 지급됐으면, 앱을 열 때 한 번 축하 연출을 띄운다.
@@ -68,11 +80,15 @@ class OverviewScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          _buildLevelUpBanner(context, ref),
-          _buildTierCard(ref),
-          InvestStatusStrip(childId: child.id, tightTop: true),
-          if (!isChild) _buildBackupReminder(context, ref),
-          _buildRequestsSection(context, ref, isChild),
+          // 위쪽 카드 묶음. 카드마다 자기 여백을 갖고 있으면 금방 제각각이 되므로
+          // (예전엔 레벨업 8, 티어 0, 투자 5, 백업 12, 요청 0으로 다 달랐다)
+          // 여기서 _homeGap으로 한 번에 12씩 띄운다. 숨겨진 카드는 SizedBox.shrink를
+          // 돌려주므로 빈 간격이 남지 않는다.
+          _homeGap(_buildLevelUpBanner(context, ref)),
+          _homeGap(_buildTierCard(ref)),
+          _homeGap(InvestStatusStrip(childId: child.id)),
+          if (!isChild) _homeGap(_buildBackupReminder(context, ref)),
+          _homeGap(_buildRequestsSection(context, ref, isChild)),
           summaryAsync.when(
             loading: () => const _LoadingBox(height: 150),
             error: (e, _) => Text('오류: $e'),
@@ -91,30 +107,28 @@ class OverviewScreen extends ConsumerWidget {
               final threshold = child.autoTransferThreshold;
               final overThreshold = balance >= threshold;
 
+              // 이체 권장 알림은 기준액을 "넘는 순간" 딱 한 번만 보낸다.
+              // 예전엔 잔액이 바뀌면 다시 보내는 조건이라, 기준액을 넘긴 뒤로는
+              // 용돈 받을 때마다·뭘 살 때마다 알림이 울려서 시끄러웠다.
+              // 보냈다는 사실을 기기에 저장하므로 앱을 다시 켜도 또 울리지 않고,
+              // 기준액 아래로 내려가면 풀려서 다음에 넘을 때 한 번 더 알린다.
               if (overThreshold) {
-                // 화면이 재빌드될 때마다(예: 다른 탭 갔다가 홈으로 돌아올 때) 잔액이
-                // 여전히 기준액 이상이면 매번 새로 알림이 울리던 문제. 마지막으로
-                // 알린 잔액과 같으면 다시 보내지 않는다.
-                final lastNotified = ref.read(_lastTransferNotifiedBalanceProvider);
-                if (lastNotified != balance) {
+                if (!settings.transferNotified) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     NotificationService.instance.showTransferRecommended(
                       childName: child.name,
                       balance: balance,
                       threshold: threshold,
                     );
-                    ref.read(_lastTransferNotifiedBalanceProvider.notifier).state =
-                        balance;
+                    ref.read(settingsProvider.notifier).markTransferNotified();
                   });
                 }
-              } else {
-                // 기준액 아래로 내려가면 다음에 다시 넘을 때 새로 알릴 수 있게 초기화.
-                if (ref.read(_lastTransferNotifiedBalanceProvider) != null) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ref.read(_lastTransferNotifiedBalanceProvider.notifier).state =
-                        null;
-                  });
-                }
+              } else if (settings.transferNotified ||
+                  settings.transferBannerDismissed) {
+                // 기준액 아래로 내려감 → 알림·배너 상태를 함께 초기화.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  ref.read(settingsProvider.notifier).resetTransferNotice();
+                });
               }
 
               final txsForBudget = transactionsAsync.valueOrNull ?? const [];
@@ -181,18 +195,18 @@ class OverviewScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  if (overThreshold) ...[
+                  if (overThreshold && !settings.transferBannerDismissed) ...[
                     const SizedBox(height: AppGap.md),
                     _TransferBanner(threshold: threshold),
                   ],
-                  const SizedBox(height: AppGap.sm),
+                  const SizedBox(height: AppGap.md),
                   _SavingsRateCard(
                     income: income,
                     expense: expense,
                     savings: savings,
                     rate: rate,
                   ),
-                  const SizedBox(height: AppGap.sm),
+                  const SizedBox(height: AppGap.md),
                   const RatesStrip(),
                   // 용돈 → 절약보너스 → 이자 순. 돈이 들어오는 순서대로 읽힌다.
                   AllowanceHomeCard(child: child, isChild: isChild),
@@ -830,51 +844,49 @@ class OverviewScreen extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [scheme.tertiaryContainer, scheme.primaryContainer],
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+    // 간격은 _homeGap이 붙여준다(카드 자체는 여백을 갖지 않는다).
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [scheme.tertiaryContainer, scheme.primaryContainer],
         ),
-        child: Row(
-          children: [
-            TierIcon(tier: cur, size: 34),
-            const SizedBox(width: AppGap.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        children: [
+          TierIcon(tier: cur, size: 34),
+          const SizedBox(width: AppGap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '🎉 "${cur.title}" 티어 달성!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: AppText.title,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+                if (cur.reward != null && cur.reward!.isNotEmpty)
                   Text(
-                    '🎉 "${cur.title}" 티어 달성!',
+                    '보상: ${cur.reward}',
                     style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: AppText.title,
-                      color: scheme.onPrimaryContainer,
+                      fontSize: AppText.label,
+                      color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
                     ),
                   ),
-                  if (cur.reward != null && cur.reward!.isNotEmpty)
-                    Text(
-                      '보상: ${cur.reward}',
-                      style: TextStyle(
-                        fontSize: AppText.label,
-                        color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
-            TextButton(
-              onPressed: () => ref
-                  .read(settingsProvider.notifier)
-                  .setLastCelebratedTierOrder(cur.sortOrder),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: () => ref
+                .read(settingsProvider.notifier)
+                .setLastCelebratedTierOrder(cur.sortOrder),
+            child: const Text('확인'),
+          ),
+        ],
       ),
     );
   }
@@ -885,37 +897,40 @@ class OverviewScreen extends ConsumerWidget {
     final txs =
         ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
     if (txs.isEmpty) return const SizedBox.shrink();
+    // 가족 코드로 실시간 동기화(Firebase)가 연결돼 있으면 데이터는 이미 계속
+    // 공유되고 있으므로 백업을 재촉할 이유가 없다.
+    // (예전엔 수동 파일 내보내기 시각(lastExportedAt)만 봐서, 동기화를 켜둔
+    //  기기에서도 "아직 백업을 공유한 적이 없어요"가 계속 떴다)
+    if (settings.familyCode != null) return const SizedBox.shrink();
     final last = settings.lastExportedAt;
     final stale = last == null || DateTime.now().difference(last).inDays >= 14;
     if (!stale) return const SizedBox.shrink();
     final pair = appPalette(context).savings;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-        decoration: BoxDecoration(
-          color: pair.bg,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.backup_outlined, color: pair.fg, size: 20),
-            const SizedBox(width: AppGap.cozy),
-            Expanded(
-              child: Text(
-                last == null
-                    ? '아직 백업을 공유한 적이 없어요. 가족과 데이터를 맞춰보세요.'
-                    : '백업 공유한 지 2주가 지났어요. 최신 내용을 공유해보세요.',
-                style: TextStyle(color: pair.fg, fontSize: AppText.label),
-              ),
+    // 간격은 _homeGap이 붙여준다(카드 자체는 여백을 갖지 않는다).
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: pair.bg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.backup_outlined, color: pair.fg, size: 20),
+          const SizedBox(width: AppGap.cozy),
+          Expanded(
+            child: Text(
+              last == null
+                  ? '아직 백업을 공유한 적이 없어요. 가족과 데이터를 맞춰보세요.'
+                  : '백업 공유한 지 2주가 지났어요. 최신 내용을 공유해보세요.',
+              style: TextStyle(color: pair.fg, fontSize: AppText.label),
             ),
-            TextButton(
-              onPressed: () =>
-                  ref.read(mainTabIndexProvider.notifier).state = 4,
-              child: const Text('설정으로'),
-            ),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ref.read(mainTabIndexProvider.notifier).state = 4,
+            child: const Text('설정으로'),
+          ),
+        ],
       ),
     );
   }
@@ -1292,6 +1307,8 @@ class _SavingsRateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
+      // 간격은 홈 화면이 통제한다(홈 카드 간격 통일).
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(AppGap.xl),
         child: Row(
@@ -1385,15 +1402,18 @@ class _SavingsRateCard extends StatelessWidget {
   );
 }
 
-class _TransferBanner extends StatelessWidget {
+/// "주식계좌 이체를 고려해보세요" 배너.
+/// X로 닫으면 잔액이 기준액 아래로 내려갈 때까지 다시 뜨지 않는다
+/// (닫았다는 사실을 기기에 저장하므로 앱을 다시 켜도 안 뜬다).
+class _TransferBanner extends ConsumerWidget {
   final int threshold;
   const _TransferBanner({required this.threshold});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final pair = appPalette(context).savings;
     return Container(
-      padding: const EdgeInsets.all(AppGap.md),
+      padding: const EdgeInsets.fromLTRB(AppGap.md, AppGap.md, AppGap.xs, AppGap.md),
       decoration: BoxDecoration(
         color: pair.bg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1420,6 +1440,13 @@ class _TransferBanner extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: '이 안내 닫기',
+            icon: Icon(Icons.close, color: pair.fg.withValues(alpha: 0.7), size: 18),
+            onPressed: () =>
+                ref.read(settingsProvider.notifier).dismissTransferBanner(),
           ),
         ],
       ),

@@ -27,6 +27,15 @@ class AppSettings {
   // 마지막으로 축하 배너를 보여준 누적 티어 순서(레벨업 배너 중복 방지). 기본 1(흙).
   final int lastCelebratedTierOrder;
 
+  /// 잔액이 이체 기준액을 넘은 "이번 구간"에서 이체 권장 알림을 이미 보냈는지.
+  /// 예전엔 잔액이 바뀔 때마다 다시 알림이 울려서(용돈 받을 때마다, 뭘 살 때마다)
+  /// 시끄러웠다. 기준액 아래로 내려가면 false로 풀려서 다음에 다시 넘을 때 한 번 알린다.
+  final bool transferNotified;
+
+  /// 홈의 "주식계좌 이체를 고려해보세요" 배너를 사용자가 X로 닫았는지.
+  /// 닫으면 기준액 아래로 내려갈 때까지 다시 뜨지 않는다.
+  final bool transferBannerDismissed;
+
   /// 이 기기가 자녀(아들) 모드인지. 지급/승인/규칙편집 UI가 숨겨진다.
   bool get isChild => deviceOwner == '아들';
   bool get hasParentPasscode => parentPasscodeHash != null && parentPasscodeSalt != null;
@@ -49,6 +58,8 @@ class AppSettings {
     this.parentPasscodeHash,
     this.parentPasscodeSalt,
     this.lastCelebratedTierOrder = 1,
+    this.transferNotified = false,
+    this.transferBannerDismissed = false,
     this.expenseCategories = defaultExpenseCategories,
     this.incomeCategories = defaultIncomeCategories,
     this.givers = defaultGivers,
@@ -72,6 +83,8 @@ class AppSettings {
     String? parentPasscodeHash,
     String? parentPasscodeSalt,
     int? lastCelebratedTierOrder,
+    bool? transferNotified,
+    bool? transferBannerDismissed,
     List<String>? expenseCategories,
     List<String>? incomeCategories,
     List<String>? givers,
@@ -90,6 +103,8 @@ class AppSettings {
       parentPasscodeHash: parentPasscodeHash ?? this.parentPasscodeHash,
       parentPasscodeSalt: parentPasscodeSalt ?? this.parentPasscodeSalt,
       lastCelebratedTierOrder: lastCelebratedTierOrder ?? this.lastCelebratedTierOrder,
+      transferNotified: transferNotified ?? this.transferNotified,
+      transferBannerDismissed: transferBannerDismissed ?? this.transferBannerDismissed,
       expenseCategories: expenseCategories ?? this.expenseCategories,
       incomeCategories: incomeCategories ?? this.incomeCategories,
       givers: givers ?? this.givers,
@@ -149,6 +164,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       parentPasscodeHash: prefs.getString('parentPasscodeHash'),
       parentPasscodeSalt: prefs.getString('parentPasscodeSalt'),
       lastCelebratedTierOrder: prefs.getInt('lastCelebratedTierOrder') ?? 1,
+      transferNotified: prefs.getBool('transferNotified') ?? false,
+      transferBannerDismissed: prefs.getBool('transferBannerDismissed') ?? false,
       expenseCategories:
           listOr('expenseCategories', AppSettings.defaultExpenseCategories),
       incomeCategories: listOr('incomeCategories', AppSettings.defaultIncomeCategories),
@@ -304,6 +321,29 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> clearFamilyCode() async {
     await prefs.remove('familyCode');
     state = state.withoutFamilyCode();
+  }
+
+  /// 이체 권장 알림을 보냈다고 표시(같은 구간에서 다시 안 울리도록).
+  Future<void> markTransferNotified() async {
+    if (state.transferNotified) return;
+    await prefs.setBool('transferNotified', true);
+    state = state.copyWith(transferNotified: true);
+  }
+
+  /// 사용자가 이체 권장 배너를 X로 닫음.
+  Future<void> dismissTransferBanner() async {
+    if (state.transferBannerDismissed) return;
+    await prefs.setBool('transferBannerDismissed', true);
+    state = state.copyWith(transferBannerDismissed: true);
+  }
+
+  /// 잔액이 이체 기준액 아래로 내려갔을 때 호출. 알림·배너 상태를 모두 초기화해
+  /// 다음에 다시 기준을 넘으면 한 번 알리고 배너도 다시 보여준다.
+  Future<void> resetTransferNotice() async {
+    if (!state.transferNotified && !state.transferBannerDismissed) return;
+    await prefs.setBool('transferNotified', false);
+    await prefs.setBool('transferBannerDismissed', false);
+    state = state.copyWith(transferNotified: false, transferBannerDismissed: false);
   }
 
   Future<void> setLastCelebratedTierOrder(int order) async {

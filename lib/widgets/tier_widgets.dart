@@ -344,6 +344,9 @@ class TierSummaryCard extends StatelessWidget {
     final cur = pos.current;
     final en = cur != null ? tierEnglishName(cur.id) : null;
     return Card(
+      // 홈에서만 쓰는 카드라 자체 마진을 없애고, 간격은 홈 화면이 통제한다
+      // (카드마다 마진이 조금씩 다르면 홈 전체 간격이 제각각으로 보인다).
+      margin: EdgeInsets.zero,
       color: scheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 12),
