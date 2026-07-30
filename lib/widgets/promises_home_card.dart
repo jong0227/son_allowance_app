@@ -52,6 +52,8 @@ class PromisesHomeCard extends ConsumerWidget {
     }
 
     return Card(
+      // 간격은 이 카드를 놓는 쪽(이자 카드)이 정한다.
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
         child: Column(

@@ -17,7 +17,6 @@ import '../widgets/bonus_home_card.dart';
 import '../widgets/interest_celebration.dart';
 import '../widgets/interest_home_card.dart';
 import '../widgets/invest_status_strip.dart';
-import '../widgets/promises_home_card.dart';
 import '../widgets/rates_strip.dart';
 import '../widgets/tier_widgets.dart';
 import '../widgets/ui_kit.dart';
@@ -211,9 +210,9 @@ class OverviewScreen extends ConsumerWidget {
                   // 용돈 → 절약보너스 → 이자 순. 돈이 들어오는 순서대로 읽힌다.
                   AllowanceHomeCard(child: child, isChild: isChild),
                   BonusHomeCard(child: child, isChild: isChild),
+                  // 약속 카드는 이자 카드가 데리고 있다(약속 = 이자 보너스라
+                  // 붙어 있어야 뜻이 통하고, 이자를 접으면 같이 접힌다).
                   InterestHomeCard(child: child),
-                  // 약속 카드는 부모/아이 모두에게 보인다(아이는 댓글로 참여).
-                  PromisesHomeCard(child: child),
                 ],
               );
             },

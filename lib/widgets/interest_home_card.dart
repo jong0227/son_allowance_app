@@ -10,12 +10,21 @@ import '../services/interest_calc.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'interest_celebration.dart';
+import 'promises_home_card.dart';
 import 'ui_kit.dart';
 
 /// 홈의 "이번 주 저축 이자" 카드.
 /// - 아직 안 받았으면: 큰 카드(연이율 + 이번 주 이자 + 받기 버튼).
-/// - 이미 받았으면: 작은 카드로 접히고, 누르면 펼쳐진다(이자율은 잔액·약속 카드에도
+/// - 이미 받았으면: 작은 카드로 접히고, 누르면 펼쳐진다(이자율은 잔액 카드에도
 ///   나오므로 평소엔 작게 둔다).
+///
+/// 부모님과의 약속 카드를 이 카드가 데리고 있는다. 약속은 이자율을 올려주는
+/// 장치라 따로 떨어져 있으면 왜 있는지 알기 어렵고, 이자를 접었는데 약속만
+/// 덩그러니 남아 있으면 어색하다. 그래서 접으면 같이 접힌다.
+///
+/// 다만 이자 기능이 꺼져 있거나 이자가 0원이라 이 카드를 못 그리는 상황에서는
+/// 약속 카드를 단독으로 보여준다. 약속은 아이가 댓글을 남기는 곳이라
+/// 이자 사정 때문에 통째로 사라지면 안 된다.
 class InterestHomeCard extends ConsumerStatefulWidget {
   final Child child;
   const InterestHomeCard({super.key, required this.child});
@@ -31,7 +40,10 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!child.interestEnabled) return const SizedBox.shrink();
+    final promises = ref.watch(promisesProvider(child.id)).valueOrNull ?? const [];
+    final hasPromises = promises.isNotEmpty;
+
+    if (!child.interestEnabled) return _promisesOnly(hasPromises);
     final given = ref
             .watch(interestGivenProvider((childId: child.id, period: child.interestPeriod)))
             .valueOrNull ??
@@ -48,24 +60,31 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
       promiseBonusAnnualPercent: bonus,
       bankAnnualPercent: bankRate,
     );
-    if (b.amount <= 0) return const SizedBox.shrink();
+    if (b.amount <= 0) return _promisesOnly(hasPromises);
     final pair = appPalette(context).savings;
 
-    // 받은 뒤 + 접힘 상태: 작은 한 줄 카드.
+    // 받은 뒤 + 접힘 상태: 작은 한 줄 카드. 약속도 이 안에 같이 접힌다.
+    // 약속이 있으면 연이율 대신 약속 개수를 보여준다. 연이율은 잔액 카드에도
+    // 있지만 약속이 여기 숨어 있다는 건 이 줄에만 표시할 수 있어서다.
     if (given && !_open) {
       return Padding(
-        padding: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.only(top: AppGap.md),
         child: MiniBar(
           pair: pair,
-          text: '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
+          text: hasPromises
+              ? '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 약속 ${promises.length}개'
+              : '${b.periodName} 이자 ${formatWon(b.amount)} 받음 · 연 ${formatPercent(b.annualPercent)}%',
           onTap: () => setState(() => _open = true),
         ),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Container(
+      padding: const EdgeInsets.only(top: AppGap.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
         padding: const EdgeInsets.all(AppGap.lg),
         decoration: BoxDecoration(color: pair.bg, borderRadius: BorderRadius.circular(AppRadius.lg)),
         child: Column(
@@ -152,9 +171,25 @@ class _InterestHomeCardState extends ConsumerState<InterestHomeCard> {
               alignment: Alignment.centerRight,
               child: _link(context, '이자지급이력보기', () => _openHistory(context)),
             ),
+              ],
+            ),
+          ),
+          // 약속은 이자율을 올려주는 장치라 이자 카드 바로 아래 붙인다.
+          if (hasPromises) ...[
+            const SizedBox(height: AppGap.md),
+            PromisesHomeCard(child: child),
           ],
-        ),
+        ],
       ),
+    );
+  }
+
+  /// 이자 카드를 못 그리는 상황(이자 기능 off / 이자 0원)에서 약속만 보여준다.
+  Widget _promisesOnly(bool hasPromises) {
+    if (!hasPromises) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppGap.md),
+      child: PromisesHomeCard(child: child),
     );
   }
 
