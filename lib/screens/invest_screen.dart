@@ -410,7 +410,7 @@ class _HoldingTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(holding.label,
+                    child: Text(etfName(holding.label),
                         style: const TextStyle(
                             fontSize: AppText.titleLg,
                             fontWeight: FontWeight.w800)),
@@ -473,7 +473,7 @@ class _SellTradeTile extends StatelessWidget {
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         leading: Icon(Icons.sell_outlined, color: palette.savings.fg),
-        title: Text('${trade.label} ${trade.shares}주 팔았어요',
+        title: Text('${etfName(trade.label)} ${trade.shares}주 팔았어요',
             style: const TextStyle(
                 fontWeight: FontWeight.w600, fontSize: AppText.body)),
         subtitle: Text(

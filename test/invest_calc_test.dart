@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:son_allowance_app/services/invest_calc.dart';
+import 'package:son_allowance_app/utils/formatters.dart';
 
 void main() {
   InvestTradeInput buy(
@@ -47,6 +48,33 @@ void main() {
       expect(sharePriceOf('china', 3832.26), 383);
       expect(sharePriceOf('europe', 6358.01), 636);
       expect(sharePriceOf('vietnam', 16.98), 509);
+    });
+
+    test('조각 수 설명이 실제 1주 가격과 앞뒤가 맞는다', () {
+      // 아이에게 "N조각으로 잘랐어"라고 말해놓고 실제 가격이 다르면 거짓말이 된다.
+      // 지수 ÷ 조각수 ≈ 1주 가격이어야 한다.
+      for (final (key, index) in const [
+        ('kospi', 6595.45),
+        ('nasdaq', 25373.85),
+        ('india', 78094.64),
+        ('china', 3832.26),
+        ('europe', 6358.01),
+      ]) {
+        final slices = shareSliceCount(key);
+        expect(slices, isNotNull, reason: '$key는 조각 비유가 되어야 한다');
+        expect((index / slices!).round(), sharePriceOf(key, index),
+            reason: '$key: 지수를 $slices조각으로 나눈 값이 1주 가격과 같아야 한다');
+      }
+    });
+
+    test('코스닥은 안 자르고(1조각), 베트남은 조각 비유가 성립하지 않는다', () {
+      // 코스닥은 배수가 1이라 바구니 하나가 곧 1주다.
+      expect(shareSliceCount('kosdaq'), 1);
+      // 베트남은 달러 ETF라 오히려 배수를 키운다. 조각내기로 설명하면 틀린 말이 되므로
+      // null을 돌려주고 화면에서 다른 문구를 쓴다.
+      expect(shareSliceCount('vietnam'), isNull);
+      // 모르는 지수도 조각 설명을 만들지 않는다.
+      expect(shareSliceCount('unknown'), isNull);
     });
 
     test('모두 아이가 살 수 있는 가격대에 들어온다', () {
@@ -243,6 +271,29 @@ void main() {
       expect(q.gross, 0);
       expect(q.fee, 0);
       expect(q.netProceeds, 0);
+    });
+  });
+
+  group('상품 이름', () {
+    test('소유·거래 자리에서는 지수 이름이 아니라 ETF 이름을 쓴다', () {
+      // 지수는 숫자라 가질 수 없다. "코스피 2주 보유"는 개념이 틀린 문장이다.
+      expect(etfName('코스피'), '아빠표 코스피 ETF');
+      expect(etfName('나스닥'), '아빠표 나스닥 ETF');
+      // 지수 이름이 그대로 남아 있어야 아이가 둘을 연결할 수 있다.
+      expect(etfName('코스피'), contains('코스피'));
+      expect(etfName('코스피'), contains('ETF'));
+    });
+
+    test('지수 이름 받침에 맞는 조사를 고른다', () {
+      // 받침 없음 → 는/가
+      expect(josa('코스피', '은', '는'), '는');
+      expect(josa('인도', '이', '가'), '가');
+      // 받침 있음 → 은/이
+      expect(josa('코스닥', '은', '는'), '은');
+      expect(josa('나스닥', '이', '가'), '이');
+      expect(josa('중국', '은', '는'), '은');
+      // 영문으로 끝나면 받침 없는 쪽 (아빠표 코스피 ETF"를")
+      expect(josa(etfName('코스피'), '을', '를'), '를');
     });
   });
 }

@@ -128,6 +128,23 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
             onSelectionChanged: (s) => setState(() => _range = s.first),
           ),
           const SizedBox(height: AppGap.cozy),
+          // 어느 쪽 눈금이 무엇인지. 이게 없으면 숫자 두 줄이 그냥 혼란스럽다.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('◀ ${widget.label} 지수',
+                  style: TextStyle(
+                      fontSize: AppText.micro,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant)),
+              Text('${etfName(widget.label)} 1주 ▶',
+                  style: TextStyle(
+                      fontSize: AppText.micro,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(height: AppGap.xxs),
           // 차트
           SizedBox(
             height: 200,
@@ -146,10 +163,67 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                 }
                 final rising = series.last >= series.first;
                 final color = rising ? investUp : investDown;
+                // 같은 선을 두 눈금으로 읽는다. 왼쪽은 지수(6,595), 오른쪽은 그 지수일
+                // 때 내 1주 값(660원). 아이가 "이 두 숫자가 같은 지점"임을 눈으로 잇게
+                // 하려는 것이라, 축을 나눠 그리지 않고 한 선에 눈금만 둘 붙인다.
+                final lo = series.reduce((a, b) => a < b ? a : b);
+                final hi = series.reduce((a, b) => a > b ? a : b);
+                final span = (hi - lo).abs();
+                // 위아래 여백. 선이 눈금 글씨에 닿지 않게 한다.
+                final pad = span < 1e-9 ? (hi.abs() * 0.05 + 1) : span * 0.15;
+                final minY = lo - pad;
+                final maxY = hi + pad;
+                // 4등분해서 가운데 3개만 그린다. 맨 위·맨 아래 눈금은 위쪽 범례와
+                // 아래쪽 "N% 올랐어요" 캡션에 부딪혀 글씨가 겹치던 주범이었다.
+                final step = (maxY - minY) / 4;
+                bool isEdge(double v) =>
+                    (v - minY).abs() < step * 0.25 || (maxY - v).abs() < step * 0.25;
+                final muted = theme.colorScheme.onSurfaceVariant;
+                Widget axisLabel(String text) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(text,
+                          // 폭이 모자라 두 줄로 쪼개지던 문제(8,215.6 / 4) 방지.
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                          style: TextStyle(fontSize: AppText.micro, color: muted)),
+                    );
                 return LineChart(
                   LineChartData(
                     gridData: const FlGridData(show: true, drawVerticalLine: false),
-                    titlesData: const FlTitlesData(show: false),
+                    // 눈금 계산과 같은 범위를 써야 라벨이 실제 격자선 위에 놓인다.
+                    minY: minY,
+                    maxY: maxY,
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      // 왼쪽: 지수 그대로
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 54,
+                          interval: step,
+                          // 소수점(8,215.64)은 아이에게 읽는 부담만 준다. 정수로 반올림.
+                          getTitlesWidget: (v, meta) => isEdge(v)
+                              ? const SizedBox.shrink()
+                              : axisLabel(indexFormat.format(v.round())),
+                        ),
+                      ),
+                      // 오른쪽: 같은 지점의 1주 가격(원)
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 54,
+                          interval: step,
+                          getTitlesWidget: (v, meta) => isEdge(v)
+                              ? const SizedBox.shrink()
+                              : axisLabel(
+                                  formatWon(sharePriceOf(widget.indexKey, v))),
+                        ),
+                      ),
+                    ),
                     borderData: FlBorderData(show: false),
                     lineTouchData: const LineTouchData(enabled: false),
                     lineBarsData: [
@@ -197,6 +271,15 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                       fontWeight: FontWeight.w700,
                       color: theme.colorScheme.onSurfaceVariant)),
             ),
+          // 왜 이 가격인지(접이식). 사기 버튼 바로 위에 둬서, 사기 직전에
+          // 궁금해진 아이가 그 자리에서 펼쳐볼 수 있게 했다.
+          if (nowPrice > 0 && nowValue != null)
+            _WhyThisPriceCard(
+              indexKey: widget.indexKey,
+              label: widget.label,
+              indexValue: nowValue,
+              sharePrice: nowPrice,
+            ),
           // 사기
           FilledButton.icon(
             onPressed: (nowValue == null || nowPrice <= 0 || canInvest < nowPrice)
@@ -208,7 +291,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                 : '사기 (최대 ${maxBuyableShares(canInvest, nowPrice)}주)'),
           ),
           if (mine != null) ...[
-            const SectionHeader('내가 가진 것'),
+            SectionHeader('내가 가진 ${etfName(widget.label)}'),
             _MyHoldingCard(
               holding: mine,
               nowPrice: nowPrice,
@@ -256,7 +339,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${widget.label} 사기',
+                  Text('${etfName(widget.label)} 사기',
                       style: const TextStyle(
                           fontSize: AppText.heading,
                           fontWeight: FontWeight.w800,
@@ -347,7 +430,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(err ??
-                                      '${widget.label} $shares주를 샀어요! '
+                                      '${etfName(widget.label)} $shares주를 샀어요! '
                                           '(수수료 ${formatWon(fee)} 포함 ${formatWon(total)})'),
                                 ),
                               );
@@ -397,7 +480,7 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${widget.label} 팔기',
+                  Text('${etfName(widget.label)} 팔기',
                       style: const TextStyle(
                           fontSize: AppText.heading,
                           fontWeight: FontWeight.w800,
@@ -517,6 +600,119 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
       ),
     );
   }
+}
+
+/// "지수는 6,595인데 내 1주는 왜 660원이야?"를 초등 저학년 눈높이로 풀어주는 카드.
+///
+/// 기본은 접어둔다. 한 번 이해하고 나면 매번 보이는 게 오히려 성가시기 때문에,
+/// 궁금할 때만 펼쳐 보게 했다.
+class _WhyThisPriceCard extends StatelessWidget {
+  final String indexKey;
+  final String label;
+  final double indexValue;
+  final int sharePrice;
+
+  const _WhyThisPriceCard({
+    required this.indexKey,
+    required this.label,
+    required this.indexValue,
+    required this.sharePrice,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final slices = shareSliceCount(indexKey);
+
+    // 조각 비유가 지수마다 달라진다. 억지로 하나로 맞추면 거짓말이 되므로 갈래를 나눈다.
+    final String sliceStory;
+    if (slices == null) {
+      // 베트남처럼 달러로 값이 매겨진 바구니. 조각내기로는 설명이 안 된다.
+      sliceStory = '$label${josa(label, '은', '는')} 달러로 사고파는 바구니예요. '
+          '우리 돈으로 살 수 있는 크기로 바꿔서 ${etfName(label)}를 만들었어요. '
+          '1주에 ${formatWon(sharePrice)}이에요.';
+    } else if (slices <= 1) {
+      // 코스닥처럼 원래 싼 바구니. 안 자른다는 게 오히려 좋은 대비가 된다.
+      sliceStory = '$label${josa(label, '은', '는')} 바구니가 원래 싸서 자르지 않아도 살 수 있어요. '
+          '그래서 ${etfName(label)} 1주가 바구니 하나 통째예요.';
+    } else {
+      sliceStory = '$label 바구니 하나는 ${indexFormat.format(indexValue)}이에요. '
+          '통째로 사기엔 비싸니까 $slices조각으로 잘라서 ${etfName(label)}를 만들었어요. '
+          '그 1조각이 바로 내가 사는 1주, ${formatWon(sharePrice)}이에요.';
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppGap.sm),
+      child: Theme(
+        // ExpansionTile 기본 구분선을 없애 카드가 깔끔하게 보이도록.
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppGap.lg),
+          childrenPadding: const EdgeInsets.fromLTRB(
+              AppGap.lg, 0, AppGap.lg, AppGap.lg),
+          leading: const Text('🧺', style: TextStyle(fontSize: 22)),
+          title: Text(
+            '$label${josa(label, '은', '는')} ${indexFormat.format(indexValue)}인데 '
+            '왜 1주가 ${formatWon(sharePrice)}이야?',
+            style: const TextStyle(
+                fontSize: AppText.body, fontWeight: FontWeight.w800),
+          ),
+          children: [
+            _Para(sliceStory),
+            const SizedBox(height: AppGap.sm),
+            _Para('$label 숫자는 가질 수 없어요. 그건 "지금 얼마인지" 알려주는 숫자거든요. '
+                '내가 가질 수 있는 건 그 숫자를 따라가도록 만든 ${etfName(label)} 1주예요.'),
+            const SizedBox(height: AppGap.sm),
+            _Para('바구니가 커지면 내 1주도 똑같이 커져요. '
+                '$label${josa(label, '이', '가')} 1% 오르면 내 1주도 딱 1% 올라요. '
+                '위 그래프에서 왼쪽 숫자($label)와 오른쪽 숫자(내 1주)가 '
+                '같은 선을 가리키는 게 그래서예요.'),
+            const SizedBox(height: AppGap.sm),
+            Container(
+              padding: const EdgeInsets.all(AppGap.md),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('⚠️', style: TextStyle(fontSize: 15)),
+                  const SizedBox(width: AppGap.sm),
+                  Expanded(
+                    child: Text(
+                      '1주 값이 싸다고 더 좋은 건 아니에요. '
+                      '바구니마다 조각 크기가 다를 뿐이거든요. '
+                      '어느 게 더 잘했는지 보려면 값이 아니라 "몇 % 올랐나"를 봐야 해요.',
+                      style: TextStyle(
+                          fontSize: AppText.label, height: 1.5, color: muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Para extends StatelessWidget {
+  final String text;
+  const _Para(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        style: TextStyle(
+          fontSize: AppText.label,
+          height: 1.6,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      );
 }
 
 /// 사기·팔기 시트의 정산 미리보기. 수수료를 항목으로 드러내는 게 목적이다.

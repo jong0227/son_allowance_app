@@ -1655,7 +1655,8 @@ class AppDatabase extends _$AppDatabase {
         flow: diff > 0 ? 'income' : 'expense',
         category: diff > 0 ? kInvestProfit : kInvestLoss,
         amount: diff.abs(),
-        memo: Value('모의투자 ${holding.label} ${quote.shares}주 '
+        // 지수가 아니라 "우리가 만든 ETF"를 판 것이므로 내역에도 그렇게 남긴다.
+        memo: Value('모의투자 아빠표 ${holding.label} ETF ${quote.shares}주 '
             '${diff > 0 ? '수익' : '손실'} (수수료 ${quote.fee}원 포함)'),
         editedBy: Value(editedBy),
         updatedAt: Value(now),

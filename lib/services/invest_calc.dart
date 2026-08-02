@@ -26,6 +26,17 @@ const Map<String, double> kSharePriceMultiplier = {
   'europe': 0.1, // 6,358 → 636원
 };
 
+/// "바구니를 몇 조각으로 나눠 1주를 만들었나". 아이 설명용.
+///
+/// 배수 0.1이면 10조각, 0.02면 50조각. 코스닥(배수 1.0)은 1을 돌려주는데
+/// "안 잘라도 살 수 있다"는 뜻이다. 베트남처럼 배수가 1보다 커서 오히려 키운
+/// 경우는 조각 비유가 성립하지 않으므로 null(화면에서 다른 문구를 쓴다).
+int? shareSliceCount(String indexKey) {
+  final m = kSharePriceMultiplier[indexKey];
+  if (m == null || m <= 0 || m > 1) return null;
+  return (1 / m).round();
+}
+
 /// 지금 지수로 1주 가격(원). 최소 1원.
 /// 배수를 모르는 지수가 들어오면 1배로 두어 최소한 거래는 되게 한다.
 int sharePriceOf(String indexKey, double indexValue) {
