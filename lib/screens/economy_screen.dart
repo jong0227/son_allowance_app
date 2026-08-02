@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
 import 'compound_simulator_screen.dart';
+import 'exchange_calculator_screen.dart';
 import 'interest_explainer_screen.dart';
 import 'quiz_history_screen.dart';
 import 'quiz_screen.dart';
@@ -68,6 +69,13 @@ class EconomyScreen extends ConsumerWidget {
             subtitle: '지금처럼 모으면 1년 뒤 얼마가 될지 보기',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => CompoundSimulatorScreen(child: child))),
+          ),
+          _NavCard(
+            emoji: '💱',
+            title: '환율 계산기',
+            subtitle: '내 돈이 달러·엔·유로로 얼마인지 바꿔보기',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const ExchangeCalculatorScreen())),
           ),
           const SectionHeader('오늘의 경제상식'),
           const _TodayTopicCard(),

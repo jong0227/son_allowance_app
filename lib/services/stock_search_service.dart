@@ -142,7 +142,7 @@ class StockSearchService {
       final currency = (meta['currency'] ?? 'KRW').toString();
       double krw = price;
       if (currency != 'KRW') {
-        final fx = await _fxToKrw(currency);
+        final fx = await fxToKrw(currency);
         if (fx == null) return null;
         krw = price * fx;
       }
@@ -270,8 +270,9 @@ class StockSearchService {
   static final Map<String, double> _fxCache = {};
   static DateTime? _fxAt;
 
-  /// 통화→원 환율. USD 등. 세션 내 10분 캐시.
-  Future<double?> _fxToKrw(String currency) async {
+  /// 통화→원 환율(1단위가 몇 원인지). USD 등. 세션 내 10분 캐시.
+  /// 야후 심볼 `{통화}KRW=X`를 쓰므로 API 키가 필요 없다.
+  Future<double?> fxToKrw(String currency) async {
     if (currency == 'KRW') return 1;
     if (_fxCache.containsKey(currency) &&
         _fxAt != null &&
@@ -285,5 +286,15 @@ class StockSearchService {
       _fxAt = DateTime.now();
     }
     return fx;
+  }
+
+  /// 여러 통화의 환율을 한 번에. 못 받아온 통화는 결과에서 빠진다.
+  Future<Map<String, double>> fxRates(List<String> currencies) async {
+    final out = <String, double>{};
+    for (final c in currencies) {
+      final v = await fxToKrw(c);
+      if (v != null) out[c] = v;
+    }
+    return out;
   }
 }
