@@ -116,10 +116,21 @@ class _ExchangeCalculatorScreenState
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _ErrorBody(onRetry: () => ref.invalidate(fxRatesProvider)),
         data: (rates) {
-          final rate = rates[_code];
           if (rates.isEmpty) {
             return _ErrorBody(onRetry: () => ref.invalidate(fxRatesProvider));
           }
+          // 고른 통화만 못 받아온 경우(예: 달러만 실패), 칩은 사라지는데 _code는
+          // 그대로라 아무것도 선택되지 않은 채 입력해도 반응이 없는 화면이 된다.
+          // 받아온 통화 중 첫 번째로 옮겨 항상 쓸 수 있게 한다.
+          if (!rates.containsKey(_code)) {
+            final fallback = kFxCurrencies
+                .firstWhere((c) => rates.containsKey(c.code))
+                .code;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _selectCurrency(fallback);
+            });
+          }
+          final rate = rates[_code];
           return ListView(
             padding: const EdgeInsets.fromLTRB(
               AppGap.lg,
@@ -285,7 +296,11 @@ class _MoneyField extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
+        // 숫자와 소수점만, 소수점은 딱 한 번만. (그냥 [\d.]로 두면 "1.2.3"이
+        // 그대로 통과하는데 파싱이 실패해 반대쪽 칸이 소리 없이 비워진다)
         FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+        TextInputFormatter.withFunction((old, now) =>
+            '.'.allMatches(now.text).length > 1 ? old : now),
       ],
       style: const TextStyle(
         fontSize: AppText.numMd,
