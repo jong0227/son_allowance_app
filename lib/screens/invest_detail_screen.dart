@@ -1,10 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/invest_calc.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/ui_kit.dart';
@@ -47,13 +49,15 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
     final theme = Theme.of(context);
     final summary = ref.watch(summaryProvider(widget.child.id)).valueOrNull;
     final indices = ref.watch(investIndicesProvider).valueOrNull ?? const [];
-    final positions =
-        ref.watch(investmentsProvider(widget.child.id)).valueOrNull ?? const [];
+    final holdings = ref.watch(holdingsProvider(widget.child.id));
     final seriesAsync =
         ref.watch(indexSeriesProvider((symbol: widget.symbol, range: _range)));
 
     final idx = indices.where((i) => i.symbol == widget.symbol).firstOrNull;
     final nowValue = idx?.value;
+    // 지금 1주 가격. 지수를 못 받아오면 0(사고팔기 비활성).
+    final nowPrice =
+        nowValue == null ? 0 : sharePriceOf(widget.indexKey, nowValue);
 
     final balance = summary?['balance'] ?? 0;
     final invested = summary?['invested'] ?? 0;
@@ -61,9 +65,10 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
         ((balance + invested) * widget.child.investLimitPercent / 100).floor();
     final canInvest = (cap - invested).clamp(0, balance);
 
-    final mine = positions
-        .where((p) => p.soldAt == null && p.indexKey == widget.indexKey)
-        .toList();
+    // 이 지수의 보유. 다 팔았으면 주수 0이라 카드가 안 보인다.
+    final mine = holdings
+        .where((h) => h.indexKey == widget.indexKey && !h.isEmpty)
+        .firstOrNull;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.label)),
@@ -181,24 +186,36 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
             orElse: () => const SizedBox.shrink(),
           ),
           const SizedBox(height: AppGap.lg),
+          // 1주 가격 안내 — 몇 주를 살지 정하려면 이 값이 먼저 보여야 한다.
+          if (nowPrice > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppGap.sm),
+              child: Text('1주에 ${formatWon(nowPrice)}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: AppText.body,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ),
           // 사기
           FilledButton.icon(
-            onPressed: (nowValue == null || canInvest <= 0)
+            onPressed: (nowValue == null || nowPrice <= 0 || canInvest < nowPrice)
                 ? null
-                : () => _showBuySheet(context, nowValue, canInvest),
+                : () => _showBuySheet(context, nowValue, nowPrice, canInvest),
             icon: const Icon(Icons.add),
-            label: Text(canInvest <= 0
-                ? '더 넣을 수 있는 돈이 없어요'
-                : '투자하기 (최대 ${formatWon(canInvest)})'),
+            label: Text(canInvest < nowPrice
+                ? '살 수 있는 돈이 모자라요'
+                : '사기 (최대 ${maxBuyableShares(canInvest, nowPrice)}주)'),
           ),
-          if (mine.isNotEmpty) ...[
+          if (mine != null) ...[
             const SectionHeader('내가 가진 것'),
-            for (final p in mine)
-              _MyPositionCard(
-                position: p,
-                nowValue: nowValue,
-                onSell: nowValue == null ? null : () => _confirmSell(p, nowValue),
-              ),
+            _MyHoldingCard(
+              holding: mine,
+              nowPrice: nowPrice,
+              onSell: nowValue == null || nowPrice <= 0
+                  ? null
+                  : () => _showSellSheet(context, mine, nowValue, nowPrice),
+            ),
           ],
         ],
       ),
@@ -208,9 +225,16 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
   String _rangeLabel(String r) =>
       _ranges.firstWhere((e) => e.$1 == r, orElse: () => (r, r)).$2;
 
+  /// 몇 주 살지 정하는 시트. 수수료를 포함한 실제 지출을 항목별로 보여준다.
   Future<void> _showBuySheet(
-      BuildContext context, double indexValue, int maxAmount) async {
+    BuildContext context,
+    double indexValue,
+    int pricePerShare,
+    int budget,
+  ) async {
     final controller = TextEditingController();
+    final maxShares = maxBuyableShares(budget, pricePerShare);
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -219,33 +243,44 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: StatefulBuilder(
           builder: (ctx, setSheet) {
-            final amount = int.tryParse(controller.text) ?? 0;
+            final shares = int.tryParse(controller.text.trim()) ?? 0;
+            final amount = shares * pricePerShare;
+            final fee = buyFeeOf(amount);
+            final total = amount + fee;
+            final tooMany = shares > maxShares;
+            final muted = Theme.of(ctx).colorScheme.onSurfaceVariant;
+
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${widget.label}에 투자하기',
+                  Text('${widget.label} 사기',
                       style: const TextStyle(
-                          fontSize: AppText.heading, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+                          fontSize: AppText.heading,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4)),
                   const SizedBox(height: AppGap.xs),
-                  Text('지금 지수 ${indexFormat.format(indexValue)} · '
-                      '최대 ${formatWon(maxAmount)}',
-                      style: TextStyle(
-                          fontSize: AppText.label,
-                          color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                  Text(
+                      '1주 ${formatWon(pricePerShare)} · '
+                      '최대 $maxShares주까지 살 수 있어요',
+                      style: TextStyle(fontSize: AppText.label, color: muted)),
                   const SizedBox(height: AppGap.md),
                   TextField(
                     controller: controller,
                     keyboardType: TextInputType.number,
+                    // 정수 주만 다루므로 숫자 외 입력을 아예 막는다.
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     autofocus: true,
                     style: const TextStyle(
-                        fontSize: AppText.numLg, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+                        fontSize: AppText.numLg,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.8),
                     decoration: const InputDecoration(
                       isDense: true,
                       hintText: '0',
-                      suffixText: '원',
+                      suffixText: '주',
                     ),
                     onChanged: (_) => setSheet(() {}),
                   ),
@@ -257,9 +292,10 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                       for (final f in const [0.25, 0.5, 1.0])
                         ActionChip(
                           visualDensity: VisualDensity.compact,
-                          label: Text(f == 1.0 ? '전부' : '${(f * 100).round()}%'),
+                          label: Text(f == 1.0 ? '최대' : '${(f * 100).round()}%'),
                           onPressed: () {
-                            controller.text = '${(maxAmount * f).floor()}';
+                            final n = (maxShares * f).floor();
+                            controller.text = '${n < 1 ? 1 : n}';
                             setSheet(() {});
                           },
                         ),
@@ -274,33 +310,49 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppGap.md),
+                  if (shares > 0)
+                    _Receipt(
+                      rows: [
+                        ('$shares주 × ${formatWon(pricePerShare)}', formatWon(amount), null),
+                        ('수수료', '+${formatWon(fee)}', investDown),
+                      ],
+                      totalLabel: '낼 돈',
+                      totalValue: formatWon(total),
+                      note: tooMany
+                          ? '지금 넣을 수 있는 돈(${formatWon(budget)})을 넘었어요.'
+                          : null,
+                      noteIsWarning: tooMany,
+                    ),
                   const SizedBox(height: AppGap.lg),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: (amount <= 0 || amount > maxAmount)
+                      onPressed: (shares <= 0 || tooMany)
                           ? null
                           : () async {
                               final err = await ref
                                   .read(databaseProvider)
-                                  .buyInvestment(
+                                  .buySharesInvest(
                                     child: widget.child,
                                     indexKey: widget.indexKey,
                                     label: widget.label,
                                     symbol: widget.symbol,
-                                    amount: amount,
+                                    shares: shares,
                                     indexValue: indexValue,
                                   );
                               if (!ctx.mounted) return;
                               Navigator.pop(ctx);
                               if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
                                   content: Text(err ??
-                                      '${widget.label}에 ${formatWon(amount)} 투자했어요!')));
+                                      '${widget.label} $shares주를 샀어요! '
+                                          '(수수료 ${formatWon(fee)} 포함 ${formatWon(total)})'),
+                                ),
+                              );
                             },
-                      child: Text(amount <= 0
-                          ? '금액을 입력해주세요'
-                          : '${formatWon(amount)} 투자하기'),
+                      child: Text(shares <= 0 ? '몇 주 살지 입력해주세요' : '$shares주 사기'),
                     ),
                   ),
                 ],
@@ -312,97 +364,337 @@ class _InvestDetailScreenState extends ConsumerState<InvestDetailScreen> {
     );
   }
 
-  Future<void> _confirmSell(Investment p, double indexValue) async {
-    final value = positionValue(p, indexValue);
-    final diff = value - p.amount;
-    final ok = await showDialog<bool>(
+  /// 몇 주 팔지 정하는 시트. 수수료를 빼고 실제로 받을 돈을 보여준다.
+  Future<void> _showSellSheet(
+    BuildContext context,
+    Holding holding,
+    double indexValue,
+    int pricePerShare,
+  ) async {
+    final controller = TextEditingController(text: '${holding.shares}');
+
+    await showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('팔까요?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${p.label} · 투자한 돈 ${formatWon(p.amount)}'),
-            const SizedBox(height: AppGap.snug),
-            Text('지금 팔면 ${formatWon(value)}을 받아요.',
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: AppGap.xs),
-            Text(
-                diff >= 0
-                    ? '${formatWon(diff)} 벌었어요 🎉'
-                    : '${formatWon(diff.abs())} 잃었어요 😢',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: diff >= 0 ? investUp : investDown)),
-          ],
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final shares = int.tryParse(controller.text.trim()) ?? 0;
+            final tooMany = shares > holding.shares;
+            final quote = quoteSell(
+              holding: holding,
+              sellShares: shares,
+              pricePerShare: pricePerShare,
+            );
+            final profit = quote.realizedProfit;
+            final muted = Theme.of(ctx).colorScheme.onSurfaceVariant;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${widget.label} 팔기',
+                      style: const TextStyle(
+                          fontSize: AppText.heading,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4)),
+                  const SizedBox(height: AppGap.xs),
+                  Text(
+                      '${holding.shares}주 보유 · 1주 ${formatWon(pricePerShare)}',
+                      style: TextStyle(fontSize: AppText.label, color: muted)),
+                  const SizedBox(height: AppGap.md),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    autofocus: true,
+                    style: const TextStyle(
+                        fontSize: AppText.numLg,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.8),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '0',
+                      suffixText: '주',
+                    ),
+                    onChanged: (_) => setSheet(() {}),
+                  ),
+                  const SizedBox(height: AppGap.cozy),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final f in const [(0.25, '1/4'), (0.5, '절반'), (1.0, '전부')])
+                        ActionChip(
+                          visualDensity: VisualDensity.compact,
+                          label: Text(f.$2),
+                          onPressed: () {
+                            final n = (holding.shares * f.$1).floor();
+                            controller.text = '${n < 1 ? 1 : n}';
+                            setSheet(() {});
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppGap.md),
+                  if (shares > 0 && !tooMany)
+                    _Receipt(
+                      rows: [
+                        ('$shares주 × ${formatWon(pricePerShare)}', formatWon(quote.gross), null),
+                        ('수수료 (0.215%, 최소 30원)', '−${formatWon(quote.fee)}', investDown),
+                      ],
+                      totalLabel: '받을 돈',
+                      totalValue: formatWon(quote.netProceeds),
+                      // 매수 수수료까지 반영한 진짜 손익을 보여준다.
+                      note: '산 값 ${formatWon(quote.soldCost)} → '
+                          '수수료까지 빼면 ${profit >= 0 ? '+' : ''}${formatWon(profit)}',
+                      noteIsWarning: profit < 0,
+                    )
+                  else if (tooMany)
+                    _Receipt(
+                      rows: const [],
+                      totalLabel: '',
+                      totalValue: '',
+                      note: '가진 것보다 많이 팔 수 없어요. (${holding.shares}주 보유)',
+                      noteIsWarning: true,
+                    ),
+                  const SizedBox(height: AppGap.sm),
+                  Container(
+                    padding: const EdgeInsets.all(AppGap.md),
+                    decoration: BoxDecoration(
+                      color: appPalette(ctx).allowance.bg,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Text(
+                      '💡 사고팔 때마다 수수료가 들어요. 자주 사고팔면 수수료만 쌓여서 '
+                      '손해가 될 수 있어요.',
+                      style: TextStyle(
+                          fontSize: AppText.caption,
+                          height: 1.45,
+                          color: appPalette(ctx).allowance.fg),
+                    ),
+                  ),
+                  const SizedBox(height: AppGap.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: (shares <= 0 || tooMany)
+                          ? null
+                          : () async {
+                              final owner =
+                                  ref.read(settingsProvider).deviceOwner ?? '';
+                              final got = await ref
+                                  .read(databaseProvider)
+                                  .sellSharesInvest(
+                                    child: widget.child,
+                                    holding: holding,
+                                    shares: shares,
+                                    indexValue: indexValue,
+                                    editedBy: owner,
+                                  );
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                              if (!context.mounted || got == null) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('$shares주를 팔아 ${formatWon(got)}을 '
+                                      '저축 포인트로 돌려받았어요.'),
+                                ),
+                              );
+                            },
+                      child: Text(shares <= 0 ? '몇 주 팔지 입력해주세요' : '$shares주 팔기'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false), child: const Text('아니요')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true), child: const Text('팔기')),
-        ],
       ),
     );
-    if (ok != true) return;
-    final owner = ref.read(settingsProvider).deviceOwner ?? '';
-    final returned = await ref
-        .read(databaseProvider)
-        .sellInvestment(position: p, indexValue: indexValue, editedBy: owner);
-    if (!mounted || returned == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${formatWon(returned)}을 저축 포인트로 돌려받았어요.')));
   }
 }
 
-class _MyPositionCard extends StatelessWidget {
-  final Investment position;
-  final double? nowValue;
-  final VoidCallback? onSell;
-  const _MyPositionCard(
-      {required this.position, required this.nowValue, required this.onSell});
+/// 사기·팔기 시트의 정산 미리보기. 수수료를 항목으로 드러내는 게 목적이다.
+class _Receipt extends StatelessWidget {
+  final List<(String, String, Color?)> rows;
+  final String totalLabel;
+  final String totalValue;
+  final String? note;
+  final bool noteIsWarning;
+
+  const _Receipt({
+    required this.rows,
+    required this.totalLabel,
+    required this.totalValue,
+    this.note,
+    this.noteIsWarning = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final value = positionValue(position, nowValue);
-    final diff = value - position.amount;
-    final pct = position.amount == 0 ? 0.0 : diff / position.amount * 100;
-    final color = diff > 0
-        ? investUp
-        : (diff < 0 ? investDown : theme.colorScheme.onSurfaceVariant);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final r in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${formatWon(position.amount)} → ${formatWon(value)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: AppText.bodyLg)),
-                  const SizedBox(height: AppGap.xxs),
-                  Text(
-                      '${formatDateShort(position.buyAt)} 투자 · '
-                      '지수 ${indexFormat.format(position.buyValue)}',
+                  Text(r.$1,
+                      style: TextStyle(fontSize: AppText.label, color: muted)),
+                  Text(r.$2,
                       style: TextStyle(
-                          fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: AppGap.xxs),
-                  Text(
-                      '${diff >= 0 ? '+' : ''}${formatWon(diff)} '
-                      '(${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%)',
-                      style: TextStyle(
-                          fontSize: AppText.label, fontWeight: FontWeight.w800, color: color)),
+                          fontSize: AppText.label,
+                          fontWeight: FontWeight.w700,
+                          color: r.$3)),
                 ],
               ),
             ),
-            const SizedBox(width: AppGap.sm),
-            FilledButton(onPressed: onSell, child: const Text('팔기')),
+          if (rows.isNotEmpty) const Divider(height: AppGap.lg),
+          if (totalLabel.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(totalLabel,
+                    style: const TextStyle(
+                        fontSize: AppText.bodyLg, fontWeight: FontWeight.w800)),
+                Text(totalValue,
+                    style: const TextStyle(
+                        fontSize: AppText.titleLg, fontWeight: FontWeight.w900)),
+              ],
+            ),
+          if (note != null) ...[
+            const SizedBox(height: AppGap.xs),
+            Text(note!,
+                style: TextStyle(
+                    fontSize: AppText.caption,
+                    height: 1.4,
+                    fontWeight: noteIsWarning ? FontWeight.w700 : FontWeight.w400,
+                    color: noteIsWarning ? investDown : muted)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 이 지수의 보유 상태. 여러 번 나눠 샀어도 평단가 하나로 합쳐 보여준다.
+class _MyHoldingCard extends StatelessWidget {
+  final Holding holding;
+  final int nowPrice;
+  final VoidCallback? onSell;
+  const _MyHoldingCard(
+      {required this.holding, required this.nowPrice, required this.onSell});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    // 지수를 못 받아오면 산 값 그대로 둔다(손익 0). 억지 숫자를 보여주지 않는다.
+    final value = nowPrice > 0 ? holding.marketValue(nowPrice) : holding.costBasis;
+    final diff = value - holding.costBasis;
+    final pct = holding.costBasis == 0 ? 0.0 : diff / holding.costBasis * 100;
+    final color = diff > 0 ? investUp : (diff < 0 ? investDown : muted);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${holding.shares}주',
+                          style: const TextStyle(
+                              fontSize: AppText.numMd,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.6)),
+                      const SizedBox(height: AppGap.xxs),
+                      Text('평균 ${formatWon(holding.avgPrice)}에 샀어요',
+                          style: TextStyle(fontSize: AppText.caption, color: muted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppGap.sm),
+                FilledButton(onPressed: onSell, child: const Text('팔기')),
+              ],
+            ),
+            const Divider(height: AppGap.lg),
+            _Line(label: '산 값 (수수료 포함)', value: formatWon(holding.costBasis)),
+            _Line(
+                label: nowPrice > 0 ? '지금 값 (1주 ${formatWon(nowPrice)})' : '지금 값',
+                value: nowPrice > 0 ? formatWon(value) : '—'),
+            const SizedBox(height: AppGap.xs),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('평가손익',
+                    style: const TextStyle(
+                        fontSize: AppText.body, fontWeight: FontWeight.w700)),
+                Text(
+                    nowPrice > 0
+                        ? '${diff >= 0 ? '+' : ''}${formatWon(diff)} '
+                            '(${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%)'
+                        : '—',
+                    style: TextStyle(
+                        fontSize: AppText.titleLg,
+                        fontWeight: FontWeight.w900,
+                        color: color)),
+              ],
+            ),
+            if (holding.realizedProfit != 0) ...[
+              const SizedBox(height: AppGap.xs),
+              Text(
+                  '지금까지 팔아서 낸 손익 '
+                  '${holding.realizedProfit >= 0 ? '+' : ''}'
+                  '${formatWon(holding.realizedProfit)}',
+                  style: TextStyle(fontSize: AppText.caption, color: muted)),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Line({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: AppText.label, color: muted)),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: AppText.label, fontWeight: FontWeight.w700)),
+        ],
       ),
     );
   }

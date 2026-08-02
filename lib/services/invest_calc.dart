@@ -87,6 +87,10 @@ typedef InvestTradeInput = ({
   DateTime at,
 });
 
+/// 거래 한 건이 매수인지 판별하는 문자열. DB의 kind 컬럼 값.
+const String kTradeBuy = 'buy';
+const String kTradeSell = 'sell';
+
 /// 지수 하나의 현재 보유 상태.
 class Holding {
   final String indexKey;
@@ -133,7 +137,12 @@ class Holding {
 /// 매도할 때는 파는 주수만큼 매수원가를 비례해서 덜어낸다. 전량 매도면 원가를
 /// 정확히 0으로 맞춰 반올림 찌꺼기가 남지 않게 한다.
 List<Holding> computeHoldings(List<InvestTradeInput> trades) {
-  final sorted = [...trades]..sort((a, b) => a.at.compareTo(b.at));
+  // 시각이 같으면 매수를 먼저 처리한다. 순서가 뒤집히면 "보유보다 많이 판 기록"으로
+  // 보여 매도가 통째로 무시되고 주식이 공짜로 남는다.
+  final sorted = [...trades]..sort((a, b) {
+      final c = a.at.compareTo(b.at);
+      return c != 0 ? c : (a.isBuy == b.isBuy ? 0 : (a.isBuy ? -1 : 1));
+    });
 
   final shares = <String, int>{};
   final cost = <String, int>{};

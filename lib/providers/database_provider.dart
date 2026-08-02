@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../services/interest_calc.dart';
+import '../services/invest_calc.dart';
 import 'rates_provider.dart';
 import 'settings_provider.dart';
 
@@ -176,8 +177,23 @@ final monthlyBreakdownProvider =
   return ref.watch(databaseProvider).monthlyBreakdown(childId);
 });
 
-/// 모의 투자 기록(보유 + 청산).
+/// 모의 투자 기록(보유 + 청산). v17부터는 [investTradesProvider]가 실제 데이터이고
+/// 이건 예전 덩어리 포지션이라 새 화면에서는 쓰지 않는다.
 final investmentsProvider =
     StreamProvider.family<List<Investment>, String>((ref, childId) {
   return ref.watch(databaseProvider).watchInvestments(childId);
+});
+
+/// 모의 투자 매매 기록(원장). 최근 순.
+final investTradesProvider =
+    StreamProvider.family<List<InvestTrade>, String>((ref, childId) {
+  return ref.watch(databaseProvider).watchInvestTrades(childId);
+});
+
+/// 거래 원장을 접어 만든 지수별 보유 상태(평단가 포함).
+/// 거래가 하나라도 바뀌면 자동으로 다시 계산된다.
+final holdingsProvider =
+    Provider.family<List<Holding>, String>((ref, childId) {
+  final trades = ref.watch(investTradesProvider(childId)).valueOrNull ?? const [];
+  return computeHoldings(AppDatabase.tradesToInputs(trades));
 });

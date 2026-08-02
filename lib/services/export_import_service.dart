@@ -46,6 +46,7 @@ class ExportImportService {
     final promiseCommentList = await db.allPromiseCommentsRaw();
     final quizList = await db.allQuizAttemptsRaw();
     final investList = await db.allInvestmentsRaw();
+    final tradeList = await db.allInvestTradesRaw();
 
     return {
       'version': dataFormatVersion,
@@ -63,6 +64,7 @@ class ExportImportService {
       'promiseComments': promiseCommentList.map(_promiseCommentToJson).toList(),
       'quizAttempts': quizList.map(_quizAttemptToJson).toList(),
       'investments': investList.map(_investmentToJson).toList(),
+      'investTrades': tradeList.map(_investTradeToJson).toList(),
       if (settings != null) 'settings': settings,
     };
   }
@@ -188,6 +190,8 @@ class ExportImportService {
         (QuizAttempt q) => q.updatedAt);
     await diff('investments', db.allInvestmentsRaw, (Investment i) => i.id,
         (Investment i) => i.updatedAt);
+    await diff('investTrades', db.allInvestTradesRaw, (InvestTrade t) => t.id,
+        (InvestTrade t) => t.updatedAt);
 
     return ImportPreview(
       newCount: newCount,
@@ -248,6 +252,8 @@ class ExportImportService {
         (q) => q.updatedAt, (row) => db.upsertQuizAttempt(_quizAttemptFromJson(row)));
     await merge('investments', db.allInvestmentsRaw, (Investment i) => i.id,
         (i) => i.updatedAt, (row) => db.upsertInvestment(_investmentFromJson(row)));
+    await merge('investTrades', db.allInvestTradesRaw, (InvestTrade t) => t.id,
+        (t) => t.updatedAt, (row) => db.upsertInvestTrade(_investTradeFromJson(row)));
   }
 
   // ---------------- 안전한 값 읽기 (하위/상위 버전 호환) ----------------
@@ -629,6 +635,42 @@ class ExportImportService {
       soldAt: Value(_dt(j['soldAt'])),
       sellValue: Value(j['sellValue'] is num ? (j['sellValue'] as num).toDouble() : null),
       returned: Value(j['returned'] is int ? j['returned'] as int : null),
+      updatedAt: Value(_dtOr(j['updatedAt'], now)),
+      deletedAt: Value(_dt(j['deletedAt'])),
+    );
+  }
+
+  Map<String, dynamic> _investTradeToJson(InvestTrade t) => {
+        'id': t.id,
+        'childId': t.childId,
+        'indexKey': t.indexKey,
+        'label': t.label,
+        'symbol': t.symbol,
+        'kind': t.kind,
+        'shares': t.shares,
+        'pricePerShare': t.pricePerShare,
+        'fee': t.fee,
+        'indexValue': t.indexValue,
+        'tradedAt': t.tradedAt.toIso8601String(),
+        'updatedAt': t.updatedAt.toIso8601String(),
+        'deletedAt': t.deletedAt?.toIso8601String(),
+      };
+
+  InvestTradesCompanion _investTradeFromJson(Map<String, dynamic> j) {
+    final now = DateTime.now();
+    return InvestTradesCompanion.insert(
+      id: _str(j['id']),
+      childId: _str(j['childId']),
+      indexKey: _str(j['indexKey']),
+      label: _str(j['label']),
+      symbol: _str(j['symbol']),
+      // 알 수 없는 값이 오면 매수로 두는 게 안전하다(보유가 사라지는 것보다 낫다).
+      kind: _str(j['kind'], 'buy') == 'sell' ? 'sell' : 'buy',
+      shares: _int(j['shares']),
+      pricePerShare: _int(j['pricePerShare']),
+      fee: Value(_int(j['fee'])),
+      indexValue: Value(_double(j['indexValue'], 0)),
+      tradedAt: Value(_dtOr(j['tradedAt'], now)),
       updatedAt: Value(_dtOr(j['updatedAt'], now)),
       deletedAt: Value(_dt(j['deletedAt'])),
     );

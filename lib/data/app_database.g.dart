@@ -8521,6 +8521,750 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
   }
 }
 
+class $InvestTradesTable extends InvestTrades
+    with TableInfo<$InvestTradesTable, InvestTrade> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InvestTradesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<String> childId = GeneratedColumn<String>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _indexKeyMeta = const VerificationMeta(
+    'indexKey',
+  );
+  @override
+  late final GeneratedColumn<String> indexKey = GeneratedColumn<String>(
+    'index_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<int> shares = GeneratedColumn<int>(
+    'shares',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pricePerShareMeta = const VerificationMeta(
+    'pricePerShare',
+  );
+  @override
+  late final GeneratedColumn<int> pricePerShare = GeneratedColumn<int>(
+    'price_per_share',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feeMeta = const VerificationMeta('fee');
+  @override
+  late final GeneratedColumn<int> fee = GeneratedColumn<int>(
+    'fee',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _indexValueMeta = const VerificationMeta(
+    'indexValue',
+  );
+  @override
+  late final GeneratedColumn<double> indexValue = GeneratedColumn<double>(
+    'index_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _tradedAtMeta = const VerificationMeta(
+    'tradedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> tradedAt = GeneratedColumn<DateTime>(
+    'traded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    childId,
+    indexKey,
+    label,
+    symbol,
+    kind,
+    shares,
+    pricePerShare,
+    fee,
+    indexValue,
+    tradedAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'invest_trades';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InvestTrade> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('index_key')) {
+      context.handle(
+        _indexKeyMeta,
+        indexKey.isAcceptableOrUnknown(data['index_key']!, _indexKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_indexKeyMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symbolMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('shares')) {
+      context.handle(
+        _sharesMeta,
+        shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sharesMeta);
+    }
+    if (data.containsKey('price_per_share')) {
+      context.handle(
+        _pricePerShareMeta,
+        pricePerShare.isAcceptableOrUnknown(
+          data['price_per_share']!,
+          _pricePerShareMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pricePerShareMeta);
+    }
+    if (data.containsKey('fee')) {
+      context.handle(
+        _feeMeta,
+        fee.isAcceptableOrUnknown(data['fee']!, _feeMeta),
+      );
+    }
+    if (data.containsKey('index_value')) {
+      context.handle(
+        _indexValueMeta,
+        indexValue.isAcceptableOrUnknown(data['index_value']!, _indexValueMeta),
+      );
+    }
+    if (data.containsKey('traded_at')) {
+      context.handle(
+        _tradedAtMeta,
+        tradedAt.isAcceptableOrUnknown(data['traded_at']!, _tradedAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InvestTrade map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InvestTrade(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_id'],
+      )!,
+      indexKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}index_key'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      shares: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}shares'],
+      )!,
+      pricePerShare: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}price_per_share'],
+      )!,
+      fee: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fee'],
+      )!,
+      indexValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}index_value'],
+      )!,
+      tradedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}traded_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $InvestTradesTable createAlias(String alias) {
+    return $InvestTradesTable(attachedDatabase, alias);
+  }
+}
+
+class InvestTrade extends DataClass implements Insertable<InvestTrade> {
+  final String id;
+  final String childId;
+  final String indexKey;
+  final String label;
+  final String symbol;
+  final String kind;
+  final int shares;
+  final int pricePerShare;
+  final int fee;
+
+  /// 체결 당시 지수값. 계산엔 안 쓰고 기록·표시용.
+  final double indexValue;
+  final DateTime tradedAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const InvestTrade({
+    required this.id,
+    required this.childId,
+    required this.indexKey,
+    required this.label,
+    required this.symbol,
+    required this.kind,
+    required this.shares,
+    required this.pricePerShare,
+    required this.fee,
+    required this.indexValue,
+    required this.tradedAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['child_id'] = Variable<String>(childId);
+    map['index_key'] = Variable<String>(indexKey);
+    map['label'] = Variable<String>(label);
+    map['symbol'] = Variable<String>(symbol);
+    map['kind'] = Variable<String>(kind);
+    map['shares'] = Variable<int>(shares);
+    map['price_per_share'] = Variable<int>(pricePerShare);
+    map['fee'] = Variable<int>(fee);
+    map['index_value'] = Variable<double>(indexValue);
+    map['traded_at'] = Variable<DateTime>(tradedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  InvestTradesCompanion toCompanion(bool nullToAbsent) {
+    return InvestTradesCompanion(
+      id: Value(id),
+      childId: Value(childId),
+      indexKey: Value(indexKey),
+      label: Value(label),
+      symbol: Value(symbol),
+      kind: Value(kind),
+      shares: Value(shares),
+      pricePerShare: Value(pricePerShare),
+      fee: Value(fee),
+      indexValue: Value(indexValue),
+      tradedAt: Value(tradedAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory InvestTrade.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InvestTrade(
+      id: serializer.fromJson<String>(json['id']),
+      childId: serializer.fromJson<String>(json['childId']),
+      indexKey: serializer.fromJson<String>(json['indexKey']),
+      label: serializer.fromJson<String>(json['label']),
+      symbol: serializer.fromJson<String>(json['symbol']),
+      kind: serializer.fromJson<String>(json['kind']),
+      shares: serializer.fromJson<int>(json['shares']),
+      pricePerShare: serializer.fromJson<int>(json['pricePerShare']),
+      fee: serializer.fromJson<int>(json['fee']),
+      indexValue: serializer.fromJson<double>(json['indexValue']),
+      tradedAt: serializer.fromJson<DateTime>(json['tradedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'childId': serializer.toJson<String>(childId),
+      'indexKey': serializer.toJson<String>(indexKey),
+      'label': serializer.toJson<String>(label),
+      'symbol': serializer.toJson<String>(symbol),
+      'kind': serializer.toJson<String>(kind),
+      'shares': serializer.toJson<int>(shares),
+      'pricePerShare': serializer.toJson<int>(pricePerShare),
+      'fee': serializer.toJson<int>(fee),
+      'indexValue': serializer.toJson<double>(indexValue),
+      'tradedAt': serializer.toJson<DateTime>(tradedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  InvestTrade copyWith({
+    String? id,
+    String? childId,
+    String? indexKey,
+    String? label,
+    String? symbol,
+    String? kind,
+    int? shares,
+    int? pricePerShare,
+    int? fee,
+    double? indexValue,
+    DateTime? tradedAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => InvestTrade(
+    id: id ?? this.id,
+    childId: childId ?? this.childId,
+    indexKey: indexKey ?? this.indexKey,
+    label: label ?? this.label,
+    symbol: symbol ?? this.symbol,
+    kind: kind ?? this.kind,
+    shares: shares ?? this.shares,
+    pricePerShare: pricePerShare ?? this.pricePerShare,
+    fee: fee ?? this.fee,
+    indexValue: indexValue ?? this.indexValue,
+    tradedAt: tradedAt ?? this.tradedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  InvestTrade copyWithCompanion(InvestTradesCompanion data) {
+    return InvestTrade(
+      id: data.id.present ? data.id.value : this.id,
+      childId: data.childId.present ? data.childId.value : this.childId,
+      indexKey: data.indexKey.present ? data.indexKey.value : this.indexKey,
+      label: data.label.present ? data.label.value : this.label,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      shares: data.shares.present ? data.shares.value : this.shares,
+      pricePerShare: data.pricePerShare.present
+          ? data.pricePerShare.value
+          : this.pricePerShare,
+      fee: data.fee.present ? data.fee.value : this.fee,
+      indexValue: data.indexValue.present
+          ? data.indexValue.value
+          : this.indexValue,
+      tradedAt: data.tradedAt.present ? data.tradedAt.value : this.tradedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvestTrade(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('indexKey: $indexKey, ')
+          ..write('label: $label, ')
+          ..write('symbol: $symbol, ')
+          ..write('kind: $kind, ')
+          ..write('shares: $shares, ')
+          ..write('pricePerShare: $pricePerShare, ')
+          ..write('fee: $fee, ')
+          ..write('indexValue: $indexValue, ')
+          ..write('tradedAt: $tradedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    childId,
+    indexKey,
+    label,
+    symbol,
+    kind,
+    shares,
+    pricePerShare,
+    fee,
+    indexValue,
+    tradedAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InvestTrade &&
+          other.id == this.id &&
+          other.childId == this.childId &&
+          other.indexKey == this.indexKey &&
+          other.label == this.label &&
+          other.symbol == this.symbol &&
+          other.kind == this.kind &&
+          other.shares == this.shares &&
+          other.pricePerShare == this.pricePerShare &&
+          other.fee == this.fee &&
+          other.indexValue == this.indexValue &&
+          other.tradedAt == this.tradedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class InvestTradesCompanion extends UpdateCompanion<InvestTrade> {
+  final Value<String> id;
+  final Value<String> childId;
+  final Value<String> indexKey;
+  final Value<String> label;
+  final Value<String> symbol;
+  final Value<String> kind;
+  final Value<int> shares;
+  final Value<int> pricePerShare;
+  final Value<int> fee;
+  final Value<double> indexValue;
+  final Value<DateTime> tradedAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const InvestTradesCompanion({
+    this.id = const Value.absent(),
+    this.childId = const Value.absent(),
+    this.indexKey = const Value.absent(),
+    this.label = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.shares = const Value.absent(),
+    this.pricePerShare = const Value.absent(),
+    this.fee = const Value.absent(),
+    this.indexValue = const Value.absent(),
+    this.tradedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InvestTradesCompanion.insert({
+    required String id,
+    required String childId,
+    required String indexKey,
+    required String label,
+    required String symbol,
+    required String kind,
+    required int shares,
+    required int pricePerShare,
+    this.fee = const Value.absent(),
+    this.indexValue = const Value.absent(),
+    this.tradedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       childId = Value(childId),
+       indexKey = Value(indexKey),
+       label = Value(label),
+       symbol = Value(symbol),
+       kind = Value(kind),
+       shares = Value(shares),
+       pricePerShare = Value(pricePerShare);
+  static Insertable<InvestTrade> custom({
+    Expression<String>? id,
+    Expression<String>? childId,
+    Expression<String>? indexKey,
+    Expression<String>? label,
+    Expression<String>? symbol,
+    Expression<String>? kind,
+    Expression<int>? shares,
+    Expression<int>? pricePerShare,
+    Expression<int>? fee,
+    Expression<double>? indexValue,
+    Expression<DateTime>? tradedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (childId != null) 'child_id': childId,
+      if (indexKey != null) 'index_key': indexKey,
+      if (label != null) 'label': label,
+      if (symbol != null) 'symbol': symbol,
+      if (kind != null) 'kind': kind,
+      if (shares != null) 'shares': shares,
+      if (pricePerShare != null) 'price_per_share': pricePerShare,
+      if (fee != null) 'fee': fee,
+      if (indexValue != null) 'index_value': indexValue,
+      if (tradedAt != null) 'traded_at': tradedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InvestTradesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? childId,
+    Value<String>? indexKey,
+    Value<String>? label,
+    Value<String>? symbol,
+    Value<String>? kind,
+    Value<int>? shares,
+    Value<int>? pricePerShare,
+    Value<int>? fee,
+    Value<double>? indexValue,
+    Value<DateTime>? tradedAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return InvestTradesCompanion(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      indexKey: indexKey ?? this.indexKey,
+      label: label ?? this.label,
+      symbol: symbol ?? this.symbol,
+      kind: kind ?? this.kind,
+      shares: shares ?? this.shares,
+      pricePerShare: pricePerShare ?? this.pricePerShare,
+      fee: fee ?? this.fee,
+      indexValue: indexValue ?? this.indexValue,
+      tradedAt: tradedAt ?? this.tradedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (childId.present) {
+      map['child_id'] = Variable<String>(childId.value);
+    }
+    if (indexKey.present) {
+      map['index_key'] = Variable<String>(indexKey.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (shares.present) {
+      map['shares'] = Variable<int>(shares.value);
+    }
+    if (pricePerShare.present) {
+      map['price_per_share'] = Variable<int>(pricePerShare.value);
+    }
+    if (fee.present) {
+      map['fee'] = Variable<int>(fee.value);
+    }
+    if (indexValue.present) {
+      map['index_value'] = Variable<double>(indexValue.value);
+    }
+    if (tradedAt.present) {
+      map['traded_at'] = Variable<DateTime>(tradedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvestTradesCompanion(')
+          ..write('id: $id, ')
+          ..write('childId: $childId, ')
+          ..write('indexKey: $indexKey, ')
+          ..write('label: $label, ')
+          ..write('symbol: $symbol, ')
+          ..write('kind: $kind, ')
+          ..write('shares: $shares, ')
+          ..write('pricePerShare: $pricePerShare, ')
+          ..write('fee: $fee, ')
+          ..write('indexValue: $indexValue, ')
+          ..write('tradedAt: $tradedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8541,6 +9285,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $QuizAttemptsTable quizAttempts = $QuizAttemptsTable(this);
   late final $InvestmentsTable investments = $InvestmentsTable(this);
+  late final $InvestTradesTable investTrades = $InvestTradesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8559,6 +9304,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     promiseComments,
     quizAttempts,
     investments,
+    investTrades,
   ];
 }
 
@@ -12684,6 +13430,362 @@ typedef $$InvestmentsTableProcessedTableManager =
       Investment,
       PrefetchHooks Function()
     >;
+typedef $$InvestTradesTableCreateCompanionBuilder =
+    InvestTradesCompanion Function({
+      required String id,
+      required String childId,
+      required String indexKey,
+      required String label,
+      required String symbol,
+      required String kind,
+      required int shares,
+      required int pricePerShare,
+      Value<int> fee,
+      Value<double> indexValue,
+      Value<DateTime> tradedAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$InvestTradesTableUpdateCompanionBuilder =
+    InvestTradesCompanion Function({
+      Value<String> id,
+      Value<String> childId,
+      Value<String> indexKey,
+      Value<String> label,
+      Value<String> symbol,
+      Value<String> kind,
+      Value<int> shares,
+      Value<int> pricePerShare,
+      Value<int> fee,
+      Value<double> indexValue,
+      Value<DateTime> tradedAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$InvestTradesTableFilterComposer
+    extends Composer<_$AppDatabase, $InvestTradesTable> {
+  $$InvestTradesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get indexKey => $composableBuilder(
+    column: $table.indexKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get shares => $composableBuilder(
+    column: $table.shares,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pricePerShare => $composableBuilder(
+    column: $table.pricePerShare,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fee => $composableBuilder(
+    column: $table.fee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get indexValue => $composableBuilder(
+    column: $table.indexValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get tradedAt => $composableBuilder(
+    column: $table.tradedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InvestTradesTableOrderingComposer
+    extends Composer<_$AppDatabase, $InvestTradesTable> {
+  $$InvestTradesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childId => $composableBuilder(
+    column: $table.childId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get indexKey => $composableBuilder(
+    column: $table.indexKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get shares => $composableBuilder(
+    column: $table.shares,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pricePerShare => $composableBuilder(
+    column: $table.pricePerShare,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fee => $composableBuilder(
+    column: $table.fee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get indexValue => $composableBuilder(
+    column: $table.indexValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get tradedAt => $composableBuilder(
+    column: $table.tradedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InvestTradesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InvestTradesTable> {
+  $$InvestTradesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get childId =>
+      $composableBuilder(column: $table.childId, builder: (column) => column);
+
+  GeneratedColumn<String> get indexKey =>
+      $composableBuilder(column: $table.indexKey, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
+
+  GeneratedColumn<int> get pricePerShare => $composableBuilder(
+    column: $table.pricePerShare,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fee =>
+      $composableBuilder(column: $table.fee, builder: (column) => column);
+
+  GeneratedColumn<double> get indexValue => $composableBuilder(
+    column: $table.indexValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get tradedAt =>
+      $composableBuilder(column: $table.tradedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$InvestTradesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InvestTradesTable,
+          InvestTrade,
+          $$InvestTradesTableFilterComposer,
+          $$InvestTradesTableOrderingComposer,
+          $$InvestTradesTableAnnotationComposer,
+          $$InvestTradesTableCreateCompanionBuilder,
+          $$InvestTradesTableUpdateCompanionBuilder,
+          (
+            InvestTrade,
+            BaseReferences<_$AppDatabase, $InvestTradesTable, InvestTrade>,
+          ),
+          InvestTrade,
+          PrefetchHooks Function()
+        > {
+  $$InvestTradesTableTableManager(_$AppDatabase db, $InvestTradesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InvestTradesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InvestTradesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InvestTradesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> childId = const Value.absent(),
+                Value<String> indexKey = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> symbol = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> shares = const Value.absent(),
+                Value<int> pricePerShare = const Value.absent(),
+                Value<int> fee = const Value.absent(),
+                Value<double> indexValue = const Value.absent(),
+                Value<DateTime> tradedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvestTradesCompanion(
+                id: id,
+                childId: childId,
+                indexKey: indexKey,
+                label: label,
+                symbol: symbol,
+                kind: kind,
+                shares: shares,
+                pricePerShare: pricePerShare,
+                fee: fee,
+                indexValue: indexValue,
+                tradedAt: tradedAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String childId,
+                required String indexKey,
+                required String label,
+                required String symbol,
+                required String kind,
+                required int shares,
+                required int pricePerShare,
+                Value<int> fee = const Value.absent(),
+                Value<double> indexValue = const Value.absent(),
+                Value<DateTime> tradedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InvestTradesCompanion.insert(
+                id: id,
+                childId: childId,
+                indexKey: indexKey,
+                label: label,
+                symbol: symbol,
+                kind: kind,
+                shares: shares,
+                pricePerShare: pricePerShare,
+                fee: fee,
+                indexValue: indexValue,
+                tradedAt: tradedAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InvestTradesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InvestTradesTable,
+      InvestTrade,
+      $$InvestTradesTableFilterComposer,
+      $$InvestTradesTableOrderingComposer,
+      $$InvestTradesTableAnnotationComposer,
+      $$InvestTradesTableCreateCompanionBuilder,
+      $$InvestTradesTableUpdateCompanionBuilder,
+      (
+        InvestTrade,
+        BaseReferences<_$AppDatabase, $InvestTradesTable, InvestTrade>,
+      ),
+      InvestTrade,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12714,4 +13816,6 @@ class $AppDatabaseManager {
       $$QuizAttemptsTableTableManager(_db, _db.quizAttempts);
   $$InvestmentsTableTableManager get investments =>
       $$InvestmentsTableTableManager(_db, _db.investments);
+  $$InvestTradesTableTableManager get investTrades =>
+      $$InvestTradesTableTableManager(_db, _db.investTrades);
 }

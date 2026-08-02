@@ -5,8 +5,32 @@
 대상 기기: 갤럭시 Z 폴드7 / 플립5 (안드로이드 전용).
 
 ## 📍 현재 진행 상황 / 다음 할 일 (이어받기용)
-현재 버전: **v1.26.0+45** (앱 표시명 "Moneycraft"). 배포된 마지막 버전은 v1.25.3.
+현재 버전: **v1.27.0+46** (앱 표시명 "Moneycraft"). 배포된 마지막 버전은 v1.25.3.
 
+- **v1.27.0** — 모의 투자를 **금액 덩이 → 주(株) 단위 거래**로 전면 교체 (DB v17).
+  - 예전엔 "1만원 투자" 한 건이 덩이 하나로 남아서, 세 번 사면 세 덩이가 따로 놀고
+    덩이째로만 팔 수 있었다. 실제 주식과 달라서 아이가 배우는 개념이 어긋났다.
+  - 이제 **1주 가격**이 있고, 같은 지수는 **평단가 하나로 합쳐지며**, **부분 매도**가 된다.
+  - 1주 가격 = 지수 × 지수별 배수(`kSharePriceMultiplier`). 배수는 1주가 300~800원대에
+    들어오도록 정했다 — 안 그러면 코스닥 720원 vs 인도 78,095원으로 100배가 벌어져
+    아이 한도(수천 원)로는 비싼 지수를 한 주도 못 산다. 실제 ETF와 같은 개념.
+  - **수수료를 실제 증권사와 같게** 넣었다: 매수 0.015%, 매도 0.215%(위탁 0.015% +
+    증권거래세 0.20%), **최소 수수료 30원**. 아이 거래 규모(수천 원)에선 비율이 7원밖에
+    안 돼 "사고팔면 돈이 든다"가 체감되지 않아서 최소액을 뒀다(이것도 실제 제도).
+    사기·팔기 화면에 수수료를 **항목으로 따로** 보여주고, 팔기 화면엔 자주 사고팔면
+    수수료만 쌓인다는 경고를 넣었다.
+  - 평단가에 **매수 수수료를 포함**시켰다 → 평가손익이 곧 "수수료까지 뺀 진짜 손익".
+  - ⚠️ 전량 매도 시 원가를 통째로 털어 **정확히 0**으로 맞춘다(비례 배분 반올림 찌꺼기가
+    원금에 남으면 잔액이 조금씩 어긋난다). `computeHoldings` / `quoteSell` 참고.
+  - ⚠️ 거래 시각이 같으면 **매수를 먼저** 처리한다. 뒤집히면 매도가 "보유보다 많이 판
+    기록"으로 무시돼 주식이 공짜로 남는다.
+  - 기존 Investments 데이터는 v17 마이그레이션에서 매수/매도 거래로 변환한다.
+    id가 `mig_buy_{원본id}` / `mig_sell_{원본id}`로 **고정**이라 두 기기가 각자
+    마이그레이션해도 거래가 중복되지 않는다. 주수는 반올림하고 1주 가격을 역산해
+    **원금 총액이 원래 금액과 정확히 같도록** 맞춘다. 소급 수수료는 물리지 않는다(fee=0).
+  - 계산은 전부 `lib/services/invest_calc.dart`(순수 함수)에 모았다.
+    테스트 `test/invest_calc_test.dart`(계산) + `test/invest_test.dart`(DB·잔액 연동).
+  - ⚠️ **실기기 확인 아직 못 함** (아내 PC 디버그 키 문제, 아래 v1.26.0 항목과 같은 이유).
 - **v1.26.0** — 경제상식 주제 **67 → 101개** + **환율 계산기** 추가(경제왕 탭).
   - 빠져 있던 기본 개념을 채웠다: 희소성(기회비용의 전제인데 없었음), 경제 주체,
     시장, 분업, 자산과 부채, 소득의 종류. 생활 장면(통장·이체·ATM·환전·할부,
@@ -141,16 +165,19 @@ Set-Location "C:\dev\son_allowance_app"
 - 데이터 서비스 (`lib/services/`): `export_import`(스마트 병합), `sync`(Firebase), `interest_calc`,
   `rates`(ECOS), `cofix`(은행연합회), `stock_search`(야후), `notification`, `backup`, `update`
 
-## DB 스키마 (현재 v16)
+## DB 스키마 (현재 v17)
 테이블: Children, AllowanceSchedules, TransactionEntries, StockTransfers, ChangeLogs, Goals,
-AllowanceRates, Requests, Tiers, **Promises, PromiseComments, QuizAttempts, Investments**.
+AllowanceRates, Requests, Tiers, **Promises, PromiseComments, QuizAttempts, Investments,
+InvestTrades**.
 
 - **스키마 변경 시**: 테이블/컬럼 수정 → `schemaVersion` 증가 → `migration`의 onUpgrade에
   addColumn/createTable 추가 → **build_runner 재실행** → export_import 직렬화에도 반영(동기화 누락 방지).
 - ⚠️ 자녀 부분 컬럼 갱신은 반드시 `updateChildPartial(id, changes)` 사용.
   `upsertChild`는 INSERT 경로에서 name(NOT NULL)이 없으면 실패 → 규칙 편집이 조용히 안 되던 버그 원인.
 - v11 Promises(부모-자녀 약속), v13 PromiseComments(약속 댓글/ON·OFF 기록),
-  v14 QuizAttempts(퀴즈 풀이), v15 Children.quizReward + QuizAttempts.pickedIndex, v16 Investments(모의투자).
+  v14 QuizAttempts(퀴즈 풀이), v15 Children.quizReward + QuizAttempts.pickedIndex, v16 Investments(모의투자),
+  v17 InvestTrades(주 단위 매매 원장) + Investments → InvestTrades 자동 변환.
+  ⚠️ Investments 테이블은 **읽기 전용 유물**로 남겨뒀다(옛 백업 복원용). 새 코드는 InvestTrades만 쓴다.
 - 시스템 예약 카테고리: `정기용돈`, `절약보너스`, `이자`, `퀴즈보상`, `이월잔액`
   (`AppDatabase.isSystemCategory`로 판별, 받은사람별 통계에서 제외).
 - 시작 잔액(이월잔액): computeSummary에서 balance엔 포함하되 수입 통계에선 제외(initialBalance 키로 분리).
@@ -191,10 +218,15 @@ AllowanceRates, Requests, Tiers, **Promises, PromiseComments, QuizAttempts, Inve
   - COFIX는 ECOS에 없어 **은행연합회 페이지 파싱**(키 불필요). 헤더/meta 인코딩이 어긋나 있어
     latin1 디코딩 + ASCII 전용 정규식으로 파싱. 대출 기능 만들 때 재사용 예정.
 
-### 모의 투자 (주식 탭)
+### 모의 투자 (주식 탭) — v1.27.0에서 주 단위로 전면 교체
 - 저축 포인트로 세계 지수 7개(코스피/코스닥/나스닥/인도/중국/베트남/유럽)에 투자 연습.
-- Investments 테이블에 매수 시점 지수값 저장 → 현재 지수와 비교해 손익/수익률 계산. 강제청산 없음.
-- 테스트 `test/invest_test.dart`.
+- **주 단위 거래**: 1주 가격 = 지수 × 배수. 정수 주만 거래. 같은 지수는 이동평균법으로
+  평단가 하나에 합쳐지고, 부분 매도가 된다. InvestTrades에 매수/매도 한 건씩 쌓고
+  `computeHoldings`가 접어서 보유 상태를 만든다(보유 테이블 없음 — 원장이 진실).
+- **수수료**: 매수 0.015% / 매도 0.215%, 최소 30원. 평단가에 매수 수수료 포함.
+- 한도(총 저축의 N%)는 **추가 매수만** 막는다. 지수가 올라 평가액이 한도를 넘어도 강제청산 없음.
+- 매도 확정 손익만 `투자수익`/`투자손실` 거래로 남는다(평가손익은 기록하지 않음).
+- 계산 `lib/services/invest_calc.dart` · 테스트 `test/invest_calc_test.dart`, `test/invest_test.dart`.
 
 ### 티어(등급)
 - Tiers 테이블: kind='savings'(누적 저축액, 마인크래프트 테마 27단계) / 'weekly'(주간 저축률).

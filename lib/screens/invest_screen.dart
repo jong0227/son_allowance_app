@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/market_provider.dart';
+import '../services/invest_calc.dart';
 import '../services/stock_search_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -16,10 +17,11 @@ final indexFormat = NumberFormat('#,##0.##');
 const investUp = Color(0xFFE0574A);
 const investDown = Color(0xFF3B7BD8);
 
-/// 보유 포지션의 현재 평가액. 지수를 못 받아오면 원금 그대로.
-int positionValue(Investment p, double? nowValue) {
-  if (nowValue == null || nowValue <= 0 || p.buyValue <= 0) return p.amount;
-  return (p.amount * nowValue / p.buyValue).round();
+/// 보유의 현재 평가액. 지수를 못 받아오면 원가 그대로 보여준다(손익 0으로 취급).
+int holdingValue(Holding h, double? nowIndexValue) {
+  if (nowIndexValue == null || nowIndexValue <= 0) return h.costBasis;
+  final price = sharePriceOf(h.indexKey, nowIndexValue);
+  return price <= 0 ? h.costBasis : h.marketValue(price);
 }
 
 /// 모의 투자 섹션. 저축 포인트로 세계 지수에 투자해보고, 팔면 손익이 저축에 반영된다.
@@ -33,7 +35,8 @@ class InvestSection extends ConsumerWidget {
     final palette = appPalette(context);
     final summary = ref.watch(summaryProvider(child.id)).valueOrNull;
     final indicesAsync = ref.watch(investIndicesProvider);
-    final positions = ref.watch(investmentsProvider(child.id)).valueOrNull ?? const [];
+    final holdings = ref.watch(holdingsProvider(child.id));
+    final trades = ref.watch(investTradesProvider(child.id)).valueOrNull ?? const [];
 
     final balance = summary?['balance'] ?? 0;
     final invested = summary?['invested'] ?? 0;
@@ -44,11 +47,12 @@ class InvestSection extends ConsumerWidget {
     final indices = indicesAsync.valueOrNull ?? const <MarketIndex>[];
     final bySymbol = {for (final i in indices) i.symbol: i};
 
-    final open = positions.where((p) => p.soldAt == null).toList();
-    final closed = positions.where((p) => p.soldAt != null).toList();
-    final openValue = open.fold<int>(
-        0, (s, p) => s + positionValue(p, bySymbol[p.symbol]?.value));
+    // 주수가 남아 있는 것만 "보유". 다 판 지수는 목록에서 빠진다.
+    final open = holdings.where((h) => !h.isEmpty).toList();
+    final openValue =
+        open.fold<int>(0, (s, h) => s + holdingValue(h, bySymbol[h.symbol]?.value));
     final openGain = openValue - invested;
+    final sellTrades = trades.where((t) => t.kind == kTradeSell).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,7 +105,9 @@ class InvestSection extends ConsumerWidget {
               _IndexTile(
                 index: bySymbol[target.$3]!,
                 note: target.$4,
-                holdingCount: open.where((p) => p.indexKey == target.$1).length,
+                holdingCount: open
+                    .where((h) => h.indexKey == target.$1)
+                    .fold<int>(0, (s, h) => s + h.shares),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => InvestDetailScreen(
                     child: child,
@@ -114,17 +120,31 @@ class InvestSection extends ConsumerWidget {
               ),
         if (open.isNotEmpty) ...[
           const SectionHeader('내가 가진 것'),
-          for (final p in open)
-            _OpenPositionTile(
-              position: p,
-              nowValue: bySymbol[p.symbol]?.value,
+          for (final h in open)
+            _HoldingTile(
+              holding: h,
+              nowIndexValue: bySymbol[h.symbol]?.value,
               palette: palette,
+              onTap: () {
+                final t = StockSearchService.investTargets
+                    .where((e) => e.$1 == h.indexKey)
+                    .firstOrNull;
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => InvestDetailScreen(
+                    child: child,
+                    indexKey: h.indexKey,
+                    label: h.label,
+                    symbol: h.symbol,
+                    note: t?.$4 ?? '',
+                  ),
+                ));
+              },
             ),
         ],
-        if (closed.isNotEmpty) ...[
+        if (sellTrades.isNotEmpty) ...[
           const SectionHeader('판 기록'),
-          for (final p in closed.take(10))
-            _ClosedPositionTile(position: p, palette: palette),
+          for (final t in sellTrades.take(10))
+            _SellTradeTile(trade: t, palette: palette),
         ],
       ],
     );
@@ -336,72 +356,135 @@ class _IndexTile extends StatelessWidget {
   }
 }
 
-class _OpenPositionTile extends StatelessWidget {
-  final Investment position;
-  final double? nowValue;
+/// 보유 종목 한 줄. 지수별로 합쳐서 평단가·평가손익을 보여준다.
+/// (예전엔 매수 건마다 한 줄이라 같은 코스피가 세 줄로 나뉘어 보였다)
+class _HoldingTile extends StatelessWidget {
+  final Holding holding;
+  final double? nowIndexValue;
   final AppPalette palette;
-  const _OpenPositionTile(
-      {required this.position, required this.nowValue, required this.palette});
+  final VoidCallback onTap;
+  const _HoldingTile({
+    required this.holding,
+    required this.nowIndexValue,
+    required this.palette,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final value = positionValue(position, nowValue);
-    final diff = value - position.amount;
-    final pct = position.amount == 0 ? 0.0 : diff / position.amount * 100;
+    final nowPrice = nowIndexValue == null
+        ? 0
+        : sharePriceOf(holding.indexKey, nowIndexValue!);
+    final value = holdingValue(holding, nowIndexValue);
+    final diff = value - holding.costBasis;
+    final pct = holding.costBasis == 0 ? 0.0 : diff / holding.costBasis * 100;
     final color = diff > 0
         ? investUp
         : (diff < 0 ? investDown : theme.colorScheme.onSurfaceVariant);
+    final muted = theme.colorScheme.onSurfaceVariant;
+
+    Widget row(String label, String value) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: TextStyle(fontSize: AppText.label, color: muted)),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: AppText.label, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: CircleAvatar(
-          backgroundColor: palette.savings.bg,
-          child: Icon(Icons.show_chart, color: palette.savings.fg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppGap.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(holding.label,
+                        style: const TextStyle(
+                            fontSize: AppText.titleLg,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  Text('${diff >= 0 ? '+' : ''}${formatWon(diff)}',
+                      style: TextStyle(
+                          fontSize: AppText.titleLg,
+                          fontWeight: FontWeight.w800,
+                          color: color)),
+                ],
+              ),
+              const SizedBox(height: AppGap.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${holding.shares}주 보유',
+                      style: TextStyle(fontSize: AppText.label, color: muted)),
+                  Text(
+                      '${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                          fontSize: AppText.label,
+                          fontWeight: FontWeight.w700,
+                          color: color)),
+                ],
+              ),
+              const Divider(height: AppGap.xl),
+              // 평단가에는 매수 수수료가 들어 있어 "이 값을 넘어야 이득"이 된다.
+              row('평균 산 가격', formatWon(holding.avgPrice)),
+              if (nowPrice > 0) row('지금 가격', formatWon(nowPrice)),
+              row('평가금액', formatWon(value)),
+              const SizedBox(height: AppGap.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('눌러서 사고팔기',
+                      style: TextStyle(fontSize: AppText.caption, color: muted)),
+                  Icon(Icons.chevron_right, size: 16, color: muted),
+                ],
+              ),
+            ],
+          ),
         ),
-        title: Text('${position.label} · ${formatWon(position.amount)}',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppText.bodyLg)),
-        subtitle: Text(
-            '${formatDateShort(position.buyAt)} 투자 · 지금 ${formatWon(value)}',
-            style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
-        trailing: Text(
-            '${diff >= 0 ? '+' : ''}${formatWon(diff)}\n'
-            '${diff >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-                fontSize: AppText.label, height: 1.35, fontWeight: FontWeight.w800, color: color)),
       ),
     );
   }
 }
 
-class _ClosedPositionTile extends StatelessWidget {
-  final Investment position;
+/// 매도 기록 한 줄.
+class _SellTradeTile extends StatelessWidget {
+  final InvestTrade trade;
   final AppPalette palette;
-  const _ClosedPositionTile({required this.position, required this.palette});
+  const _SellTradeTile({required this.trade, required this.palette});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final returned = position.returned ?? position.amount;
-    final diff = returned - position.amount;
-    final color = diff > 0
-        ? investUp
-        : (diff < 0 ? investDown : theme.colorScheme.onSurfaceVariant);
+    final gross = trade.shares * trade.pricePerShare;
     return Card(
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-        leading: Icon(diff >= 0 ? Icons.trending_up : Icons.trending_down,
-            color: color),
-        title: Text('${position.label} · ${formatWon(position.amount)} → ${formatWon(returned)}',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppText.body)),
+        leading: Icon(Icons.sell_outlined, color: palette.savings.fg),
+        title: Text('${trade.label} ${trade.shares}주 팔았어요',
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, fontSize: AppText.body)),
         subtitle: Text(
-            '${formatDateShort(position.buyAt)} ~ ${formatDateShort(position.soldAt!)}',
-            style: TextStyle(fontSize: AppText.caption, color: theme.colorScheme.onSurfaceVariant)),
-        trailing: Text('${diff >= 0 ? '+' : ''}${formatWon(diff)}',
+            '${formatDateShort(trade.tradedAt)} · '
+            '1주 ${formatWon(trade.pricePerShare)} · 수수료 ${formatWon(trade.fee)}',
             style: TextStyle(
-                fontSize: AppText.label, fontWeight: FontWeight.w800, color: color)),
+                fontSize: AppText.caption,
+                color: theme.colorScheme.onSurfaceVariant)),
+        trailing: Text(formatWon(gross - trade.fee),
+            style: const TextStyle(
+                fontSize: AppText.label, fontWeight: FontWeight.w800)),
       ),
     );
   }

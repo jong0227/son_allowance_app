@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../services/interest_calc.dart';
+import '../services/invest_calc.dart';
 
 part 'app_database.g.dart';
 
@@ -273,6 +274,32 @@ class Investments extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 모의 투자 거래 원장. 매수·매도를 각각 한 행으로 남기고 보유는 계산해서 얻는다.
+///
+/// 예전 [Investments]는 매수 한 번이 한 행이고 그 덩어리를 통째로만 팔 수 있어서,
+/// 같은 지수를 여러 번 사면 따로 표시되고 부분 매도가 불가능했다. 실제 증권 계좌처럼
+/// 거래를 쌓고 보유를 집계하면 합산·평단가·부분매도가 자연스럽게 나온다.
+/// 집계는 `services/invest_calc.dart`의 computeHoldings가 담당한다.
+class InvestTrades extends Table {
+  TextColumn get id => text()();
+  TextColumn get childId => text()();
+  TextColumn get indexKey => text()(); // kospi, nasdaq 등 안정적인 키
+  TextColumn get label => text()(); // 코스피 등 표시명
+  TextColumn get symbol => text()(); // ^KS11 등 야후 심볼
+  TextColumn get kind => text()(); // 'buy' | 'sell'
+  IntColumn get shares => integer()(); // 주수(정수만)
+  IntColumn get pricePerShare => integer()(); // 체결 1주 가격(원)
+  IntColumn get fee => integer().withDefault(const Constant(0))(); // 수수료(원)
+  /// 체결 당시 지수값. 계산엔 안 쓰고 기록·표시용.
+  RealColumn get indexValue => real().withDefault(const Constant(0))();
+  DateTimeColumn get tradedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 과거 정기용돈 일괄 내역을 주 단위로 복원했을 때 한 주의 지급 항목.
 class PastAllowancePayment {
   final DateTime date;
@@ -295,6 +322,7 @@ class PastAllowancePayment {
     PromiseComments,
     QuizAttempts,
     Investments,
+    InvestTrades,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -308,7 +336,7 @@ class AppDatabase extends _$AppDatabase {
   final Map<String, Future<void>> _scheduleSyncInFlight = {};
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -372,8 +400,76 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(investments);
             await m.addColumn(children, children.investLimitPercent);
           }
+          if (from < 17) {
+            await m.createTable(investTrades);
+            await _migrateInvestmentsToTrades();
+          }
         },
       );
+
+  /// v17: 덩어리 포지션(Investments) → 주 단위 거래 원장(InvestTrades)으로 옮긴다.
+  ///
+  /// ⚠️ 돈이 늘거나 줄면 안 된다. 주수를 정수로 맞추느라 1주 가격이 딱 안 떨어지므로,
+  /// 주수를 반올림한 뒤 **1주 가격을 역산**해서 총액이 원금과 정확히 같게 만든다.
+  /// (평단가가 그때 지수와 미세하게 달라지는 건 허용 — 금액 보존이 우선)
+  ///
+  /// ⚠️ 거래 id를 원본 포지션 id에서 만들어낸다(랜덤 UUID 금지). 부모 두 기기가 각자
+  /// 마이그레이션해도 같은 id가 나와야 동기화 때 한 건으로 합쳐진다. 랜덤이면 같은
+  /// 거래가 두 벌로 쌓여 보유 주수가 두 배가 된다.
+  ///
+  /// 과거 거래에는 수수료를 소급 부과하지 않는다(fee = 0).
+  Future<void> _migrateInvestmentsToTrades() async {
+    final olds = await select(investments).get();
+    for (final p in olds) {
+      if (p.deletedAt != null) continue;
+
+      final buyUnit = sharePriceOf(p.indexKey, p.buyValue);
+      // 원금이 1주 값보다 작아도 0주가 되면 돈이 사라지므로 최소 1주로 둔다.
+      var shares = buyUnit <= 0 ? 1 : (p.amount / buyUnit).round();
+      if (shares < 1) shares = 1;
+      // 총액이 원금과 같아지도록 1주 가격을 역산한다.
+      final buyPrice = (p.amount / shares).round();
+
+      await into(investTrades).insertOnConflictUpdate(
+        InvestTradesCompanion.insert(
+          id: 'mig_buy_${p.id}',
+          childId: p.childId,
+          indexKey: p.indexKey,
+          label: p.label,
+          symbol: p.symbol,
+          kind: 'buy',
+          shares: shares,
+          pricePerShare: buyPrice,
+          fee: const Value(0),
+          indexValue: Value(p.buyValue),
+          tradedAt: Value(p.buyAt),
+          updatedAt: Value(p.updatedAt),
+        ),
+      );
+
+      // 이미 판 포지션은 매도 기록까지 남겨 이력을 보존한다.
+      if (p.soldAt != null) {
+        final returned = p.returned ?? p.amount;
+        final sellPrice = (returned / shares).round();
+        await into(investTrades).insertOnConflictUpdate(
+          InvestTradesCompanion.insert(
+            id: 'mig_sell_${p.id}',
+            childId: p.childId,
+            indexKey: p.indexKey,
+            label: p.label,
+            symbol: p.symbol,
+            kind: 'sell',
+            shares: shares,
+            pricePerShare: sellPrice,
+            fee: const Value(0),
+            indexValue: Value(p.sellValue ?? 0),
+            tradedAt: Value(p.soldAt!),
+            updatedAt: Value(p.updatedAt),
+          ),
+        );
+      }
+    }
+  }
 
   /// 시스템 예약 카테고리 (사용자 편집 목록과 분리)
   static const kRegularAllowance = '정기용돈';
@@ -1421,82 +1517,151 @@ class AppDatabase extends _$AppDatabase {
             t.childId.equals(childId) & t.deletedAt.isNull() & t.soldAt.isNull()))
       .get();
 
-  /// 모의 투자 매수. 저축 포인트에서 [amount]만큼 잠근다.
-  /// 한도(총 저축의 investLimitPercent%)를 넘거나 잔액이 모자라면 실패 사유를 돌려준다.
-  /// 성공하면 null.
-  Future<String?> buyInvestment({
+  // ---------------- 모의 투자: 주 단위 거래 원장 ----------------
+  /// 이 자녀의 모든 매매 기록(최근 순).
+  Stream<List<InvestTrade>> watchInvestTrades(String childId) =>
+      (select(investTrades)
+            ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.desc(t.tradedAt)]))
+          .watch();
+
+  Future<List<InvestTrade>> allInvestTradesRaw() => select(investTrades).get();
+
+  Future<void> upsertInvestTrade(InvestTradesCompanion t) =>
+      into(investTrades).insertOnConflictUpdate(t);
+
+  Future<List<InvestTrade>> _tradesOf(String childId) => (select(investTrades)
+        ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+      .get();
+
+  /// DB 행을 계산용 입력으로 바꾼다. invest_calc가 drift 타입에 묶이지 않게 하려는 것.
+  static List<InvestTradeInput> tradesToInputs(List<InvestTrade> rows) => [
+        for (final t in rows)
+          (
+            indexKey: t.indexKey,
+            label: t.label,
+            symbol: t.symbol,
+            isBuy: t.kind == kTradeBuy,
+            shares: t.shares,
+            pricePerShare: t.pricePerShare,
+            fee: t.fee,
+            at: t.tradedAt,
+          ),
+      ];
+
+  /// 거래 원장을 접어 만든 지수별 보유 상태.
+  Future<List<Holding>> holdingsOf(String childId) async =>
+      computeHoldings(tradesToInputs(await _tradesOf(childId)));
+
+  /// 모의 투자 매수(주 단위). 저축 포인트에서 (주수×가격 + 수수료)만큼 잠근다.
+  /// 잔액이 모자라거나 한도를 넘으면 실패 사유를, 성공하면 null을 돌려준다.
+  Future<String?> buySharesInvest({
     required Child child,
     required String indexKey,
     required String label,
     required String symbol,
-    required int amount,
+    required int shares,
     required double indexValue,
   }) async {
-    if (amount <= 0) return '금액을 입력해주세요.';
+    if (shares <= 0) return '몇 주 살지 입력해주세요.';
     if (indexValue <= 0) return '지수를 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
+    final price = sharePriceOf(indexKey, indexValue);
+    if (price <= 0) return '지금은 가격을 계산할 수 없어요. 잠시 후 다시 시도해주세요.';
+
+    final amount = shares * price;
+    final fee = buyFeeOf(amount);
+    final cost = amount + fee; // 실제로 빠지는 돈
+
     final s = await computeSummary(child.id);
     final balance = s['balance'] ?? 0;
     final invested = s['invested'] ?? 0;
     final totalSavings = balance + invested; // 주식이체분은 제외한 "쓸 수 있는 저축"
     final cap = (totalSavings * child.investLimitPercent / 100).floor();
-    if (amount > balance) return '저축 포인트가 모자라요. (쓸 수 있는 돈 ${formatWonPlain(balance)})';
-    if (invested + amount > cap) {
+
+    if (cost > balance) {
+      return '저축 포인트가 모자라요. '
+          '($shares주 $amount원 + 수수료 $fee원 = ${formatWonPlain(cost)}, '
+          '쓸 수 있는 돈 ${formatWonPlain(balance)})';
+    }
+    if (invested + cost > cap) {
       final left = cap - invested;
       return '투자 한도를 넘었어요. 지금은 ${formatWonPlain(left < 0 ? 0 : left)}까지 넣을 수 있어요.'
           ' (한도: 총 저축의 ${_trimPercent(child.investLimitPercent)}%)';
     }
+
     final now = DateTime.now();
-    await upsertInvestment(InvestmentsCompanion.insert(
+    await upsertInvestTrade(InvestTradesCompanion.insert(
       id: const Uuid().v4(),
       childId: child.id,
       indexKey: indexKey,
       label: label,
       symbol: symbol,
-      amount: amount,
-      buyValue: indexValue,
-      buyAt: Value(now),
+      kind: 'buy',
+      shares: shares,
+      pricePerShare: price,
+      fee: Value(fee),
+      indexValue: Value(indexValue),
+      tradedAt: Value(now),
       updatedAt: Value(now),
     ));
     return null;
   }
 
-  /// 모의 투자 매도. 원금이 풀리고, 손익만큼 '투자수익'/'투자손실' 내역이 생긴다.
-  /// 회수 금액(원금+손익)을 돌려준다. 실패하면 null.
-  Future<int?> sellInvestment({
-    required Investment position,
+  /// 모의 투자 매도(주 단위, 부분 매도 가능).
+  /// 판 만큼 원가가 풀리고 확정 손익이 '투자수익'/'투자손실' 내역으로 남는다.
+  /// 실제로 손에 들어온 금액을 돌려준다. 실패하면 null.
+  Future<int?> sellSharesInvest({
+    required Child child,
+    required Holding holding,
+    required int shares,
     required double indexValue,
     required String editedBy,
   }) async {
-    if (position.soldAt != null) return null; // 이미 판 포지션
-    if (indexValue <= 0 || position.buyValue <= 0) return null;
-    final now = DateTime.now();
-    // 회수액 = 원금 × (지금 지수 / 살 때 지수)
-    final returned = (position.amount * indexValue / position.buyValue).round();
-    final diff = returned - position.amount;
+    if (shares <= 0 || holding.shares <= 0) return null;
+    if (indexValue <= 0) return null;
+    final price = sharePriceOf(holding.indexKey, indexValue);
+    if (price <= 0) return null;
 
-    await (update(investments)..where((t) => t.id.equals(position.id)))
-        .write(InvestmentsCompanion(
-      soldAt: Value(now),
-      sellValue: Value(indexValue),
-      returned: Value(returned),
+    final quote = quoteSell(
+      holding: holding,
+      sellShares: shares,
+      pricePerShare: price,
+    );
+    if (quote.shares <= 0) return null;
+
+    final now = DateTime.now();
+    await upsertInvestTrade(InvestTradesCompanion.insert(
+      id: const Uuid().v4(),
+      childId: child.id,
+      indexKey: holding.indexKey,
+      label: holding.label,
+      symbol: holding.symbol,
+      kind: 'sell',
+      shares: quote.shares,
+      pricePerShare: price,
+      fee: Value(quote.fee),
+      indexValue: Value(indexValue),
+      tradedAt: Value(now),
       updatedAt: Value(now),
     ));
 
+    // 확정 손익(매수·매도 수수료 모두 반영)을 내역으로 남긴다.
+    final diff = quote.realizedProfit;
     if (diff != 0) {
       await upsertTransaction(TransactionEntriesCompanion.insert(
         id: const Uuid().v4(),
-        childId: position.childId,
+        childId: child.id,
         date: now,
         flow: diff > 0 ? 'income' : 'expense',
         category: diff > 0 ? kInvestProfit : kInvestLoss,
         amount: diff.abs(),
-        memo: Value('모의투자 ${position.label} '
-            '${diff > 0 ? '수익' : '손실'} (${formatWonPlain(position.amount)} 투자)'),
+        memo: Value('모의투자 ${holding.label} ${quote.shares}주 '
+            '${diff > 0 ? '수익' : '손실'} (수수료 ${quote.fee}원 포함)'),
         editedBy: Value(editedBy),
         updatedAt: Value(now),
       ));
     }
-    return returned;
+    return quote.netProceeds;
   }
 
   /// 콤마 찍은 금액 문자열(원). intl 의존 없이 DB 계층에서 메시지 만들 때 쓴다.
@@ -1947,12 +2112,11 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     final totalTransfer = transfers.fold<int>(0, (sum, s) => sum + s.amount);
-    // 모의 투자로 잠긴 원금(보유 중인 포지션). 팔면 자동으로 풀린다.
-    final openPositions = await (select(investments)
-          ..where((t) =>
-              t.childId.equals(childId) & t.deletedAt.isNull() & t.soldAt.isNull()))
-        .get();
-    final invested = openPositions.fold<int>(0, (sum, p) => sum + p.amount);
+    // 모의 투자로 잠긴 원금. 팔면 그만큼 자동으로 풀린다.
+    // 부분 매도가 가능해지면서 포지션의 원금이 변하므로, 거래 원장을 접어
+    // "남은 매수원가(매수 수수료 포함)"를 다시 계산한다.
+    final holdings = computeHoldings(tradesToInputs(await _tradesOf(childId)));
+    final invested = holdings.fold<int>(0, (sum, h) => sum + h.costBasis);
     // "총 수입"은 실제로 받은 것(정기+특별+보상)만. 시작 잔액은 별도.
     final totalIncome = totalRegularIncome + totalSpecialIncome + rewardIncome;
     // 쓸 수 있는 잔액에선 투자로 잠긴 원금을 뺀다(팔면 돌아옴).

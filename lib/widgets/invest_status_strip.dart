@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
 import '../providers/market_provider.dart';
-import '../screens/invest_screen.dart' show positionValue, investUp, investDown;
+import '../screens/invest_screen.dart' show holdingValue, investUp, investDown;
 import '../screens/main_shell.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -21,15 +21,17 @@ class InvestStatusStrip extends ConsumerWidget {
     final border = theme.dividerColor;
     final textSecondary = theme.colorScheme.onSurfaceVariant;
 
-    final positions = ref.watch(investmentsProvider(childId)).valueOrNull ?? const [];
+    final holdings = ref.watch(holdingsProvider(childId));
     final indicesAsync = ref.watch(investIndicesProvider);
     final indices = indicesAsync.valueOrNull ?? const [];
     final bySymbol = {for (final i in indices) i.symbol: i};
 
-    final open = positions.where((p) => p.soldAt == null).toList();
-    final principal = open.fold<int>(0, (s, p) => s + p.amount);
+    // 주수가 0인 지수(다 판 것)는 보유가 아니다.
+    final open = holdings.where((h) => !h.isEmpty).toList();
+    // 원금 = 산 값(매수 수수료 포함). 평가손익이 곧 "수수료까지 뺀 진짜 손익".
+    final principal = open.fold<int>(0, (s, h) => s + h.costBasis);
     final value =
-        open.fold<int>(0, (s, p) => s + positionValue(p, bySymbol[p.symbol]?.value));
+        open.fold<int>(0, (s, h) => s + holdingValue(h, bySymbol[h.symbol]?.value));
     final gain = value - principal;
     final rate = principal == 0 ? 0.0 : gain / principal * 100;
     final gainColor =
