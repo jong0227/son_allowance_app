@@ -1738,6 +1738,924 @@ const List<EconomyTopic> kEconomyTopics = [
     ],
     callout: '홈 화면의 금리·지수를 매주 한 번씩 보면 뉴스가 훨씬 잘 들려요!',
   ),
+
+  // ─────────────────────────────────────────────────────────────
+  // 5차 추가분 — 경제의 기본 뼈대(희소성·경제주체·시장)와, 아이가 실제로
+  // 마주치는 생활 장면(통장·이체·할부·포인트·리뷰 등)을 채웠다.
+  // ─────────────────────────────────────────────────────────────
+
+  EconomyTopic(
+    id: 'scarcity',
+    emoji: '🍰',
+    title: '희소성이 뭐야?',
+    summary: '갖고 싶은 건 많은데 돈은 정해져 있어요',
+    sections: [
+      TopicSection(
+        emoji: '🙋',
+        title: '원하는 건 끝이 없어요',
+        body: '갖고 싶은 걸 적어보면 계속 나와요. 그런데 용돈은 정해져 있죠? '
+            '이렇게 원하는 것보다 가진 게 적은 상태를 희소하다고 해요.',
+      ),
+      TopicSection(
+        emoji: '⚖️',
+        title: '그래서 고르게 돼요',
+        body: '돈이 무한하면 고민할 필요가 없어요. 정해져 있으니까 뭘 먼저 살지 정하게 되죠. '
+            '경제 공부는 사실 이 고르는 법을 배우는 거예요.',
+      ),
+      TopicSection(
+        emoji: '⏰',
+        title: '시간도 희소해요',
+        body: '하루는 24시간뿐이에요. 게임을 하면 그만큼 책 읽을 시간이 줄죠. '
+            '돈뿐 아니라 시간도 잘 나눠 써야 해요.',
+      ),
+    ],
+    callout: '희소성은 모든 경제 이야기의 출발점이에요. 그래서 기회비용이 생겨요!',
+  ),
+  EconomyTopic(
+    id: 'economic_agents',
+    emoji: '🔄',
+    title: '경제는 누가 움직일까',
+    summary: '가계·기업·정부가 서로 주고받아요',
+    sections: [
+      TopicSection(
+        emoji: '🏠',
+        title: '가계 — 우리 집',
+        body: '어른들은 일하고 돈을 벌어요. 그 돈으로 물건을 사죠. '
+            '우리 집처럼 쓰는 쪽을 가계라고 해요.',
+      ),
+      TopicSection(
+        emoji: '🏭',
+        title: '기업 — 만들어 파는 곳',
+        body: '회사는 물건과 서비스를 만들어 팔아요. 일할 사람을 뽑고 월급을 주죠. '
+            '가계가 낸 돈이 기업으로 가요.',
+      ),
+      TopicSection(
+        emoji: '🏛️',
+        title: '정부 — 규칙을 만들고 나눠 쓰는 곳',
+        body: '정부는 세금을 걷어 학교·도로·병원을 만들어요. '
+            '가계와 기업이 잘 지내도록 규칙도 정하고요.',
+      ),
+    ],
+    callout: '돈이 셋 사이를 빙글빙글 돌아요. 이게 경제가 굴러가는 모습이에요!',
+  ),
+  EconomyTopic(
+    id: 'market',
+    emoji: '🏪',
+    title: '시장이 뭐야?',
+    summary: '사는 사람과 파는 사람이 만나는 곳',
+    sections: [
+      TopicSection(
+        emoji: '🥕',
+        title: '꼭 건물이 아니어도 돼요',
+        body: '전통시장도 시장이지만, 온라인 쇼핑몰도 시장이에요. '
+            '사고파는 일이 일어나는 곳이면 다 시장이라고 불러요.',
+      ),
+      TopicSection(
+        emoji: '🤝',
+        title: '둘 다 이득이라 거래해요',
+        body: '파는 사람은 돈이 필요하고, 사는 사람은 물건이 필요해요. '
+            '서로 원하는 걸 얻으니까 거래가 이뤄져요.',
+      ),
+      TopicSection(
+        emoji: '💹',
+        title: '주식시장도 시장이에요',
+        body: '회사 조각(주식)을 사고파는 시장도 있어요. '
+            '코스피는 그 시장의 성적표예요.',
+      ),
+    ],
+    callout: '시장에서 값이 정해지는 방법이 바로 수요와 공급이에요!',
+  ),
+  EconomyTopic(
+    id: 'division_labor',
+    emoji: '🧩',
+    title: '나눠서 하면 빨라요',
+    summary: '각자 한 가지씩 맡는 분업',
+    sections: [
+      TopicSection(
+        emoji: '🍕',
+        title: '혼자 다 하면 느려요',
+        body: '피자 가게에서 한 사람이 반죽하고 굽고 배달까지 하면 오래 걸려요. '
+            '나눠 맡으면 훨씬 빨라지죠.',
+      ),
+      TopicSection(
+        emoji: '🎯',
+        title: '잘하게 되고 빨라져요',
+        body: '같은 일을 계속하면 손에 익어요. 그래서 분업하면 더 많이, 더 좋게 만들 수 있어요.',
+      ),
+      TopicSection(
+        emoji: '🌍',
+        title: '나라끼리도 나눠 맡아요',
+        body: '한 나라가 모든 걸 만들지 않아요. 잘하는 걸 만들어 서로 바꾸죠. '
+            '그게 무역이에요.',
+      ),
+    ],
+    callout: '연필 한 자루도 수많은 사람이 나눠 만든 거예요!',
+  ),
+  EconomyTopic(
+    id: 'assets_debt',
+    emoji: '⚖️',
+    title: '자산과 부채',
+    summary: '가진 것에서 갚을 것을 빼면 진짜 내 돈',
+    sections: [
+      TopicSection(
+        emoji: '💰',
+        title: '자산 — 내가 가진 것',
+        body: '저금통 속 돈, 통장 잔액, 주식 같은 게 자산이에요. '
+            '돈으로 바꿀 수 있는 것들이죠.',
+      ),
+      TopicSection(
+        emoji: '📄',
+        title: '부채 — 갚아야 할 것',
+        body: '친구에게 빌린 1,000원은 내 돈처럼 보여도 갚아야 해요. '
+            '이렇게 갚을 돈을 부채라고 해요.',
+      ),
+      TopicSection(
+        emoji: '🧮',
+        title: '자산 − 부채 = 순자산',
+        body: '10,000원이 있어도 3,000원을 빌렸다면 진짜 내 것은 7,000원이에요. '
+            '이걸 순자산이라고 해요.',
+      ),
+    ],
+    callout: '앱의 잔액은 빌린 돈이 없다는 가정이에요. 빌린 게 있으면 따로 적어두세요!',
+  ),
+  EconomyTopic(
+    id: 'income_types',
+    emoji: '💵',
+    title: '소득의 종류',
+    summary: '돈이 들어오는 길은 여러 갈래',
+    sections: [
+      TopicSection(
+        emoji: '👷',
+        title: '일해서 버는 돈',
+        body: '회사에 다니거나 가게에서 일하고 받는 월급이에요. '
+            '가장 흔한 소득이죠.',
+      ),
+      TopicSection(
+        emoji: '🏪',
+        title: '장사해서 버는 돈',
+        body: '가게를 열거나 물건을 만들어 팔아 버는 돈이에요. '
+            '많이 벌 수도 있지만 손해를 볼 수도 있어요.',
+      ),
+      TopicSection(
+        emoji: '🌱',
+        title: '가진 것이 벌어주는 돈',
+        body: '저축의 이자, 주식의 배당금처럼 내가 쉬는 동안에도 들어오는 돈이에요. '
+            '서원이의 저축 이자가 바로 이거예요!',
+      ),
+    ],
+    callout: '어른들은 보통 여러 갈래를 함께 만들어요. 한 곳이 막혀도 버틸 수 있게요.',
+  ),
+  EconomyTopic(
+    id: 'bank_account',
+    emoji: '🏦',
+    title: '통장과 계좌',
+    summary: '은행에 있는 나만의 돈 보관함',
+    sections: [
+      TopicSection(
+        emoji: '📗',
+        title: '계좌 — 은행 속 내 자리',
+        body: '은행에 내 이름으로 만든 돈 보관함이 계좌예요. '
+            '계좌번호는 그 보관함의 주소죠.',
+      ),
+      TopicSection(
+        emoji: '🔢',
+        title: '계좌번호는 알려줘도 돼요',
+        body: '돈을 받으려면 계좌번호를 알려줘야 해요. 이건 괜찮아요. '
+            '하지만 비밀번호와 인증번호는 절대 알려주면 안 돼요.',
+      ),
+      TopicSection(
+        emoji: '👨‍👩‍👦',
+        title: '어린이 통장도 있어요',
+        body: '부모님과 함께 은행에 가면 만들 수 있어요. '
+            '저금통보다 안전하고 이자도 붙어요.',
+      ),
+    ],
+    callout: '계좌번호는 주소, 비밀번호는 열쇠예요. 열쇠는 절대 남에게 주지 마세요!',
+  ),
+  EconomyTopic(
+    id: 'transfer',
+    emoji: '📲',
+    title: '이체와 송금',
+    summary: '돈을 손에 들지 않고 옮기는 법',
+    sections: [
+      TopicSection(
+        emoji: '➡️',
+        title: '통장에서 통장으로',
+        body: '현금을 들고 가지 않아도 계좌에서 계좌로 돈을 보낼 수 있어요. '
+            '숫자만 옮겨 적는 셈이에요.',
+      ),
+      TopicSection(
+        emoji: '🔍',
+        title: '보내기 전에 두 번 확인',
+        body: '계좌번호를 하나만 잘못 눌러도 엉뚱한 사람에게 가요. '
+            '받는 사람 이름이 맞는지 꼭 확인하세요.',
+      ),
+      TopicSection(
+        emoji: '↩️',
+        title: '잘못 보내면 되돌리기 어려워요',
+        body: '받은 사람이 돌려줘야 돌아와요. 은행이 마음대로 뺏어올 수 없거든요. '
+            '그래서 보내기 전 확인이 중요해요.',
+      ),
+    ],
+    callout: '큰돈을 보낼 땐 꼭 어른과 함께 하세요!',
+  ),
+  EconomyTopic(
+    id: 'installment',
+    emoji: '📅',
+    title: '할부가 뭐야?',
+    summary: '나눠 내면 편하지만 조심할 게 있어요',
+    sections: [
+      TopicSection(
+        emoji: '✂️',
+        title: '값을 여러 달로 쪼개는 것',
+        body: '12만원짜리를 12개월 할부로 사면 매달 1만원씩 내요. '
+            '한 번에 큰돈이 안 나가서 편해 보이죠.',
+      ),
+      TopicSection(
+        emoji: '➕',
+        title: '보통은 이자가 붙어요',
+        body: '무이자가 아니면 나눠 내는 값에 이자가 더해져요. '
+            '결국 원래 값보다 더 내는 거예요.',
+      ),
+      TopicSection(
+        emoji: '🧊',
+        title: '싸게 느껴지는 착시',
+        body: '"한 달에 1만원"이라고 하면 싸 보여요. 하지만 총액은 12만원이에요. '
+            '항상 총액으로 생각하세요.',
+      ),
+    ],
+    callout: '할부가 쌓이면 매달 나갈 돈이 미리 정해져 버려요. 신중하게!',
+  ),
+  EconomyTopic(
+    id: 'points',
+    emoji: '⭐',
+    title: '포인트와 마일리지',
+    summary: '작지만 진짜 돈이에요',
+    sections: [
+      TopicSection(
+        emoji: '🎁',
+        title: '왜 포인트를 줄까?',
+        body: '다음에 또 오게 하려고요. 포인트가 쌓이면 그 가게를 계속 가게 되거든요.',
+      ),
+      TopicSection(
+        emoji: '💸',
+        title: '포인트도 돈이에요',
+        body: '1포인트가 1원인 곳이 많아요. 모으면 실제로 물건을 살 수 있죠. '
+            '그냥 버리지 마세요.',
+      ),
+      TopicSection(
+        emoji: '⌛',
+        title: '사라지기도 해요',
+        body: '포인트는 유효기간이 있는 경우가 많아요. '
+            '가끔 확인해서 없어지기 전에 쓰세요.',
+      ),
+    ],
+    callout: '포인트를 모으려고 필요 없는 걸 사면 오히려 손해예요!',
+  ),
+  EconomyTopic(
+    id: 'fees',
+    emoji: '🚚',
+    title: '배달비와 수수료',
+    summary: '물건값 말고 더 나가는 돈',
+    sections: [
+      TopicSection(
+        emoji: '🛵',
+        title: '배달비는 서비스 값이에요',
+        body: '누군가 가져다주는 수고에 내는 돈이에요. '
+            '음식값은 같아도 배달비 때문에 총액이 달라져요.',
+      ),
+      TopicSection(
+        emoji: '🧾',
+        title: '수수료도 여기저기 숨어 있어요',
+        body: '다른 은행 ATM에서 뽑을 때, 티켓을 예매할 때도 수수료가 붙어요. '
+            '작아 보여도 쌓이면 커요.',
+      ),
+      TopicSection(
+        emoji: '🔎',
+        title: '결제 직전 총액을 보세요',
+        body: '"3,000원"인 줄 알았는데 마지막에 5,500원이 되기도 해요. '
+            '결제 버튼 누르기 전 숫자를 확인하세요.',
+      ),
+    ],
+    callout: '친구와 함께 시키면 배달비를 나눌 수 있어요. 이것도 똑똑한 소비!',
+  ),
+  EconomyTopic(
+    id: 'phone_plan',
+    emoji: '📱',
+    title: '휴대폰 요금',
+    summary: '매달 자동으로 나가는 큰돈',
+    sections: [
+      TopicSection(
+        emoji: '📶',
+        title: '요금제 — 매달 정해진 돈',
+        body: '전화·문자·데이터를 얼마나 쓸지 미리 정하고 매달 돈을 내요. '
+            '많이 쓰는 요금제일수록 비싸요.',
+      ),
+      TopicSection(
+        emoji: '🎬',
+        title: '데이터를 많이 먹는 것들',
+        body: '영상 보기와 게임이 데이터를 가장 많이 써요. '
+            '와이파이에서 보면 데이터가 안 줄어요.',
+      ),
+      TopicSection(
+        emoji: '💡',
+        title: '내가 쓰는 만큼만',
+        body: '안 쓰는데 비싼 요금제면 돈이 새요. '
+            '얼마나 쓰는지 보고 맞는 걸 고르는 게 좋아요.',
+      ),
+    ],
+    callout: '가족 요금제로 묶으면 더 싸지기도 해요. 부모님께 여쭤보세요!',
+  ),
+  EconomyTopic(
+    id: 'housing',
+    emoji: '🏡',
+    title: '집에 드는 돈',
+    summary: '사는 것과 빌리는 것',
+    sections: [
+      TopicSection(
+        emoji: '🔑',
+        title: '사거나, 빌리거나',
+        body: '집을 사면 내 것이 되고, 빌리면 매달 돈을 내요. '
+            '집은 아주 비싸서 대부분 은행에서 빌려 사요.',
+      ),
+      TopicSection(
+        emoji: '💳',
+        title: '월세와 전세',
+        body: '월세는 매달 돈을 내는 것, 전세는 큰돈을 맡기고 살다가 나갈 때 돌려받는 방식이에요. '
+            '전세는 우리나라에만 거의 있어요.',
+      ),
+      TopicSection(
+        emoji: '📈',
+        title: '집값도 오르내려요',
+        body: '집도 사고파는 것이라 값이 변해요. 오를 때도 있고 내릴 때도 있어요.',
+      ),
+    ],
+    callout: '어른들이 "대출"을 말할 때 대부분 집 때문이에요!',
+  ),
+  EconomyTopic(
+    id: 'unemployment',
+    emoji: '😟',
+    title: '실업이 뭐야?',
+    summary: '일하고 싶은데 일자리가 없는 것',
+    sections: [
+      TopicSection(
+        emoji: '🔍',
+        title: '일을 찾고 있는 상태',
+        body: '일할 마음도 있고 할 수 있는데 자리가 없는 걸 실업이라고 해요. '
+            '쉬고 싶어서 안 하는 건 실업이 아니에요.',
+      ),
+      TopicSection(
+        emoji: '📉',
+        title: '불황일 때 늘어나요',
+        body: '경제가 어려우면 회사가 사람을 덜 뽑아요. '
+            '그래서 불황과 실업은 같이 다녀요.',
+      ),
+      TopicSection(
+        emoji: '🤝',
+        title: '나라가 도와줘요',
+        body: '실업급여로 잠시 버틸 돈을 주고, 새 기술을 배우게 도와줘요. '
+            '세금이 이런 데 쓰여요.',
+      ),
+    ],
+    callout: '뉴스의 "실업률"은 일자리를 찾는 사람이 얼마나 많은지 보여주는 숫자예요.',
+  ),
+  EconomyTopic(
+    id: 'rate_effect',
+    emoji: '🎚️',
+    title: '금리가 오르면 무슨 일이?',
+    summary: '금리 하나로 온 나라가 움직여요',
+    sections: [
+      TopicSection(
+        emoji: '🏦',
+        title: '저축하는 사람은 좋아요',
+        body: '금리가 오르면 은행이 주는 이자가 늘어요. '
+            '모아둔 돈이 더 빨리 자라죠.',
+      ),
+      TopicSection(
+        emoji: '😰',
+        title: '빌린 사람은 힘들어요',
+        body: '갚아야 할 이자도 같이 올라요. '
+            '집을 사려고 빌린 사람들이 특히 힘들어져요.',
+      ),
+      TopicSection(
+        emoji: '🧊',
+        title: '그래서 물가가 진정돼요',
+        body: '사람들이 돈을 아끼게 되니 물건이 덜 팔리고 값도 덜 올라요. '
+            '중앙은행이 금리로 물가를 잡는 이유예요.',
+      ),
+    ],
+    callout: '홈 화면 기준금리가 오르면 서원이 이자도 같이 올라요!',
+  ),
+  EconomyTopic(
+    id: 'brand',
+    emoji: '🏷️',
+    title: '브랜드가 뭐야?',
+    summary: '이름값이 붙는 이유',
+    sections: [
+      TopicSection(
+        emoji: '👟',
+        title: '같은 신발인데 값이 달라요',
+        body: '비슷해 보여도 유명한 이름이 붙으면 비싸요. '
+            '그 이름을 믿는 사람이 많기 때문이에요.',
+      ),
+      TopicSection(
+        emoji: '⏳',
+        title: '믿음은 오래 쌓여요',
+        body: '오랫동안 좋은 물건을 만들면 사람들이 믿게 돼요. '
+            '그 믿음이 브랜드의 값이에요.',
+      ),
+      TopicSection(
+        emoji: '🤔',
+        title: '이름값이 항상 옳진 않아요',
+        body: '비싼 게 늘 더 좋진 않아요. '
+            '진짜 내게 필요한 성능인지 따져보세요.',
+      ),
+    ],
+    callout: '친구가 다 가진 브랜드라고 나도 꼭 필요한 건 아니에요!',
+  ),
+  EconomyTopic(
+    id: 'innovation',
+    emoji: '💡',
+    title: '새로운 것이 나오면',
+    summary: '혁신이 값을 바꿔요',
+    sections: [
+      TopicSection(
+        emoji: '📼',
+        title: '옛것은 사라져요',
+        body: '비디오테이프, 삐삐, MP3 플레이어는 이제 거의 안 써요. '
+            '더 좋은 게 나오면 자리를 내줘요.',
+      ),
+      TopicSection(
+        emoji: '📉',
+        title: '처음엔 비싸다 점점 싸져요',
+        body: '새 기술은 처음엔 비싸요. 많이 만들수록 값이 내려가죠. '
+            '텔레비전도 예전엔 아주 비쌌어요.',
+      ),
+      TopicSection(
+        emoji: '🚀',
+        title: '새 일자리도 생겨요',
+        body: '없어지는 일이 있으면 새로 생기는 일도 있어요. '
+            '유튜버는 20년 전엔 없던 직업이에요.',
+      ),
+    ],
+    callout: '지금 인기 있는 것도 언젠가 바뀌어요. 배우는 힘이 제일 중요해요!',
+  ),
+  EconomyTopic(
+    id: 'scale_economy',
+    emoji: '📦',
+    title: '많이 만들면 싸져요',
+    summary: '규모의 경제',
+    sections: [
+      TopicSection(
+        emoji: '🏭',
+        title: '기계값은 한 번만 들어요',
+        body: '빵 만드는 기계를 사면, 10개를 만들든 1,000개를 만들든 기계값은 같아요. '
+            '많이 만들수록 하나당 값이 싸지죠.',
+      ),
+      TopicSection(
+        emoji: '🛒',
+        title: '대용량이 싼 이유',
+        body: '큰 봉지 과자가 작은 봉지보다 100g당 싼 건 이 때문이에요. '
+            '포장·운반 비용을 나눠 쓰거든요.',
+      ),
+      TopicSection(
+        emoji: '⚠️',
+        title: '무조건 좋진 않아요',
+        body: '다 못 먹고 버리면 오히려 손해예요. '
+            '많이 살 땐 정말 다 쓸지 생각해보세요.',
+      ),
+    ],
+    callout: '단위당 가격을 비교하면 진짜 싼지 알 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'price_index',
+    emoji: '📊',
+    title: '물가지수 읽는 법',
+    summary: '작년보다 얼마나 올랐나',
+    sections: [
+      TopicSection(
+        emoji: '🧺',
+        title: '장바구니를 통째로 비교해요',
+        body: '한 가지 물건만 보면 안 돼요. 사람들이 자주 사는 것들을 바구니에 담아 '
+            '작년과 값을 비교해요.',
+      ),
+      TopicSection(
+        emoji: '💯',
+        title: '기준을 100으로 둬요',
+        body: '어느 해를 100으로 정하고, 지금이 103이면 3% 올랐다는 뜻이에요.',
+      ),
+      TopicSection(
+        emoji: '🆚',
+        title: '내 이자와 비교해보세요',
+        body: '물가가 3% 오르는데 이자가 2%면 실제로는 손해예요. '
+            '진짜 이득은 이자에서 물가를 뺀 만큼이에요.',
+      ),
+    ],
+    callout: '경제왕 탭에서 지금 물가가 얼마나 올랐는지 볼 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'review_trust',
+    emoji: '🌟',
+    title: '리뷰와 별점 믿기',
+    summary: '좋은 말만 있다면 의심해보세요',
+    sections: [
+      TopicSection(
+        emoji: '🎭',
+        title: '가짜 리뷰도 있어요',
+        body: '돈을 받고 좋은 말만 써주는 경우가 있어요. '
+            '모두 별 다섯 개에 칭찬만 있으면 오히려 이상해요.',
+      ),
+      TopicSection(
+        emoji: '🔍',
+        title: '낮은 별점을 먼저 보세요',
+        body: '별 하나·둘짜리 리뷰에 진짜 단점이 적혀 있어요. '
+            '그 단점을 내가 견딜 수 있는지 보면 돼요.',
+      ),
+      TopicSection(
+        emoji: '📸',
+        title: '사진 있는 후기가 믿을 만해요',
+        body: '실제로 받은 사진을 올린 후기가 더 믿음직해요. '
+            '글만 짧게 있는 건 조심하세요.',
+      ),
+    ],
+    callout: '리뷰는 참고일 뿐, 결정은 내가 하는 거예요!',
+  ),
+  EconomyTopic(
+    id: 'influencer',
+    emoji: '🎥',
+    title: '유명인이 쓰는 물건',
+    summary: '광고인지 아닌지 봐야 해요',
+    sections: [
+      TopicSection(
+        emoji: '💼',
+        title: '돈을 받고 소개하기도 해요',
+        body: '좋아하는 유튜버가 소개한 물건이 광고일 수 있어요. '
+            '"유료 광고 포함"이라고 적혀 있는지 보세요.',
+      ),
+      TopicSection(
+        emoji: '🪞',
+        title: '따라 산다고 그 사람이 되진 않아요',
+        body: '같은 신발을 신어도 그 사람처럼 되진 않아요. '
+            '내게 필요한지가 기준이에요.',
+      ),
+      TopicSection(
+        emoji: '⏸️',
+        title: '하루만 참아보기',
+        body: '영상을 본 직후엔 사고 싶은 마음이 가장 커요. '
+            '하루 지나고도 갖고 싶으면 그때 생각해도 늦지 않아요.',
+      ),
+    ],
+    callout: '광고를 알아보는 눈이 있으면 돈을 훨씬 아낄 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'free_trial',
+    emoji: '🎣',
+    title: '무료 체험의 함정',
+    summary: '공짜로 시작해서 돈이 나가요',
+    sections: [
+      TopicSection(
+        emoji: '🆓',
+        title: '처음 한 달은 공짜',
+        body: '많은 서비스가 첫 달을 공짜로 줘요. 써보게 하려는 거죠. '
+            '여기까진 좋아요.',
+      ),
+      TopicSection(
+        emoji: '🔁',
+        title: '안 끊으면 자동으로 결제돼요',
+        body: '체험이 끝나면 알아서 돈이 빠져나가요. '
+            '깜빡하면 안 쓰는데 계속 내게 돼요.',
+      ),
+      TopicSection(
+        emoji: '⏰',
+        title: '신청할 때 바로 알림 설정',
+        body: '무료 체험을 시작하면 끝나는 날에 알림을 맞춰두세요. '
+            '계속 쓸지 그때 정하면 돼요.',
+      ),
+    ],
+    callout: '공짜라는 말이 나오면 "언제부터 돈이 나가지?"를 먼저 물어보세요!',
+  ),
+  EconomyTopic(
+    id: 'eco_consumption',
+    emoji: '♻️',
+    title: '지구를 생각하는 소비',
+    summary: '어떻게 쓰느냐도 선택이에요',
+    sections: [
+      TopicSection(
+        emoji: '🌏',
+        title: '물건 하나에도 자원이 들어요',
+        body: '만들고 옮기는 데 나무·물·기름이 쓰여요. '
+            '덜 사고 오래 쓰는 게 지구를 돕는 일이에요.',
+      ),
+      TopicSection(
+        emoji: '🔄',
+        title: '고쳐 쓰고 물려주기',
+        body: '망가졌다고 바로 버리지 말고 고쳐보세요. '
+            '안 쓰는 건 동생이나 친구에게 물려줘도 좋아요.',
+      ),
+      TopicSection(
+        emoji: '🛍️',
+        title: '내 선택이 회사를 바꿔요',
+        body: '환경을 생각하는 회사 물건을 사면 그런 회사가 늘어요. '
+            '소비도 일종의 투표예요.',
+      ),
+    ],
+    callout: '돈도 아끼고 지구도 지키는 가장 쉬운 방법은 덜 사는 거예요!',
+  ),
+  EconomyTopic(
+    id: 'volunteer',
+    emoji: '🙌',
+    title: '기부와 봉사',
+    summary: '돈으로도, 시간으로도 도울 수 있어요',
+    sections: [
+      TopicSection(
+        emoji: '💝',
+        title: '기부 — 돈으로 돕기',
+        body: '내 돈의 일부를 필요한 사람에게 보내는 거예요. '
+            '작은 돈도 모이면 큰 힘이 돼요.',
+      ),
+      TopicSection(
+        emoji: '⏱️',
+        title: '봉사 — 시간으로 돕기',
+        body: '돈이 없어도 도울 수 있어요. 시간과 손을 쓰는 거죠. '
+            '시간도 소중한 자원이니까요.',
+      ),
+      TopicSection(
+        emoji: '🔍',
+        title: '어디에 쓰이는지 보기',
+        body: '기부한 돈이 잘 쓰이는지 알려주는 곳에 하는 게 좋아요. '
+            '부모님과 함께 알아보세요.',
+      ),
+    ],
+    callout: '용돈에서 나눌 몫을 정해두면 부담 없이 꾸준히 할 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'inheritance',
+    emoji: '🎁',
+    title: '물려주고 물려받기',
+    summary: '돈도 다음 사람에게 이어져요',
+    sections: [
+      TopicSection(
+        emoji: '👵',
+        title: '상속 — 물려받는 것',
+        body: '가족이 세상을 떠나면 그분의 돈과 집이 가족에게 넘어가요. '
+            '이걸 상속이라고 해요.',
+      ),
+      TopicSection(
+        emoji: '🧾',
+        title: '여기에도 세금이 붙어요',
+        body: '많이 물려받으면 상속세를 내요. '
+            '한 집에만 재산이 계속 쌓이지 않게 하려는 거예요.',
+      ),
+      TopicSection(
+        emoji: '📚',
+        title: '돈보다 중요한 것도 있어요',
+        body: '아껴 쓰는 습관, 배우는 태도 같은 건 돈보다 오래가요. '
+            '이것도 물려받는 거예요.',
+      ),
+    ],
+    callout: '지금 만드는 저축 습관이 평생 갈 재산이에요!',
+  ),
+  EconomyTopic(
+    id: 'deposit_money',
+    emoji: '🔒',
+    title: '보증금이 뭐야?',
+    summary: '맡겨두고 나중에 돌려받는 돈',
+    sections: [
+      TopicSection(
+        emoji: '🤝',
+        title: '약속을 지키겠다는 표시',
+        body: '집을 빌릴 때, 물건을 빌릴 때 미리 맡기는 돈이에요. '
+            '문제없이 돌려주면 그대로 받아요.',
+      ),
+      TopicSection(
+        emoji: '💧',
+        title: '깨거나 망가뜨리면 빼요',
+        body: '빌린 걸 망가뜨리면 고치는 값만큼 빼고 돌려줘요. '
+            '그래서 조심해서 써야 해요.',
+      ),
+      TopicSection(
+        emoji: '📝',
+        title: '얼마 맡겼는지 적어두기',
+        body: '돌려받아야 할 돈이니 기록해두세요. '
+            '잊어버리면 못 받을 수도 있어요.',
+      ),
+    ],
+    callout: '보증금은 쓴 돈이 아니라 잠시 맡긴 돈이에요!',
+  ),
+  EconomyTopic(
+    id: 'travel_budget',
+    emoji: '🧳',
+    title: '여행 예산 짜기',
+    summary: '미리 나눠두면 마음이 편해요',
+    sections: [
+      TopicSection(
+        emoji: '📋',
+        title: '뭐에 쓸지 나눠보기',
+        body: '교통비, 먹을 것, 기념품처럼 종류별로 나눠 미리 정해요. '
+            '그러면 한 곳에서 다 써버리지 않아요.',
+      ),
+      TopicSection(
+        emoji: '🎁',
+        title: '기념품은 마지막 날에',
+        body: '처음에 다 사면 나중에 더 좋은 걸 봐도 못 사요. '
+            '조금 남겨두면 여유가 생겨요.',
+      ),
+      TopicSection(
+        emoji: '🪙',
+        title: '남으면 그대로 저축',
+        body: '아껴서 남은 돈은 다시 모으면 돼요. '
+            '다음 여행이 더 빨리 와요.',
+      ),
+    ],
+    callout: '여행 전에 용돈기입장을 미리 써보면 계획이 훨씬 잘 세워져요!',
+  ),
+  EconomyTopic(
+    id: 'gift_budget',
+    emoji: '🎀',
+    title: '선물 사는 요령',
+    summary: '값보다 마음이 크게 보여요',
+    sections: [
+      TopicSection(
+        emoji: '💭',
+        title: '상대가 좋아할 걸 먼저',
+        body: '비싼 것보다 그 사람이 정말 좋아하는 게 좋은 선물이에요. '
+            '평소에 뭘 말했는지 떠올려보세요.',
+      ),
+      TopicSection(
+        emoji: '💰',
+        title: '얼마까지 쓸지 먼저 정하기',
+        body: '고르다 보면 자꾸 비싼 게 눈에 들어와요. '
+            '먼저 정해두면 흔들리지 않아요.',
+      ),
+      TopicSection(
+        emoji: '✍️',
+        title: '직접 만들면 더 특별해요',
+        body: '편지나 손으로 만든 것은 돈이 거의 안 들어도 오래 기억돼요.',
+      ),
+    ],
+    callout: '선물할 돈도 미리 조금씩 모아두면 부담이 없어요!',
+  ),
+  EconomyTopic(
+    id: 'over_budget',
+    emoji: '🚨',
+    title: '예산을 넘겼을 때',
+    summary: '실수는 누구나 해요. 중요한 건 다음',
+    sections: [
+      TopicSection(
+        emoji: '🔍',
+        title: '어디서 새는지 찾기',
+        body: '먼저 무엇에 많이 썼는지 봐요. '
+            '앱의 카테고리별 지출을 보면 금방 보여요.',
+      ),
+      TopicSection(
+        emoji: '⏸️',
+        title: '다음 주에 조금 줄이기',
+        body: '한꺼번에 메우려 하면 힘들어요. '
+            '다음 주에 조금만 아끼면 금방 돌아와요.',
+      ),
+      TopicSection(
+        emoji: '🚫',
+        title: '빌려서 메우진 않기',
+        body: '모자란다고 빌리면 다음 주가 더 힘들어져요. '
+            '한 번 늦으면 계속 밀리거든요.',
+      ),
+    ],
+    callout: '넘긴 걸 숨기지 말고 적어두세요. 기록이 있어야 고칠 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'auto_saving',
+    emoji: '🤖',
+    title: '저절로 모이게 만들기',
+    summary: '의지보다 구조가 세요',
+    sections: [
+      TopicSection(
+        emoji: '⚡',
+        title: '받자마자 먼저 떼기',
+        body: '쓰고 남은 걸 모으면 잘 안 모여요. '
+            '용돈을 받는 순간 저축할 몫을 먼저 옮기세요.',
+      ),
+      TopicSection(
+        emoji: '🙈',
+        title: '눈에 안 보이게 두기',
+        body: '보이면 쓰고 싶어져요. 저금통이나 다른 통장에 넣어 '
+            '평소에 안 보이게 하면 훨씬 잘 모여요.',
+      ),
+      TopicSection(
+        emoji: '📏',
+        title: '작게 시작해서 늘리기',
+        body: '처음부터 절반을 모으면 힘들어요. '
+            '10%로 시작해서 익숙해지면 조금씩 올리세요.',
+      ),
+    ],
+    callout: '참는 힘에 기대지 말고, 안 쓰게 되는 방법을 만드는 게 진짜 요령이에요!',
+  ),
+  EconomyTopic(
+    id: 'money_happiness',
+    emoji: '😊',
+    title: '돈과 행복',
+    summary: '돈은 도구지 목표가 아니에요',
+    sections: [
+      TopicSection(
+        emoji: '🪜',
+        title: '어느 정도까진 도움이 돼요',
+        body: '먹을 것과 잘 곳이 없으면 힘들어요. '
+            '기본이 채워질 때까지는 돈이 행복을 크게 늘려줘요.',
+      ),
+      TopicSection(
+        emoji: '📉',
+        title: '그 뒤로는 천천히 늘어요',
+        body: '충분해진 다음엔 돈이 두 배가 돼도 행복이 두 배가 되진 않아요. '
+            '금방 익숙해지거든요.',
+      ),
+      TopicSection(
+        emoji: '💞',
+        title: '경험과 사람이 오래가요',
+        body: '물건은 금방 질리지만 가족과 간 여행, 친구와 논 기억은 오래 남아요.',
+      ),
+    ],
+    callout: '돈을 모으는 이유를 가끔 떠올려보세요. 그게 방향을 잡아줘요!',
+  ),
+  EconomyTopic(
+    id: 'atm',
+    emoji: '🏧',
+    title: 'ATM 쓰는 법',
+    summary: '은행이 문을 닫아도 쓸 수 있어요',
+    sections: [
+      TopicSection(
+        emoji: '💳',
+        title: '카드와 비밀번호가 필요해요',
+        body: '카드를 넣고 비밀번호를 눌러 돈을 찾거나 넣을 수 있어요. '
+            '비밀번호는 가리고 누르세요.',
+      ),
+      TopicSection(
+        emoji: '💸',
+        title: '수수료가 붙을 때가 있어요',
+        body: '내 은행이 아닌 ATM이나 밤늦게 쓰면 수수료가 붙어요. '
+            '몇백 원이지만 자주 하면 쌓여요.',
+      ),
+      TopicSection(
+        emoji: '👀',
+        title: '카드와 돈 꼭 챙기기',
+        body: '돈만 들고 카드를 두고 오는 실수가 많아요. '
+            '자리를 뜨기 전에 한 번 더 확인하세요.',
+      ),
+    ],
+    callout: '내 은행 ATM을 낮에 쓰면 수수료를 아낄 수 있어요!',
+  ),
+  EconomyTopic(
+    id: 'exchange_money',
+    emoji: '💱',
+    title: '환전하기',
+    summary: '다른 나라 돈으로 바꾸기',
+    sections: [
+      TopicSection(
+        emoji: '✈️',
+        title: '여행 갈 때 바꿔요',
+        body: '일본에 가면 엔, 미국에 가면 달러가 필요해요. '
+            '은행이나 공항에서 바꿀 수 있어요.',
+      ),
+      TopicSection(
+        emoji: '🏦',
+        title: '어디서 바꾸냐에 따라 달라요',
+        body: '공항은 편하지만 조금 손해예요. '
+            '미리 은행 앱으로 신청하면 더 좋은 값에 바꿀 수 있어요.',
+      ),
+      TopicSection(
+        emoji: '🔙',
+        title: '남은 돈은 다시 바꿔요',
+        body: '쓰고 남은 외국 돈은 돌아와서 다시 바꿀 수 있어요. '
+            '동전은 안 받는 곳이 많으니 다 쓰고 오면 좋아요.',
+      ),
+    ],
+    callout: '환율이 좋을 때 미리 조금씩 바꿔두는 어른들도 있어요!',
+  ),
+  EconomyTopic(
+    id: 'saving_together',
+    emoji: '👨‍👩‍👧‍👦',
+    title: '같이 모으면 더 커져요',
+    summary: '가족과 함께하는 목표',
+    sections: [
+      TopicSection(
+        emoji: '🎯',
+        title: '함께 정한 목표는 힘이 세요',
+        body: '가족 여행처럼 같이 원하는 걸 정하고 조금씩 모아보세요. '
+            '혼자보다 훨씬 빨리 모여요.',
+      ),
+      TopicSection(
+        emoji: '📊',
+        title: '얼마나 왔는지 같이 보기',
+        body: '진행률이 보이면 더 하고 싶어져요. '
+            '앱의 저축 목표를 함께 확인해보세요.',
+      ),
+      TopicSection(
+        emoji: '🎉',
+        title: '이루면 같이 기뻐하기',
+        body: '목표를 이루면 꼭 축하해요. '
+            '그 기억이 다음 목표를 만드는 힘이 돼요.',
+      ),
+    ],
+    callout: '앱의 저축 목표에 가족 목표를 하나 만들어보세요!',
+  ),
 ];
 
 EconomyTopic? topicById(String id) {
