@@ -101,7 +101,7 @@ const Map<String, String> _tierEnglish = {
   'sav_27': 'Mojang',
   'sav_28': 'Torch',
   'sav_29': 'Sweden',
-  'sav_30': 'Great Richest',
+  'sav_30': 'Great richest',
   'sav_31': 'How Did We Get Here?',
 };
 
@@ -137,7 +137,7 @@ const Map<String, String> _tierAssetName = {
   'sav_26': 'herobrine',
   'sav_27': 'mojang',
   'sav_28': 'torch',
-  // sav_29~31(스웨덴/그레이트 리치/어떻게 여기까지)은 마인크래프트 밖 등급이라
+  // sav_29~31(스웨덴/대애애바아악부우우자아아/어떻게 여기까지)은 마인크래프트 밖 등급이라
   // 커스텀 이미지가 없다 — 이모지로 자동 폴백된다.
 };
 

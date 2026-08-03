@@ -52,7 +52,7 @@ void showTierCinematic(BuildContext context, Tier tier) {
     'sav_27': (0xE04A2F, 0xF57150, 0x9C3220), // 모장
     'sav_28': (0xE8A33D, 0xFFC968, 0xA66E1F), // 횃불(물/석탄 사이 신설)
     'sav_29': (0x006AA7, 0x3B94D1, 0x004570), // 스웨덴(모장 이후 신설)
-    'sav_30': (0xE8B923, 0xFFDA5C, 0xA67F13), // 그레이트 리치
+    'sav_30': (0xE8B923, 0xFFDA5C, 0xA67F13), // 대애애바아악부우우자아아
     'sav_31': (0x8B0000, 0xB33030, 0x4D0000), // 어떻게 여기까지 왔지?
   };
   final v = map[tier.id];
