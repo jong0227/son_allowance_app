@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/app_database.dart';
 import '../providers/tier_provider.dart';
 import '../theme/app_theme.dart';
+import 'tier_widgets.dart';
 
 /// 티어 축하 시네마틱(풀스크린).
 /// 블럭 낙하 → 채굴 → 파괴 → 아이템 등장 → 칭호 + 폭죽 5단계로 이어지는 연출.
@@ -49,13 +50,37 @@ void showTierCinematic(BuildContext context, Tier tier) {
     'sav_25': (0xE8B7F0, 0xF6D8FA, 0xAE7FB6), // 엔드 수정
     'sav_26': (0x6E4B2A, 0x8E6640, 0x452D18), // 히로빈
     'sav_27': (0xE04A2F, 0xF57150, 0x9C3220), // 모장
+    'sav_28': (0xE8A33D, 0xFFC968, 0xA66E1F), // 횃불(물/석탄 사이 신설)
+    'sav_29': (0x006AA7, 0x3B94D1, 0x004570), // 스웨덴(모장 이후 신설)
+    'sav_30': (0xE8B923, 0xFFDA5C, 0xA67F13), // 그레이트 리치
+    'sav_31': (0x8B0000, 0xB33030, 0x4D0000), // 어떻게 여기까지 왔지?
   };
   final v = map[tier.id];
-  final base = Color(0xFF000000 | (v?.$1 ?? 0x7FA8D0));
-  final light = Color(0xFF000000 | (v?.$2 ?? 0xA9C9E8));
-  final dark = Color(0xFF000000 | (v?.$3 ?? 0x52708C));
+  final Color base, light, dark;
+  if (v != null) {
+    base = Color(0xFF000000 | v.$1);
+    light = Color(0xFF000000 | v.$2);
+    dark = Color(0xFF000000 | v.$3);
+  } else {
+    // 위 표에 없는 티어(새로 추가한 등급)는 id로 색을 만들어 낸다.
+    // 티어를 추가할 때마다 이 표를 같이 챙기지 않아도 서로 다른 색이 나오게 하려는 것.
+    // 색을 꼭 지정하고 싶으면 표에 한 줄 넣으면 그게 우선한다.
+    final hue = (tier.id.hashCode.abs() % 360).toDouble();
+    final hsl = HSLColor.fromAHSL(1, hue, 0.5, 0.45);
+    base = hsl.toColor();
+    light = hsl.withLightness(0.62).toColor();
+    dark = hsl.withLightness(0.28).toColor();
+  }
   // 상위 티어(다이아 이상)는 무지갯빛 반짝임을 더한다.
-  return (base: base, light: light, dark: dark, shimmer: tier.sortOrder >= 16);
+  // 횃불이 중간에 끼면서 다이아 순서가 16 → 17로 밀렸다. 숫자를 안 고치면
+  // 한 칸 앞(에메랄드)부터 반짝여 기준이 어긋난다.
+  const shimmerFrom = 17; // 다이아몬드(sav_16)의 새 sortOrder
+  return (
+    base: base,
+    light: light,
+    dark: dark,
+    shimmer: tier.sortOrder >= shimmerFrom
+  );
 }
 
 class _TierCinematic extends StatefulWidget {
@@ -177,7 +202,10 @@ class _TierCinematicState extends State<_TierCinematic>
       offset: Offset(0, (1 - rise) * 90 + (t > 0.62 ? float : 0)),
       child: Transform.scale(
         scale: 0.4 + rise * 0.6,
-        child: Text(widget.tier.icon, style: const TextStyle(fontSize: AppEmoji.hero)),
+        // 티어 목록에 등록된 아이콘을 그대로 쓴다(커스텀 이미지 → 번들 PNG → 이모지).
+        // 예전엔 이모지만 그려서, 마인크래프트 PNG를 넣어둔 티어인데도 이스터에그에서만
+        // 이모지가 튀어나왔다. 티어를 추가/교체해도 여기는 손댈 필요가 없다.
+        child: TierIcon(tier: widget.tier, size: AppEmoji.hero),
       ),
     );
   }

@@ -99,6 +99,10 @@ const Map<String, String> _tierEnglish = {
   'sav_25': 'End Crystal',
   'sav_26': 'Herobrine',
   'sav_27': 'Mojang',
+  'sav_28': 'Torch',
+  'sav_29': 'Sweden',
+  'sav_30': 'Great Richest',
+  'sav_31': 'How Did We Get Here?',
 };
 
 String? tierEnglishName(String id) => _tierEnglish[id];
@@ -132,6 +136,9 @@ const Map<String, String> _tierAssetName = {
   'sav_25': 'end_crystal',
   'sav_26': 'herobrine',
   'sav_27': 'mojang',
+  'sav_28': 'torch',
+  // sav_29~31(스웨덴/그레이트 리치/어떻게 여기까지)은 마인크래프트 밖 등급이라
+  // 커스텀 이미지가 없다 — 이모지로 자동 폴백된다.
 };
 
 String? tierAssetPath(String id) {
