@@ -325,6 +325,68 @@ class PastAllowancePayment {
     InvestTrades,
   ],
 )
+/// 저축 점수가 거래 하나로 얼마나 움직였는지(화면 설명용 한 줄).
+class TierScoreStep {
+  final DateTime date;
+  final String category;
+  final String? memo;
+  final int amount;
+
+  /// 수입이면 true, 지출이면 false
+  final bool isIncome;
+
+  /// 수입일 때 "선물 주머니"로 들어갔는지(점수 10%만 반영)
+  final bool isGift;
+
+  /// 지출일 때 각 주머니에서 빠져나간 금액(지출이 아니면 0)
+  final int fromGift;
+  final int fromRegular;
+
+  /// 이 거래로 점수가 움직인 폭 / 움직인 뒤의 점수
+  final int scoreDelta;
+  final int scoreAfter;
+
+  const TierScoreStep({
+    required this.date,
+    required this.category,
+    required this.memo,
+    required this.amount,
+    required this.isIncome,
+    required this.isGift,
+    required this.fromGift,
+    required this.fromRegular,
+    required this.scoreDelta,
+    required this.scoreAfter,
+  });
+
+  /// 지출이 두 주머니에 걸쳐 빠진 경우(선물이 모자라 용돈에서도 뺀 경우)
+  bool get isSplitSpend => !isIncome && fromGift > 0 && fromRegular > 0;
+}
+
+/// 저축 점수 계산 과정 전체. 두 주머니에 남은 돈과 거래별 내역을 함께 담는다.
+class TierScoreBreakdown {
+  /// 최신 거래가 앞에 오도록 정렬됨
+  final List<TierScoreStep> steps;
+
+  /// 용돈 주머니에 남은 돈(점수에 100% 반영)
+  final int regularPool;
+
+  /// 선물 주머니에 남은 돈(점수에 10%만 반영)
+  final int giftPool;
+
+  final int tierScore;
+
+  const TierScoreBreakdown({
+    required this.steps,
+    required this.regularPool,
+    required this.giftPool,
+    required this.tierScore,
+  });
+
+  /// 선물 주머니가 점수에 보태는 몫
+  int get giftScore => (giftPool * 0.1).round();
+}
+
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
@@ -2179,6 +2241,90 @@ class AppDatabase extends _$AppDatabase {
       'tierScore': tierScore < 0 ? 0 : tierScore,
     };
   }
+
+  /// 저축 점수가 거래 하나하나로 어떻게 움직였는지 되짚어 준다(화면 설명용).
+  ///
+  /// ⚠️ computeSummary의 점수 계산과 **같은 규칙을 그대로** 따라야 한다. 여기서만
+  /// 슬쩍 다르게 계산하면, 아이에게 보여주는 내역의 합과 실제 점수가 어긋나
+  /// "왜 숫자가 안 맞아?"가 된다. 두 값이 항상 같은지는 테스트로 고정해 둔다.
+  Future<TierScoreBreakdown> tierScoreBreakdown(String childId) async {
+    final txs = await (select(transactionEntries)
+          ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull()))
+        .get();
+
+    // 이월잔액은 "처음부터 있던 돈"이라 용돈 주머니의 출발값으로 두고, 내역에는
+    // 넣지 않는다(computeSummary와 동일).
+    var regularPool = 0;
+    for (final t in txs) {
+      if (t.flow == 'income' && t.category == kInitialBalance) {
+        regularPool += t.amount;
+      }
+    }
+    var giftPool = 0;
+
+    int scoreOf() => regularPool + (giftPool * 0.1).round();
+    var prevScore = scoreOf();
+
+    final chrono = txs.where((t) => t.category != kInitialBalance).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final steps = <TierScoreStep>[];
+    for (final t in chrono) {
+      var fromGift = 0;
+      var fromRegular = 0;
+      final isIncome = t.flow == 'income';
+      final isGift = isIncome && !_countsAsRegularPool(t.category);
+
+      if (isIncome) {
+        if (isGift) {
+          giftPool += t.amount;
+        } else {
+          regularPool += t.amount;
+        }
+      } else {
+        // 지출은 선물 주머니에서 먼저 빠진다(모자라면 나머지를 용돈 주머니에서).
+        if (giftPool >= t.amount) {
+          fromGift = t.amount;
+          giftPool -= t.amount;
+        } else {
+          fromGift = giftPool;
+          fromRegular = t.amount - giftPool;
+          regularPool -= fromRegular;
+          giftPool = 0;
+        }
+      }
+
+      final after = scoreOf();
+      steps.add(TierScoreStep(
+        date: t.date,
+        category: t.category,
+        memo: t.memo,
+        amount: t.amount,
+        isIncome: isIncome,
+        isGift: isGift,
+        fromGift: fromGift,
+        fromRegular: fromRegular,
+        scoreDelta: after - prevScore,
+        scoreAfter: after,
+      ));
+      prevScore = after;
+    }
+
+    return TierScoreBreakdown(
+      steps: steps.reversed.toList(), // 최신 거래가 위로
+      regularPool: regularPool,
+      giftPool: giftPool,
+      tierScore: scoreOf() < 0 ? 0 : scoreOf(),
+    );
+  }
+
+  /// 점수에 100% 반영되는 수입(내가 모으거나 노력해서 번 돈)인지.
+  static bool _countsAsRegularPool(String category) =>
+      category == kRegularAllowance ||
+      category == kSavingsBonus ||
+      category == kInterest ||
+      category == kQuizReward ||
+      category == kInvestProfit;
 
   /// 시스템 예약 카테고리(정기용돈/절약보너스/이자/이월잔액)인지 여부.
   /// 이들은 "특별수입"이 아니므로 받은사람별 통계에서 제외한다.

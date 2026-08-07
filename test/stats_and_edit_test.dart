@@ -231,4 +231,84 @@ void main() {
     // 잔액이 정확히 10000 (6000 정기 + 4000 이월)
     expect((await db.computeSummary(child.id))['balance'], 10000);
   });
+
+  group('저축 점수 내역(아이에게 보여주는 설명)', () {
+    Future<void> tx(String id, DateTime date, String flow, String category,
+        int amount) async {
+      await db.upsertTransaction(TransactionEntriesCompanion.insert(
+        id: id,
+        childId: 'kid1',
+        date: date,
+        flow: flow,
+        category: category,
+        amount: amount,
+        updatedAt: Value(date),
+      ));
+    }
+
+    test('내역의 최종 점수가 실제 저축 점수와 정확히 같다', () async {
+      final child = await makeChild();
+      final d0 = DateTime(2026, 3, 1);
+      // 실기기에서 확인한 실제 패턴을 축약: 용돈/보너스 + 큰 선물 + 그 뒤 지출
+      await tx('a', d0, 'income', AppDatabase.kRegularAllowance, 54000);
+      await tx('b', d0.add(const Duration(days: 1)), 'expense', '기타', 22147);
+      await tx('c', d0.add(const Duration(days: 2)), 'income', '사랑용돈', 70000);
+      await tx('d', d0.add(const Duration(days: 3)), 'income', AppDatabase.kSavingsBonus, 650);
+      await tx('e', d0.add(const Duration(days: 4)), 'expense', '간식', 21000);
+
+      final summary = await db.computeSummary(child.id);
+      final bd = await db.tierScoreBreakdown(child.id);
+      expect(bd.tierScore, summary['tierScore'],
+          reason: '내역으로 계산한 점수와 실제 점수가 다르면 아이에게 보여주는 숫자가 어긋난다');
+      expect(bd.steps.first.scoreAfter, bd.tierScore,
+          reason: '가장 최근 거래 뒤 점수가 곧 지금 점수여야 한다');
+    });
+
+    test('두 주머니 남은 돈을 합치면 점수가 나온다(용돈 100% + 선물 10%)', () async {
+      final child = await makeChild();
+      final d0 = DateTime(2026, 3, 1);
+      await tx('a', d0, 'income', AppDatabase.kRegularAllowance, 50000);
+      await tx('b', d0.add(const Duration(days: 1)), 'income', '사랑용돈', 70000);
+
+      final bd = await db.tierScoreBreakdown(child.id);
+      expect(bd.regularPool, 50000);
+      expect(bd.giftPool, 70000);
+      expect(bd.giftScore, 7000);
+      expect(bd.regularPool + bd.giftScore, bd.tierScore);
+    });
+
+    test('지출은 선물 주머니에서 먼저 빠지고, 점수는 10%만 떨어진다', () async {
+      final child = await makeChild();
+      final d0 = DateTime(2026, 3, 1);
+      await tx('a', d0, 'income', AppDatabase.kRegularAllowance, 50000);
+      await tx('b', d0.add(const Duration(days: 1)), 'income', '사랑용돈', 70000);
+      await tx('c', d0.add(const Duration(days: 2)), 'expense', '간식', 21000);
+
+      final bd = await db.tierScoreBreakdown(child.id);
+      final spend = bd.steps.first; // 최신이 맨 앞
+      expect(spend.isIncome, false);
+      expect(spend.fromGift, 21000, reason: '선물 주머니에서 전액 빠져야 한다');
+      expect(spend.fromRegular, 0);
+      expect(spend.scoreDelta, -2100, reason: '21,000의 10%만 점수에서 빠진다');
+      expect(bd.regularPool, 50000, reason: '용돈 주머니는 손대지 않았다');
+    });
+
+    test('선물 주머니가 모자라면 나머지는 용돈 주머니에서 100% 빠진다', () async {
+      final child = await makeChild();
+      final d0 = DateTime(2026, 3, 1);
+      await tx('a', d0, 'income', AppDatabase.kRegularAllowance, 50000);
+      await tx('b', d0.add(const Duration(days: 1)), 'income', '사랑용돈', 5000);
+      await tx('c', d0.add(const Duration(days: 2)), 'expense', '간식', 9000);
+
+      final bd = await db.tierScoreBreakdown(child.id);
+      final spend = bd.steps.first;
+      expect(spend.fromGift, 5000);
+      expect(spend.fromRegular, 4000);
+      expect(spend.isSplitSpend, true);
+      // 선물 5000이 사라져 -500, 용돈 4000이 빠져 -4000
+      expect(spend.scoreDelta, -4500);
+      expect(bd.giftPool, 0);
+      expect(bd.regularPool, 46000);
+    });
+  });
 }

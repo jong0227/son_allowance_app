@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
+import '../providers/database_provider.dart';
 import '../providers/tier_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'tier_cinematic.dart';
+import 'ui_kit.dart';
 
 /// 이스터에그: 자기 등급(아이콘/칭호 영역)을 연속 7번 누르면 블럭이 터지는 애니메이션.
 /// child를 감싸 그 영역 전체가 탭 대상이 되도록 한다.
@@ -329,12 +331,18 @@ class TierSummaryCard extends StatelessWidget {
   final List<Tier> tiers;
   final int value; // 누적: 원, 주간: 저축률%
   final bool isPercent;
+
+  /// 누적 저축 카드에서만 넘긴다. 있으면 물음표 시트에 "내 점수"(주머니·내역)가
+  /// 함께 열린다. 주간 저축률 카드는 주머니 개념이 없어 넘기지 않는다.
+  final String? childId;
+
   const TierSummaryCard({
     super.key,
     required this.label,
     required this.tiers,
     required this.value,
     this.isPercent = false,
+    this.childId,
   });
 
   @override
@@ -362,7 +370,8 @@ class TierSummaryCard extends StatelessWidget {
                         color: scheme.onPrimaryContainer.withValues(alpha: 0.8))),
                 const Spacer(),
                 InkWell(
-                  onTap: () => showTierTable(context, tiers, value, isPercent: isPercent),
+                  onTap: () => showTierTable(context, tiers, value,
+                      isPercent: isPercent, childId: childId),
                   borderRadius: BorderRadius.circular(AppRadius.xl),
                   child: Padding(
                     padding: const EdgeInsets.all(AppGap.xs),
@@ -444,7 +453,7 @@ class TierSummaryCard extends StatelessWidget {
 
 /// 전체 티어표 모달. 현재 티어 하이라이트 + (누적)보상 표시.
 void showTierTable(BuildContext context, List<Tier> tiers, int value,
-    {bool isPercent = false}) {
+    {bool isPercent = false, String? childId}) {
   final pos = tierFor(tiers, value);
   final currentId = pos.current?.id;
   String threshText(Tier t) => isPercent ? '${t.threshold}% 이상' : formatWon(t.threshold);
@@ -454,24 +463,57 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
     isScrollControlled: true,
     builder: (context) {
       final scheme = Theme.of(context).colorScheme;
+      // 누적 저축 티어에서만 "내 점수"를 함께 보여준다(주간 저축률엔 주머니 개념이 없다).
+      final showScoreTab = !isPercent && childId != null;
+      var tab = 0; // 0=내 점수, 1=등급표
       return DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.7,
         maxChildSize: 0.92,
-        builder: (context, controller) => ListView(
-          controller: controller,
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-          children: [
-            Text(isPercent ? '주간 저축률 티어표' : '누적 저축 티어표',
-                style: const TextStyle(
-                    fontSize: AppText.heading, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-            const SizedBox(height: AppGap.xxs),
-            Text(
-                isPercent
-                    ? '이번 주 저축률 $value% · 현재 "${pos.current?.title ?? '-'}"'
-                    : '저축 점수 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
-                style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
-            const SizedBox(height: AppGap.md),
+        builder: (context, controller) => StatefulBuilder(
+          builder: (context, setSheet) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            children: [
+              Text(isPercent ? '주간 저축률 티어표' : '누적 저축 티어표',
+                  style: const TextStyle(
+                      fontSize: AppText.heading, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+              const SizedBox(height: AppGap.xxs),
+              Text(
+                  isPercent
+                      ? '이번 주 저축률 $value% · 현재 "${pos.current?.title ?? '-'}"'
+                      : '저축 점수 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
+                  style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
+              const SizedBox(height: AppGap.md),
+              if (showScoreTab) ...[
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('내 점수')),
+                    ButtonSegment(value: 1, label: Text('등급표')),
+                  ],
+                  selected: {tab},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (s) => setSheet(() => tab = s.first),
+                ),
+                const SizedBox(height: AppGap.md),
+              ],
+              if (showScoreTab && tab == 0)
+                _TierScoreExplainer(childId: childId)
+              else
+                ..._tierLadder(context, tiers, currentId, threshText),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// 등급 사다리(기존 목록). 시트가 탭으로 갈라지면서 따로 뺐다.
+List<Widget> _tierLadder(BuildContext context, List<Tier> tiers,
+    String? currentId, String Function(Tier) threshText) {
+  final scheme = Theme.of(context).colorScheme;
+  return [
             for (final t in tiers)
               Card(
                 color: t.id == currentId ? scheme.primaryContainer : null,
@@ -513,9 +555,297 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
                   isThreeLine: t.reward != null && t.reward!.isNotEmpty,
                 ),
               ),
+  ];
+}
+
+/// "내 저축 점수가 왜 이 숫자인지"를 아이 눈높이로 풀어주는 화면.
+///
+/// 핵심 두 가지: (1) 저축 점수는 통장 잔액이 아니다 — 돈 종류마다 점수에 들어가는
+/// 비율이 다르다. (2) 돈을 쓰면 "선물 주머니"에서 먼저 빠져서, 큰돈을 써도 점수는
+/// 조금만 떨어진다. 어른도 헷갈리던 규칙이라 말로 풀지 않고 주머니에 남은 돈과
+/// 거래별 점수 변화를 그대로 보여준다.
+class _TierScoreExplainer extends ConsumerStatefulWidget {
+  final String childId;
+  const _TierScoreExplainer({required this.childId});
+
+  @override
+  ConsumerState<_TierScoreExplainer> createState() => _TierScoreExplainerState();
+}
+
+class _TierScoreExplainerState extends ConsumerState<_TierScoreExplainer> {
+  /// 한 번에 보여줄 내역 수. "더 보기"를 누를 때마다 늘어난다.
+  int _shown = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(tierBreakdownProvider(widget.childId));
+    final scheme = Theme.of(context).colorScheme;
+    final palette = appPalette(context);
+
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(AppGap.xxl),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.all(AppGap.lg),
+        child: Text('점수 내역을 불러오지 못했어요.',
+            style: TextStyle(color: scheme.onSurfaceVariant)),
+      ),
+      data: (bd) {
+        final visible = bd.steps.take(_shown).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppGap.md),
+              decoration: BoxDecoration(
+                color: palette.savings.bg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Text(
+                '🏅 저축 점수는 통장에 있는 돈이랑 달라요. '
+                '어떤 돈이냐에 따라 점수에 들어가는 양이 달라요.',
+                style: TextStyle(
+                    fontSize: AppText.label,
+                    height: 1.5,
+                    color: palette.savings.fg),
+              ),
+            ),
+            const SizedBox(height: AppGap.md),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _PocketCard(
+                      emoji: '🐷',
+                      title: '용돈 주머니',
+                      subtitle: '용돈·보너스·이자·퀴즈',
+                      left: bd.regularPool,
+                      ratioLabel: '점수 100%',
+                      score: bd.regularPool,
+                      pair: palette.income,
+                    ),
+                  ),
+                  const SizedBox(width: AppGap.sm),
+                  Expanded(
+                    child: _PocketCard(
+                      emoji: '🎁',
+                      title: '선물 주머니',
+                      subtitle: '설날·생일·사랑용돈',
+                      left: bd.giftPool,
+                      ratioLabel: '점수 10%만',
+                      score: bd.giftScore,
+                      pair: palette.special,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppGap.sm),
+            // 두 몫을 더하면 지금 점수가 된다는 걸 식으로 못박는다.
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppGap.md, vertical: AppGap.sm),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${formatWon(bd.regularPool)} + ${formatWon(bd.giftScore)} '
+                  '= 내 점수 ${formatWon(bd.tierScore)}',
+                  style: const TextStyle(
+                      fontSize: AppText.body, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppGap.md),
+            Container(
+              padding: const EdgeInsets.all(AppGap.md),
+              decoration: BoxDecoration(
+                color: palette.allowance.bg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Text(
+                '💡 돈을 쓰면 선물 주머니에서 먼저 나가요. '
+                '그래서 선물이 남아 있는 동안은 많이 써도 점수가 조금만 떨어져요.',
+                style: TextStyle(
+                    fontSize: AppText.label,
+                    height: 1.5,
+                    color: palette.allowance.fg),
+              ),
+            ),
+            const SectionHeader('점수가 움직인 내역'),
+            if (visible.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppGap.lg),
+                child: Text('아직 기록이 없어요.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.onSurfaceVariant)),
+              ),
+            for (final s in visible) _ScoreStepRow(step: s),
+            if (_shown < bd.steps.length) ...[
+              const SizedBox(height: AppGap.sm),
+              OutlinedButton(
+                onPressed: () => setState(() => _shown += 20),
+                child: Text('더 보기 (${bd.steps.length - _shown}건 남음)'),
+              ),
+            ],
           ],
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
+}
+
+/// 주머니 하나. 남은 돈과 그게 점수에 얼마로 들어가는지를 같이 보여준다.
+class _PocketCard extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final int left;
+  final String ratioLabel;
+  final int score;
+  final PastelPair pair;
+
+  const _PocketCard({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.left,
+    required this.ratioLabel,
+    required this.score,
+    required this.pair,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppGap.md),
+      decoration: BoxDecoration(
+        color: pair.bg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$emoji $title',
+              style: TextStyle(
+                  fontSize: AppText.label,
+                  fontWeight: FontWeight.w800,
+                  color: pair.fg)),
+          const SizedBox(height: AppGap.xxs),
+          Text(subtitle,
+              style: TextStyle(
+                  fontSize: AppText.micro,
+                  height: 1.4,
+                  color: pair.fg.withValues(alpha: 0.85))),
+          const SizedBox(height: AppGap.sm),
+          Text('남은 돈',
+              style: TextStyle(
+                  fontSize: AppText.micro,
+                  color: pair.fg.withValues(alpha: 0.85))),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(formatWon(left),
+                style: TextStyle(
+                    fontSize: AppText.title,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                    color: pair.fg)),
+          ),
+          const SizedBox(height: AppGap.xxs),
+          Text('$ratioLabel → ${formatWon(score)}',
+              style: TextStyle(
+                  fontSize: AppText.micro,
+                  fontWeight: FontWeight.w700,
+                  color: pair.fg)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 거래 한 건이 점수를 얼마나 움직였는지 한 줄.
+class _ScoreStepRow extends StatelessWidget {
+  final TierScoreStep step;
+  const _ScoreStepRow({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final palette = appPalette(context);
+    final up = step.scoreDelta >= 0;
+    final deltaColor = step.scoreDelta == 0
+        ? scheme.onSurfaceVariant
+        : (up ? palette.income.fg : palette.expense.fg);
+
+    // 어느 주머니가 움직였는지. 아이가 "왜 이만큼만 빠졌지?"를 여기서 납득해야 한다.
+    final String where;
+    if (step.isIncome) {
+      where = step.isGift
+          ? '🎁 선물 주머니로 들어옴 · 10%만'
+          : '🐷 용돈 주머니로 들어옴 · 100%';
+    } else if (step.isSplitSpend) {
+      where = '🎁 선물 ${formatWon(step.fromGift)} + '
+          '🐷 용돈 ${formatWon(step.fromRegular)}에서 나감';
+    } else if (step.fromGift > 0) {
+      where = '🎁 선물 주머니에서 나감 · 10%만';
+    } else {
+      where = '🐷 용돈 주머니에서 나감 · 100%';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppGap.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '${step.category} ${formatWon(step.amount)} '
+                  '${step.isIncome ? '받음' : '씀'}',
+                  style: const TextStyle(
+                      fontSize: AppText.body, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: AppGap.sm),
+              Text(
+                '${up ? '+' : ''}${formatWon(step.scoreDelta)}',
+                style: TextStyle(
+                    fontSize: AppText.body,
+                    fontWeight: FontWeight.w900,
+                    color: deltaColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Expanded(
+                child: Text(where,
+                    style: TextStyle(
+                        fontSize: AppText.micro,
+                        height: 1.4,
+                        color: scheme.onSurfaceVariant)),
+              ),
+              const SizedBox(width: AppGap.sm),
+              Text(
+                  '${formatDateShort(step.date)} · '
+                  '점수 ${formatWon(step.scoreAfter)}',
+                  style: TextStyle(
+                      fontSize: AppText.micro, color: scheme.onSurfaceVariant)),
+            ],
+          ),
+          const Divider(height: AppGap.lg),
+        ],
+      ),
+    );
+  }
 }

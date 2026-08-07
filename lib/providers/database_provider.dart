@@ -37,6 +37,13 @@ final summaryProvider = FutureProvider.family<Map<String, int>, String>((ref, ch
   return ref.watch(databaseProvider).computeSummary(childId);
 });
 
+/// 저축 점수가 거래별로 어떻게 움직였는지(등급 카드 → 물음표 → "내 점수").
+final tierBreakdownProvider =
+    FutureProvider.family<TierScoreBreakdown, String>((ref, childId) async {
+  ref.watch(transactionsProvider(childId));
+  return ref.watch(databaseProvider).tierScoreBreakdown(childId);
+});
+
 final expenseByCategoryProvider = FutureProvider.family<Map<String, int>, String>((ref, childId) async {
   ref.watch(transactionsProvider(childId));
   return ref.watch(databaseProvider).expenseByCategory(childId);

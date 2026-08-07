@@ -813,6 +813,7 @@ class OverviewScreen extends ConsumerWidget {
               label: '부자 등급',
               tiers: savingsTiers,
               value: tierScore,
+              childId: child.id,
             ),
           ),
           const SizedBox(width: AppGap.xs),
