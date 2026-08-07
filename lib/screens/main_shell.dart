@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/app_database.dart';
+import '../data/changelog.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
@@ -9,6 +12,7 @@ import '../providers/tier_provider.dart';
 import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/child_avatar.dart';
+import '../widgets/release_notes_sheet.dart';
 import '../widgets/responsive_scaffold.dart';
 import '../widgets/tier_widgets.dart';
 import 'economy_screen.dart';
@@ -99,7 +103,30 @@ class _MainShellState extends ConsumerState<MainShell> {
       }
       // 정기 용돈 예정 일정 확보. 앱을 켤 때마다 항상 최신 상태로 맞춘다.
       await db.ensureUpcomingSchedule(widget.child, owner);
+      // 업데이트 후 처음 켠 것이면 "새로운 소식"을 한 번 띄운다.
+      // (아들 폰엔 브라우저가 없어 GitHub 릴리즈 노트를 볼 수 없다)
+      await _showReleaseNotesIfUpdated(prefs);
     });
+  }
+
+  /// 설치된 버전이 마지막으로 소식을 본 버전과 다르면 한 번만 띄운다.
+  /// 첫 설치(기록 없음)일 때는 띄우지 않는다 — 처음 쓰는 아이에게 변경 이력은
+  /// 의미가 없고, 온보딩 흐름만 방해한다.
+  Future<void> _showReleaseNotesIfUpdated(SharedPreferences prefs) async {
+    const key = 'lastSeenReleaseNotesVersion';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final current = info.version;
+      final seen = prefs.getString(key);
+      await prefs.setString(key, current);
+      if (seen == null || seen == current) return;
+      // 이번 버전의 소식이 실제로 있을 때만 띄운다.
+      if (!kReleaseNotes.any((n) => n.version == current)) return;
+      if (!mounted) return;
+      showReleaseNotes(context, highlightVersion: current);
+    } catch (_) {
+      // 버전을 못 읽어도 앱 사용에는 지장 없다.
+    }
   }
 
   @override

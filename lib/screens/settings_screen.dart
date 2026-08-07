@@ -22,6 +22,7 @@ import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/child_avatar.dart';
+import '../widgets/release_notes_sheet.dart';
 import '../widgets/ui_kit.dart';
 import 'allowance_history_screen.dart';
 import 'tier_settings_screen.dart';
@@ -482,6 +483,15 @@ class SettingsScreen extends ConsumerWidget {
         ),
 
         const SectionHeader('앱 정보'),
+        Card(
+          child: ListTile(
+            leading: const Text('🎉', style: TextStyle(fontSize: 22)),
+            title: const Text('새로운 소식'),
+            subtitle: const Text('업데이트되면서 뭐가 바뀌었는지 볼 수 있어요'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showReleaseNotes(context),
+          ),
+        ),
         const Card(child: _AppVersionTile()),
       ],
     );
