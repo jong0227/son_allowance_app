@@ -782,25 +782,7 @@ class OverviewScreen extends ConsumerWidget {
     // 이번 주 저축률 = (주간 용돈 - 이번 주 지출) / 주간 용돈
     final txs =
         ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
-    final now = DateTime.now();
-    final weekStart = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final budget = child.weeklyAllowanceDefault;
-    final spent = txs
-        .where(
-          (t) =>
-              t.flow == 'expense' &&
-              !t.date.isBefore(weekStart) &&
-              t.date.isBefore(weekEnd),
-        )
-        .fold<int>(0, (a, b) => a + b.amount);
-    final savePct = budget == 0
-        ? 0
-        : (((budget - spent) / budget) * 100).clamp(0, 100).round();
+    final savePct = weeklySavePercent(txs, child.weeklyAllowanceDefault);
 
     // 카드 자체에 상하 5px 마진이 있으므로 추가 패딩을 두지 않는다.
     // (예전엔 bottom 8이 더 붙어 아래 카드와 간격이 18px로 벌어져 보였음)
@@ -1138,18 +1120,7 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekStart = today.subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final spent = txs
-        .where(
-          (t) =>
-              t.flow == 'expense' &&
-              !t.date.isBefore(weekStart) &&
-              t.date.isBefore(weekEnd),
-        )
-        .fold<int>(0, (a, b) => a + b.amount);
+    final spent = weeklySpent(txs);
     final remaining = weeklyBudget - spent;
     final palette = appPalette(context);
     final scheme = Theme.of(context).colorScheme;
@@ -1158,9 +1129,7 @@ class _WeeklyBudgetMiniCard extends StatelessWidget {
         : (spent / weeklyBudget).clamp(0.0, 1.0);
     final over = remaining < 0;
     final barColor = over ? palette.expense.fg : palette.income.fg;
-    final savePct = weeklyBudget == 0
-        ? 0
-        : ((remaining / weeklyBudget) * 100).clamp(0, 100).round();
+    final savePct = weeklySavePercent(txs, weeklyBudget);
     final weeklyTier = tierFor(weeklyTiers, savePct).current;
 
     return Container(

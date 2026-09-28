@@ -13,7 +13,7 @@ void main() {
     await db.seedTiersIfEmpty();
     final first = await db.allTiersRaw();
     expect(first.where((t) => t.kind == 'savings').length, 31);
-    expect(first.where((t) => t.kind == 'weekly').length, 5);
+    expect(first.where((t) => t.kind == 'weekly').length, 11);
     // 시드는 고정 과거 시각(2020)이라 부모 수정이 항상 우선
     expect(first.first.updatedAt.year, 2020);
 
@@ -74,6 +74,134 @@ void main() {
     expect(newOnes.length, 3);
     final colors = newOnes.map((t) => tierPalette(t).base.toARGB32()).toSet();
     expect(colors.length, 3, reason: '새 등급끼리 색이 겹치면 구분이 안 된다');
+  });
+
+  group('주간 저축률 등급(10% 단위)', () {
+    Future<List<Tier>> weekly() async =>
+        (await db.allTiersRaw()).where((t) => t.kind == 'weekly').toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    test('0%부터 100%까지 10% 단위로 빠짐없이 11단계', () async {
+      await db.seedTiersIfEmpty();
+      final wk = await weekly();
+      expect(wk.map((t) => t.threshold).toList(),
+          [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+      for (var i = 0; i < wk.length; i++) {
+        expect(wk[i].sortOrder, i + 1, reason: '${wk[i].title} 순서가 비었다');
+      }
+      expect(wk.map((t) => t.id).toSet().length, wk.length, reason: 'id 중복');
+      expect(wk.map((t) => t.title).toSet().length, wk.length, reason: '칭호 중복');
+      expect(wk.map((t) => t.icon).toSet().length, wk.length, reason: '아이콘 중복');
+    });
+
+    test('원래 있던 5개는 같은 id·같은 기준 자리에 남는다(업데이트 전 폰과 동기화 대비)', () async {
+      await db.seedTiersIfEmpty();
+      final byId = {for (final t in await weekly()) t.id: t.threshold};
+      expect(byId['wk_01'], 0);
+      expect(byId['wk_02'], 40);
+      expect(byId['wk_03'], 60);
+      expect(byId['wk_04'], 80);
+      expect(byId['wk_05'], 100);
+    });
+
+    test('각 저축률이 알맞은 등급에 들어간다', () async {
+      await db.seedTiersIfEmpty();
+      final wk = await weekly();
+      expect(tierFor(wk, 0).current!.title, '일반 저축가');
+      expect(tierFor(wk, 9).current!.title, '일반 저축가');
+      expect(tierFor(wk, 39).current!.title, '햄스터 저축가');
+      expect(tierFor(wk, 40).current!.title, '다람쥐 저축가');
+      expect(tierFor(wk, 99).current!.title, '로켓 저축가');
+      expect(tierFor(wk, 100).current!.title, '완벽 저축왕');
+      expect(tierFor(wk, 100).next, null);
+    });
+
+    test('주간 등급은 무지갯빛 반짝임이 붙지 않는다', () async {
+      await db.seedTiersIfEmpty();
+      for (final t in await weekly()) {
+        expect(tierPalette(t).shimmer, false, reason: '${t.title}이 반짝인다');
+      }
+    });
+  });
+
+  test('부모가 기준을 순서 뒤바뀌게 고쳐도 알맞은 등급을 고른다', () async {
+    // 예전엔 목록을 sortOrder 순서대로만 훑다가 처음 넘지 못한 곳에서 멈춰서,
+    // 중간 등급 기준을 낮추면 그 뒤 등급을 영영 못 받았다.
+    await db.seedTiersIfEmpty();
+    await db.updateTierFields('wk_03', threshold: 15, title: '저축 요정', icon: '⭐', reward: null);
+    final wk = (await db.allTiersRaw()).where((t) => t.kind == 'weekly').toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    // 16%면 "저축 요정"(이제 15% 기준) — 옛 로직은 10% 알에서 멈췄다
+    expect(tierFor(wk, 16).current!.title, '저축 요정');
+    expect(tierFor(wk, 95).current!.title, '로켓 저축가');
+  });
+
+  test('기본값 재적용 시각은 릴리즈 날짜로 고정 — 옛 부모 수정본이 동기화로 되살아나지 않는다', () async {
+    // 가족 동기화는 updatedAt이 더 최신인 쪽이 이긴다. 예전엔 재적용 시각이 항상
+    // 2025-07-01이라, 2026년에 부모가 설정 화면에서 고쳐 둔 값(다른 폰에 남음)이
+    // 동기화 때 새 기본값을 도로 덮어썼다.
+    await db.seedTiersIfEmpty();
+    await db.reseedTiers();
+    final reseeded = (await db.allTiersRaw()).firstWhere((t) => t.id == 'wk_02');
+    expect(reseeded.title, '다람쥐 저축가');
+    expect(reseeded.updatedAt, AppDatabase.tierSeedTime,
+        reason: 'now()를 쓰면 늦게 업데이트한 폰이 그사이 부모가 새로 고친 값을 덮어쓴다');
+
+    // 이번 버전 전에 고쳐 둔 수정본(예: 2026년 3월)보다 반드시 최신이어야 한다.
+    final editedEarlierThisYear = DateTime(2026, 3, 1);
+    expect(AppDatabase.tierSeedTime.isAfter(editedEarlierThisYear), true);
+  });
+
+  group('이번 주 저축률 계산', () {
+    // 2026-09-30(수). 이번 주 = 9/28(월) ~ 10/4(일)
+    final now = DateTime(2026, 9, 30, 12);
+    TransactionEntry tx(String flow, String category, int amount, DateTime date) =>
+        TransactionEntry(
+          id: '$category$amount${date.day}',
+          childId: 'kid1',
+          date: date,
+          flow: flow,
+          category: category,
+          amount: amount,
+          updatedAt: date,
+          editedBy: '',
+        );
+
+    test('10원만 써도 100%(완벽 저축왕)가 되지 않는다 — 내림', () {
+      final txs = [tx('expense', '간식', 10, DateTime(2026, 9, 29))];
+      expect(weeklySavePercent(txs, 3000, now: now), 99);
+    });
+
+    test('경계에서 한 칸 위 등급으로 올려주지 않는다(39.6% → 39)', () {
+      // 3000원 중 1812원 씀 → 1188/3000 = 39.6%
+      final txs = [tx('expense', '간식', 1812, DateTime(2026, 9, 29))];
+      expect(weeklySavePercent(txs, 3000, now: now), 39);
+    });
+
+    test('모의투자 손실은 이번 주 지출로 치지 않는다', () {
+      final txs = [
+        tx('expense', '간식', 1000, DateTime(2026, 9, 29)),
+        tx('expense', AppDatabase.kInvestLoss, 900, DateTime(2026, 9, 30)),
+      ];
+      expect(weeklySpent(txs, now: now), 1000);
+      expect(weeklySavePercent(txs, 3000, now: now), 66);
+    });
+
+    test('지난주·다음 주 지출과 수입은 세지 않는다', () {
+      final txs = [
+        tx('expense', '간식', 500, DateTime(2026, 9, 27, 23, 59)), // 지난주 일요일
+        tx('expense', '간식', 500, DateTime(2026, 10, 5)), // 다음 주 월요일
+        tx('income', AppDatabase.kRegularAllowance, 3000, DateTime(2026, 9, 28)),
+      ];
+      expect(weeklySpent(txs, now: now), 0);
+      expect(weeklySavePercent(txs, 3000, now: now), 100);
+    });
+
+    test('용돈을 다 쓰거나 넘게 쓰면 0%, 용돈 설정이 0이면 0%', () {
+      final over = [tx('expense', '간식', 5000, DateTime(2026, 9, 29))];
+      expect(weeklySavePercent(over, 3000, now: now), 0);
+      expect(weeklySavePercent(const [], 0, now: now), 0);
+    });
   });
 
   test('티어 수정 시각이 갱신되어 동기화 우선권을 갖는다', () async {

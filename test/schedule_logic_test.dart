@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:son_allowance_app/data/app_database.dart';
+import 'package:son_allowance_app/services/export_import_service.dart';
 
 /// 정기 용돈 일정 로직(밀린 용돈 백필/건너뛰기/중복 정리) 단위 테스트.
 /// ensureUpcomingSchedule이 DateTime.now() 기준으로 동작하므로,
@@ -363,6 +364,57 @@ void main() {
     await db.ensureUpcomingSchedule(child, 'test'); // 2차: 이미 살아있으니 또 되살리면 안 됨
     final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
     expect(atToday.length, 1);
+  });
+
+  test('엄마·아빠가 각자 폰에서 같은 주 용돈을 지급해도 동기화 후 한 번만 들어간다', () async {
+    const io = ExportImportService();
+    final child = await createChild();
+    await db.ensureUpcomingSchedule(child, 'test');
+    final mom = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(mom.close);
+    await io.applyImport(await io.previewImportData(await io.serializeAll(db, '아빠'), mom), mom);
+
+    final momChild = (await mom.allChildrenRaw()).first;
+    await db.markSchedulePaid((await alive()).first, '아빠', child);
+    final momSched = (await mom.allSchedulesRaw()).firstWhere((s) => s.deletedAt == null);
+    await mom.markSchedulePaid(momSched, '엄마', momChild);
+
+    await io.applyImport(await io.previewImportData(await io.serializeAll(mom, '엄마'), db), db);
+    final allowances = (await db.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == '정기용돈');
+    expect(allowances.length, 1, reason: '같은 주 용돈이 두 번 들어가면 안 된다');
+  });
+
+  test('지급 취소 후 다시 지급하면 내역이 되살아난다(같은 id 재사용)', () async {
+    final child = await createChild();
+    await db.ensureUpcomingSchedule(child, 'test');
+    final s = (await alive()).first;
+    await db.markSchedulePaid(s, 'test', child);
+    await db.markScheduleUnpaid(s, 'test', child);
+    expect((await db.allTransactionsRaw()).where((t) => t.deletedAt == null).length, 0);
+    await db.markSchedulePaid(s, 'test', child);
+    final txs = (await db.allTransactionsRaw()).where((t) => t.deletedAt == null).toList();
+    expect(txs.length, 1, reason: '삭제 표시가 남으면 다시 지급해도 내역에 안 보인다');
+  });
+
+  test('예전 버전이 남긴 중복 지급 내역이 있어도 지급 취소가 멈추지 않는다', () async {
+    final child = await createChild();
+    await db.ensureUpcomingSchedule(child, 'test');
+    final s = (await alive()).first;
+    await db.markSchedulePaid(s, 'test', child);
+    // 옛 버전에서 다른 폰이 무작위 id로 만든 두 번째 내역(같은 일정에 연결)
+    await db.upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 'legacy-dup',
+      childId: child.id,
+      date: DateTime.now(),
+      flow: 'income',
+      category: '정기용돈',
+      amount: 3000,
+      linkedScheduleId: Value(s.id),
+      updatedAt: Value(DateTime.now()),
+    ));
+    // 예전엔 getSingleOrNull이 "여러 개"라며 예외를 던졌다
+    await db.markScheduleUnpaid(s, 'test', child);
   });
 
   test('지급하면 정기용돈 내역이 생기고, 밀린 주는 메모에 원래 날짜가 남는다', () async {

@@ -893,7 +893,9 @@ class AppDatabase extends _$AppDatabase {
     if (existing == null) {
       final late = sched.isBefore(today);
       await upsertTransaction(TransactionEntriesCompanion.insert(
-        id: const Uuid().v4(),
+        // 일정 id로 고정한다. 무작위 id면 엄마·아빠가 각자 폰에서 같은 주 용돈을
+        // 동기화 전에 "지급"했을 때 내역이 두 개 생겨 용돈이 두 번 들어갔다.
+        id: 'sch_${s.id}',
         childId: s.childId,
         date: now,
         flow: 'income',
@@ -902,6 +904,9 @@ class AppDatabase extends _$AppDatabase {
         memo: late ? Value('${sched.month}/${sched.day} 밀린 용돈') : const Value.absent(),
         linkedScheduleId: Value(s.id),
         editedBy: Value(editedBy),
+        // 지급 취소(소프트 삭제) 뒤 다시 지급하면 같은 id 행을 덮어쓰므로,
+        // 삭제 표시를 명시적으로 지워야 다시 살아난다.
+        deletedAt: const Value(null),
         updatedAt: Value(now),
       ));
     }
@@ -1139,9 +1144,16 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertTransaction(TransactionEntriesCompanion t) =>
       into(transactionEntries).insertOnConflictUpdate(t);
 
+  /// 일정에 연결된 정기용돈 내역. 여러 개면 가장 먼저 만든 것.
+  ///
+  /// 예전 버전에서 두 폰이 같은 일정을 동시에 지급하면 연결 내역이 두 개 생길 수 있었다.
+  /// 그 상태에서 getSingleOrNull은 예외를 던져 지급 취소·내역 삭제·일정 정리가 전부
+  /// 멈췄다. 이미 그런 데이터가 있어도 죽지 않도록 하나만 집는다.
   Future<TransactionEntry?> findTransactionByScheduleId(String scheduleId) =>
       (select(transactionEntries)
-            ..where((t) => t.linkedScheduleId.equals(scheduleId) & t.deletedAt.isNull()))
+            ..where((t) => t.linkedScheduleId.equals(scheduleId) & t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.asc(t.updatedAt)])
+            ..limit(1))
           .getSingleOrNull();
 
   Future<void> softDeleteTransaction(String id, String editedBy) => (update(transactionEntries)
@@ -1208,18 +1220,34 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> giveSavingsBonus(Child child, String editedBy) async {
     final now = DateTime.now();
     if (await bonusGivenThisWeek(child.id)) return false;
-    await upsertTransaction(TransactionEntriesCompanion.insert(
-      id: const Uuid().v4(),
-      childId: child.id,
+    await _writeWeeklyBonusTx(child.id, child.bonusAmount, '절약 목표 달성 보너스', editedBy, now);
+    return true;
+  }
+
+  /// 이번 주 절약 보너스 내역. id를 "자녀 + 그 주 월요일"로 고정한다.
+  ///
+  /// 보너스는 한 주에 한 번이 규칙인데, "이번 주에 이미 줬나"는 각 폰의 로컬 기록만 본다.
+  /// 무작위 id면 엄마·아빠가 동기화 전에 각자 주거나, 한쪽은 홈 카드로 주고 다른 쪽은
+  /// 아이 요청을 승인하면 보너스가 두 번 나갔다. 같은 id면 동기화 때 한 건으로 합쳐진다.
+  Future<void> _writeWeeklyBonusTx(
+      String childId, int amount, String memo, String editedBy, DateTime now) {
+    final weekStart =
+        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final ymd = '${weekStart.year}${weekStart.month.toString().padLeft(2, '0')}'
+        '${weekStart.day.toString().padLeft(2, '0')}';
+    return upsertTransaction(TransactionEntriesCompanion.insert(
+      id: 'bonus_${childId}_$ymd',
+      childId: childId,
       date: now,
       flow: 'income',
       category: kSavingsBonus,
-      amount: child.bonusAmount,
-      memo: const Value('절약 목표 달성 보너스'),
+      amount: amount,
+      memo: Value(memo),
       editedBy: Value(editedBy),
+      // 이번 주 보너스를 지웠다가 다시 주면 같은 행을 덮어쓰므로 삭제 표시를 지운다.
+      deletedAt: const Value(null),
       updatedAt: Value(now),
     ));
-    return true;
   }
 
   Future<bool> bonusGivenThisWeek(String childId) async {
@@ -1334,7 +1362,6 @@ class AppDatabase extends _$AppDatabase {
     return b.amount;
   }
 
-  /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 false 반환.
   /// 이자 지급 (원버튼). 이번 주기에 이미 받았으면 null.
   /// 지급했으면 계산 내역을 돌려줘 축하 연출에 쓴다.
   Future<InterestBreakdown?> giveInterest(Child child, String editedBy,
@@ -1388,9 +1415,6 @@ class AppDatabase extends _$AppDatabase {
       amount: b.amount,
       memo: Value(auto ? '$base · 자동 지급' : base),
       editedBy: Value(editedBy),
-      // id가 주기별 고정값이라, 이 주기 이자를 지웠다가(소프트 삭제) 다시 주면
-      // 같은 행을 덮어쓰게 된다. deletedAt을 명시적으로 비워야 되살아난다.
-      // (비우지 않으면 "삭제됨" 상태가 남아 다시 줘도 내역에 안 보인다)
       // id가 주기별 고정값이라, 이 주기 이자를 지웠다가(소프트 삭제) 다시 주면
       // 같은 행을 덮어쓰게 된다. deletedAt을 명시적으로 비워야 되살아난다.
       // (비우지 않으면 "삭제됨" 상태가 남아 다시 줘도 내역에 안 보인다)
@@ -1935,8 +1959,15 @@ class AppDatabase extends _$AppDatabase {
     required String resolvedBy,
   }) async {
     final now = DateTime.now();
+    // approveRequest와 같은 이유: 이미 처리된 요청이면 멈추고, 이체 id를 요청 id로
+    // 고정해 두 번 처리(연타·두 폰 동시 처리)돼도 주식계좌로 돈이 두 번 빠지지 않게 한다.
+    final current = await (select(requests)..where((t) => t.id.equals(r.id)))
+        .getSingleOrNull();
+    if (current == null || current.deletedAt != null || current.status != 'pending') {
+      return;
+    }
     await upsertStockTransfer(StockTransfersCompanion.insert(
-      id: const Uuid().v4(),
+      id: 'req_${r.id}',
       childId: r.childId,
       date: now,
       amount: actualAmount,
@@ -1959,23 +1990,30 @@ class AppDatabase extends _$AppDatabase {
   /// 부모가 요청을 승인. 승인하면 자동으로 반영된다:
   /// - bonus: 절약보너스 수입 내역 생성
   /// - wishlist: 저축 목표 생성
+  ///
+  /// ⚠️ 두 번 승인돼도 돈이 두 번 나가면 안 된다. 예전엔 무작위 id로 내역을 만들고
+  /// 요청 상태도 다시 확인하지 않아서, 승인 버튼을 두 번 누르거나 엄마·아빠가 각자
+  /// 폰에서 승인하면 보너스가 두 번 들어갔다(동기화는 id로 합치는데 id가 달라 둘 다 남음).
+  /// 그래서 (1) 지금 DB의 요청 상태를 다시 보고, (2) 내역/목표 id를 요청 id로 고정한다 —
+  /// 다른 폰에서 동시에 승인해도 동기화 때 한 건으로 합쳐진다.
   Future<void> approveRequest(Request r, String resolvedBy) async {
     final now = DateTime.now();
+    final current = await (select(requests)..where((t) => t.id.equals(r.id)))
+        .getSingleOrNull();
+    if (current == null || current.deletedAt != null || current.status != 'pending') {
+      return; // 이미 처리됐거나 취소된 요청
+    }
     if (r.type == 'bonus') {
-      await upsertTransaction(TransactionEntriesCompanion.insert(
-        id: const Uuid().v4(),
-        childId: r.childId,
-        date: now,
-        flow: 'income',
-        category: kSavingsBonus,
-        amount: r.amount,
-        memo: const Value('자녀 요청 승인 보너스'),
-        editedBy: Value(resolvedBy),
-        updatedAt: Value(now),
-      ));
+      // 부모가 홈 카드에서 이번 주 보너스를 이미 줬다면 아이 요청은 이미 이뤄진 것.
+      // 또 주면 같은 주에 보너스가 두 번 나간다.
+      // 홈 카드로 준 보너스와 같은 "이번 주 보너스" id를 써서, 다른 폰에서 카드로 준
+      // 것과 동기화될 때도 한 건으로 합쳐진다.
+      if (!await bonusGivenThisWeek(r.childId)) {
+        await _writeWeeklyBonusTx(r.childId, r.amount, '자녀 요청 승인 보너스', resolvedBy, now);
+      }
     } else if (r.type == 'wishlist') {
       await upsertGoal(GoalsCompanion.insert(
-        id: const Uuid().v4(),
+        id: 'req_${r.id}',
         childId: r.childId,
         title: r.title ?? '위시리스트',
         targetAmount: r.amount,
@@ -2052,12 +2090,23 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// 티어 기본값 버전. 올리면 앱 시작 시 기존 기기의 티어를 이 기본값으로 재적용한다.
-  static const int tierSeedVersion = 4;
+  /// ⚠️ 올릴 때 [tierSeedTime]도 그 릴리즈 날짜로 같이 올릴 것.
+  static const int tierSeedVersion = 5;
+
+  /// 이번 기본값 재적용의 기준 시각. **버전마다 그 릴리즈 날짜로 올려야 한다.**
+  ///
+  /// 가족 동기화는 "updatedAt이 더 최신인 쪽이 이긴다"라서, 예전처럼 매번 같은
+  /// 시각(2025-07-01)으로 재적용하면 그 뒤(2026년)에 부모가 설정 화면에서 고쳐 둔
+  /// 옛 값이 다른 폰에서 동기화로 되살아나 새 기본값을 덮어썼다. 릴리즈 날짜로 두면
+  /// - 이전의 모든 수정보다 최신이라 새 기본값이 확실히 퍼지고,
+  /// - 업데이트를 늦게 한 폰도 같은 시각을 쓰므로, 그사이 부모가 새로 고친 값을
+  ///   (그쪽이 더 최신이라) 덮어쓰지 않는다. now()를 쓰면 이게 깨진다.
+  static final DateTime tierSeedTime = DateTime(2026, 9, 28);
 
   /// 기존 기기의 티어를 기본값으로 재적용(재구성). 고정 시각으로 upsert해서
   /// 모든 기기가 동일해지고, 기본에 없는 옛 티어 id는 소프트 삭제한다.
   Future<void> reseedTiers() async {
-    final seedTime = DateTime(2025, 7, 1); // 옛 시드(2020)보다 최신 → 우선 적용
+    final seedTime = tierSeedTime;
     final keepIds = <String>{};
     for (final t in _defaultTiers) {
       keepIds.add(t.$1);
@@ -2120,12 +2169,21 @@ class AppDatabase extends _$AppDatabase {
     ('sav_29', 'savings', 29, 10000000, '스웨덴', '🇸🇪', '원하는 전자기기'),
     ('sav_30', 'savings', 30, 15000000, '대애애바아악부우우자아아', '💰', '원하는 장난감(40만원 내)'),
     ('sav_31', 'savings', 31, 20000000, '어떻게 여기까지 왔지?', '😱', '부모님과 자유 협의'),
-    // 주간 저축률 티어 (threshold=퍼센트 하한)
+    // 주간 저축률 티어 (threshold=퍼센트 하한). 2026-09에 5단계 → 10% 단위 11단계로.
+    // 기존 id(wk_01~05)는 같은 기준(0/40/60/80/100%) 자리에 그대로 두어, 아직 업데이트
+    // 안 한 가족 폰과 동기화해도 같은 id끼리 기준이 어긋나지 않게 했다. 사이 구간만 새
+    // id(wk_06~11). 40%의 "새싹"은 등급 위치에 비해 약해 보여 다람쥐로 바꿨다.
     ('wk_01', 'weekly', 1, 0, '일반 저축가', '🐜', null),
-    ('wk_02', 'weekly', 2, 40, '새싹 저축가', '🌱', null),
-    ('wk_03', 'weekly', 3, 60, '저축 요정', '⭐', null),
-    ('wk_04', 'weekly', 4, 80, '부자 후보자', '💪', null),
-    ('wk_05', 'weekly', 5, 100, '완벽 저축왕', '👑', null),
+    ('wk_06', 'weekly', 2, 10, '저축 알', '🥚', null),
+    ('wk_07', 'weekly', 3, 20, '병아리 저축가', '🐣', null),
+    ('wk_08', 'weekly', 4, 30, '햄스터 저축가', '🐹', null),
+    ('wk_02', 'weekly', 5, 40, '다람쥐 저축가', '🐿️', null),
+    ('wk_09', 'weekly', 6, 50, '꿀벌 저축가', '🐝', null),
+    ('wk_03', 'weekly', 7, 60, '저축 요정', '⭐', null),
+    ('wk_10', 'weekly', 8, 70, '부엉이 저축가', '🦉', null),
+    ('wk_04', 'weekly', 9, 80, '부자 후보자', '💪', null),
+    ('wk_11', 'weekly', 10, 90, '로켓 저축가', '🚀', null),
+    ('wk_05', 'weekly', 11, 100, '완벽 저축왕', '👑', null),
   ];
 
   // ---------------- 용돈 변경 이력 ----------------

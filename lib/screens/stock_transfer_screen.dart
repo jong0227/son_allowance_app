@@ -381,8 +381,10 @@ class StockTransferScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('실제 이체/매수는 증권 앱에서 진행한 뒤, 완료된 내용을 여기에 기록해주세요.',
-                    style: TextStyle(fontSize: AppText.label, color: Colors.grey)),
+                Text('실제 이체/매수는 증권 앱에서 진행한 뒤, 완료된 내용을 여기에 기록해주세요.',
+                    style: TextStyle(
+                        fontSize: AppText.label,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 const SizedBox(height: AppGap.md),
                 // 종목 선택(선택 사항)
                 OutlinedButton.icon(

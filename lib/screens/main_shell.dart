@@ -155,16 +155,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     final weeklyTiers = ref.watch(weeklyTiersProvider).valueOrNull ?? const [];
     final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
-    final now = DateTime.now();
-    final weekStart =
-        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final budget = child.weeklyAllowanceDefault;
-    final spent = txs
-        .where((t) =>
-            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
-        .fold<int>(0, (a, b) => a + b.amount);
-    final savePct = budget == 0 ? 0 : (((budget - spent) / budget) * 100).clamp(0, 100).round();
+    final savePct = weeklySavePercent(txs, child.weeklyAllowanceDefault);
     final weeklyTier = tierFor(weeklyTiers, savePct).current;
 
     return PopScope(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/tier_provider.dart';
 import '../screens/category_history_screen.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -41,14 +42,10 @@ class _BonusHomeCardState extends ConsumerState<BonusHomeCard> {
         false;
 
     final txs = ref.watch(transactionsProvider(child.id)).valueOrNull ?? const [];
-    final weekStart =
-        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 7));
     final weeklyBudget = child.weeklyAllowanceDefault;
-    final weekSpent = txs
-        .where((t) =>
-            t.flow == 'expense' && !t.date.isBefore(weekStart) && t.date.isBefore(weekEnd))
-        .fold<int>(0, (a, b) => a + b.amount);
+    // 주간 저축률과 같은 규칙(모의투자 손실 제외)으로 센다. 따로 세면 홈 카드는
+    // "저축 90%"인데 이 카드는 "많이 썼어요"라고 서로 다른 말을 하게 된다.
+    final weekSpent = weeklySpent(txs, now: now);
     final weekRemaining = weeklyBudget - weekSpent;
 
     final progress = child.bonusThreshold == 0

@@ -79,7 +79,9 @@ void showTierCinematic(BuildContext context, Tier tier) {
     base: base,
     light: light,
     dark: dark,
-    shimmer: tier.sortOrder >= shimmerFrom
+    // 누적 저축 등급에만 적용한다. 주간 저축률 등급도 sortOrder를 1부터 쓰기 때문에
+    // 종류를 안 가리면, 주간 등급이 늘어나 17번째를 넘는 순간 엉뚱하게 반짝인다.
+    shimmer: tier.kind == 'savings' && tier.sortOrder >= shimmerFrom
   );
 }
 

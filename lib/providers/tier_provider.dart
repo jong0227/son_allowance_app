@@ -49,6 +49,42 @@ final weeklyTiersProvider = StreamProvider<List<Tier>>((ref) {
   return ref.watch(databaseProvider).watchTiers('weekly');
 });
 
+/// 이번 주(월~일) 쓴 돈. 주간 저축률·절약 보너스가 모두 이 값을 쓴다.
+///
+/// 예전엔 이 계산이 상단 배지·홈 티어 카드·예산 카드·절약보너스 카드에 네 벌
+/// 복사돼 있어 규칙을 바꿀 때마다 한 곳씩 어긋날 위험이 있었다. 여기 한 곳에서만 계산한다.
+///
+/// 모의투자 손실은 빼고 센다. 용돈을 "쓴" 게 아니라 투자 결과이고, 주식을 살 때는
+/// 지출로 안 잡히는데 손해 보고 팔 때만 지출로 잡히면 앞뒤가 안 맞는다.
+/// (카테고리 통계도 같은 이유로 이미 투자 손실을 빼고 있다)
+int weeklySpent(Iterable<TransactionEntry> txs, {DateTime? now}) {
+  final n = now ?? DateTime.now();
+  final weekStart =
+      DateTime(n.year, n.month, n.day).subtract(Duration(days: n.weekday - 1));
+  final weekEnd = weekStart.add(const Duration(days: 7));
+  var spent = 0;
+  for (final t in txs) {
+    if (t.flow != 'expense') continue;
+    if (t.category == AppDatabase.kInvestLoss) continue;
+    if (t.date.isBefore(weekStart) || !t.date.isBefore(weekEnd)) continue;
+    spent += t.amount;
+  }
+  return spent;
+}
+
+/// 이번 주 저축률(0~100, 정수). 용돈을 한 푼도 안 썼을 때만 100.
+///
+/// ⚠️ 반드시 **내림**. 예전엔 반올림이라 용돈 3,000원 중 10원만 써도 99.67% → 100%로
+/// "완벽 저축왕"이 나왔고, 10% 단위 등급에선 모든 경계(39.6% → 40%)에서 한 칸 위를
+/// 줬다. 정수 나눗셈이라 부동소수 오차(0.29×100 = 28.999…)도 생기지 않는다.
+int weeklySavePercent(Iterable<TransactionEntry> txs, int weeklyBudget,
+    {DateTime? now}) {
+  if (weeklyBudget <= 0) return 0;
+  final remaining = weeklyBudget - weeklySpent(txs, now: now);
+  if (remaining <= 0) return 0;
+  return (remaining * 100 ~/ weeklyBudget).clamp(0, 100);
+}
+
 /// 현재 값에 해당하는 티어(threshold <= value 중 가장 높은 것)와 다음 티어.
 class TierPosition {
   final Tier? current;
@@ -147,9 +183,16 @@ String? tierAssetPath(String id) {
 }
 
 TierPosition tierFor(List<Tier> tiers, int value) {
+  // 기준값 순으로 정렬해서 본다. 목록은 sortOrder 순으로 오는데, 부모가 설정 화면에서
+  // 기준을 순서가 뒤바뀌게 고치면(예: 40% → 15%) 둘이 어긋나고, 그러면 아래 break에서
+  // 일찍 멈춰 엉뚱한 등급을 골랐다. 동기화 중 잠깐 sortOrder가 섞일 때도 같다.
+  final sorted = [...tiers]..sort((a, b) {
+      final c = a.threshold.compareTo(b.threshold);
+      return c != 0 ? c : a.sortOrder.compareTo(b.sortOrder);
+    });
   Tier? current;
   Tier? next;
-  for (final t in tiers) {
+  for (final t in sorted) {
     if (value >= t.threshold) {
       current = t;
     } else {

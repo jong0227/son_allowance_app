@@ -284,24 +284,35 @@ class TierBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TierIcon(tier: tier, size: 13),
-          const SizedBox(width: AppGap.xs),
-          Text(tier.title,
-              style: TextStyle(
-                  fontSize: AppText.label,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                  color: scheme.onPrimaryContainer)),
-        ],
+    // 폭 상한: 상단 제목줄에 배지 두 개가 나란히 붙는데, 칭호가 길면(예:
+    // "대애애바아악부우우자아아" 12자) 제목줄이 화면 밖으로 넘쳐 노란 경고 줄무늬가
+    // 떴다. 상한을 두고 넘치면 말줄임(…)으로 자른다. 전체 이름은 홈 카드에 보인다.
+    final badge = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 108),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TierIcon(tier: tier, size: 13),
+            const SizedBox(width: AppGap.xs),
+            Flexible(
+              child: Text(tier.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(
+                      fontSize: AppText.label,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                      color: scheme.onPrimaryContainer)),
+            ),
+          ],
+        ),
       ),
     );
     if (label == null) return badge;

@@ -80,6 +80,97 @@ void main() {
     expect((await db.computeSummary(child.id))['totalTransfer'], 98000);
   });
 
+  test('같은 보너스 요청을 두 번 승인해도 보너스는 한 번만 들어간다', () async {
+    final child = await makeChild();
+    await db.requestBonus(child, '아들');
+    final req = (await db.allRequestsRaw()).first;
+    // 승인 버튼 연타 / 화면에 남은 옛 요청 객체로 다시 승인
+    await db.approveRequest(req, '아빠');
+    await db.approveRequest(req, '아빠');
+    final bonuses = (await db.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == '절약보너스');
+    expect(bonuses.length, 1);
+  });
+
+  test('엄마·아빠가 각자 폰에서 동시에 승인해도 동기화 후 보너스는 한 번', () async {
+    const io = ExportImportService();
+    final child = await makeChild();
+    await db.requestBonus(child, '아들');
+    // 아빠 폰 → 엄마 폰으로 요청이 동기화된 상태
+    final mom = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(mom.close);
+    await io.applyImport(await io.previewImportData(await io.serializeAll(db, '아빠'), mom), mom);
+
+    // 동기화되기 전에 둘 다 승인
+    await db.approveRequest((await db.allRequestsRaw()).first, '아빠');
+    await mom.approveRequest((await mom.allRequestsRaw()).first, '엄마');
+
+    // 엄마 폰 변경이 아빠 폰으로 합쳐짐
+    await io.applyImport(await io.previewImportData(await io.serializeAll(mom, '엄마'), db), db);
+    final bonuses = (await db.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == '절약보너스');
+    expect(bonuses.length, 1, reason: '같은 요청의 보너스가 두 번 들어가면 안 된다');
+  });
+
+  test('이번 주 보너스를 이미 줬으면 아이 요청을 승인해도 또 주지 않는다', () async {
+    final child = await makeChild();
+    await db.requestBonus(child, '아들');
+    // 부모가 홈 카드에서 먼저 보너스 지급
+    expect(await db.giveSavingsBonus(child, '아빠'), true);
+    await db.approveRequest((await db.allRequestsRaw()).first, '아빠');
+
+    final bonuses = (await db.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == '절약보너스');
+    expect(bonuses.length, 1);
+    // 요청 자체는 처리된 것으로 정리된다(대기 목록에 계속 남지 않게)
+    expect((await db.allRequestsRaw()).first.status, 'approved');
+  });
+
+  test('거절된 요청은 나중에 승인 버튼을 눌러도 반영되지 않는다', () async {
+    final child = await makeChild();
+    await db.requestBonus(child, '아들');
+    final req = (await db.allRequestsRaw()).first;
+    await db.rejectRequest(req, '엄마');
+    await db.approveRequest(req, '아빠'); // 다른 폰에 남은 옛 "대기" 화면에서 누름
+    expect((await db.allTransactionsRaw()).where((t) => t.deletedAt == null).length, 0);
+    expect((await db.allRequestsRaw()).first.status, 'rejected');
+  });
+
+  test('한 폰은 홈 카드로, 다른 폰은 아이 요청 승인으로 보너스를 줘도 동기화 후 한 번', () async {
+    const io = ExportImportService();
+    final child = await makeChild();
+    await db.requestBonus(child, '아들');
+    final mom = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(mom.close);
+    await io.applyImport(await io.previewImportData(await io.serializeAll(db, '아빠'), mom), mom);
+
+    await db.giveSavingsBonus(child, '아빠'); // 아빠: 홈 카드
+    await mom.approveRequest((await mom.allRequestsRaw()).first, '엄마'); // 엄마: 요청 승인
+
+    await io.applyImport(await io.previewImportData(await io.serializeAll(mom, '엄마'), db), db);
+    final bonuses = (await db.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == '절약보너스');
+    expect(bonuses.length, 1);
+  });
+
+  test('위시리스트 요청을 두 번 승인해도 목표는 하나', () async {
+    final child = await makeChild();
+    await db.requestWishlist(child, '레고 세트', 45000, '아들');
+    final req = (await db.allRequestsRaw()).first;
+    await db.approveRequest(req, '엄마');
+    await db.approveRequest(req, '엄마');
+    expect((await db.allGoalsRaw()).where((g) => g.deletedAt == null).length, 1);
+  });
+
+  test('주식 요청을 두 번 처리해도 주식계좌로 한 번만 빠진다', () async {
+    final child = await makeChild();
+    await db.requestStock(child, '삼성전자', '005930.KS', 100000, '아들');
+    final req = (await db.allRequestsRaw()).firstWhere((r) => r.type == 'stock');
+    await db.fulfillStockRequest(req, actualAmount: 98000, resolvedBy: '아빠');
+    await db.fulfillStockRequest(req, actualAmount: 98000, resolvedBy: '아빠');
+    expect((await db.computeSummary(child.id))['totalTransfer'], 98000);
+  });
+
   test('거절하면 내역/목표가 생기지 않고 요청은 rejected', () async {
     final child = await makeChild();
     await db.requestBonus(child, '아들');
