@@ -423,24 +423,45 @@ class TierSummaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppGap.sm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xs),
-              child: LinearProgressIndicator(
-                // 주간 카드는 이번 주 저축률(0~100%)만큼 채운다. 누적은 다음 티어까지 진행률.
-                value: isPercent ? (value / 100).clamp(0.0, 1.0) : pos.progress,
-                minHeight: 7,
-                backgroundColor: scheme.onPrimaryContainer.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation(scheme.primary),
+            // 내 점수(누적) / 이번 주 저축률(주간)을 큰 숫자로. 예전엔 카드에 아예 없어서
+            // "지금 몇 점인지"를 물음표 시트를 열어야만 알 수 있었다.
+            Text(isPercent ? '이번 주' : '내 저축 점수',
+                style: TextStyle(
+                    fontSize: AppText.micro,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onPrimaryContainer.withValues(alpha: 0.75))),
+            Padding(
+              padding: const EdgeInsets.only(right: AppGap.sm),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(tierValueText(value, isPercent: isPercent),
+                    style: TextStyle(
+                        fontSize: AppText.numSm,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6,
+                        height: 1.15,
+                        color: scheme.onPrimaryContainer)),
               ),
             ),
             const SizedBox(height: AppGap.xs),
-            Text(
-              _footer(pos),
-              maxLines: 2,
-              style: TextStyle(
-                  fontSize: AppText.micro,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onPrimaryContainer.withValues(alpha: 0.95)),
+            Padding(
+              padding: const EdgeInsets.only(right: AppGap.sm),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+                child: LinearProgressIndicator(
+                  // 주간 카드는 이번 주 저축률(0~100%)만큼 채운다. 누적은 다음 티어까지 진행률.
+                  value: isPercent ? (value / 100).clamp(0.0, 1.0) : pos.progress,
+                  minHeight: 7,
+                  backgroundColor: scheme.onPrimaryContainer.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation(scheme.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppGap.sm),
+            Padding(
+              padding: const EdgeInsets.only(right: AppGap.sm),
+              child: _NextTierBox(pos: pos, isPercent: isPercent),
             ),
           ],
         ),
@@ -450,15 +471,78 @@ class TierSummaryCard extends StatelessWidget {
 
   Widget _wrapEgg(Tier? tier, Widget child) =>
       tier == null ? child : TierEasterEggTap(tier: tier, child: child);
+}
 
-  String _footer(TierPosition pos) {
-    if (isPercent) {
-      final pct = value;
-      if (pos.next == null) return '이번 주 저축률 $pct% · 최고!';
-      return '이번 주 $pct% · 다음 ${pos.next!.threshold}%';
-    }
-    if (pos.next == null) return '최고 티어! 🎉';
-    return '다음까지 ${formatWon(pos.remaining ?? 0)}';
+/// 점수/저축률 표기. 누적은 원, 주간은 %.
+String tierValueText(int value, {required bool isPercent}) =>
+    isPercent ? '$value%' : formatWon(value);
+
+/// 등급이 "어디서부터"인지. 예: 100,000원부터 / 70%부터
+String tierStartText(Tier t, {required bool isPercent}) =>
+    '${tierValueText(t.threshold, isPercent: isPercent)}부터';
+
+/// 홈 티어 카드 아래 "다음 등급" 상자: 아이콘 + 이름, 몇 점부터인지(굵게), 남은 점수.
+class _NextTierBox extends StatelessWidget {
+  final TierPosition pos;
+  final bool isPercent;
+  const _NextTierBox({required this.pos, required this.isPercent});
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = Theme.of(context).colorScheme.onPrimaryContainer;
+    final next = pos.next;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+      decoration: BoxDecoration(
+        color: fg.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: next == null
+          ? Text(isPercent ? '이번 주 최고 등급! 🎉' : '최고 등급이에요! 🎉',
+              style: TextStyle(fontSize: AppText.label, fontWeight: FontWeight.w800, color: fg))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('다음 ',
+                        style: TextStyle(
+                            fontSize: AppText.caption,
+                            fontWeight: FontWeight.w700,
+                            color: fg.withValues(alpha: 0.75))),
+                    TierIcon(tier: next, size: 13),
+                    const SizedBox(width: AppGap.xxs),
+                    Flexible(
+                      child: Text(next.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: AppText.label, fontWeight: FontWeight.w800, color: fg)),
+                    ),
+                  ],
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(tierStartText(next, isPercent: isPercent),
+                      style: TextStyle(
+                          fontSize: AppText.bodyLg,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          color: fg)),
+                ),
+                Text(
+                    '${tierValueText(pos.remaining ?? 0, isPercent: isPercent)} 남음',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: AppText.micro,
+                        fontWeight: FontWeight.w600,
+                        color: fg.withValues(alpha: 0.8))),
+              ],
+            ),
+    );
   }
 }
 
@@ -466,14 +550,11 @@ class TierSummaryCard extends StatelessWidget {
 void showTierTable(BuildContext context, List<Tier> tiers, int value,
     {bool isPercent = false, String? childId}) {
   final pos = tierFor(tiers, value);
-  final currentId = pos.current?.id;
-  String threshText(Tier t) => isPercent ? '${t.threshold}% 이상' : formatWon(t.threshold);
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) {
-      final scheme = Theme.of(context).colorScheme;
       // 누적 저축 티어에서만 "내 점수"를 함께 보여준다(주간 저축률엔 주머니 개념이 없다).
       final showScoreTab = !isPercent && childId != null;
       var tab = 0; // 0=내 점수, 1=등급표
@@ -489,12 +570,8 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
               Text(isPercent ? '주간 저축률 티어표' : '누적 저축 티어표',
                   style: const TextStyle(
                       fontSize: AppText.heading, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-              const SizedBox(height: AppGap.xxs),
-              Text(
-                  isPercent
-                      ? '이번 주 저축률 $value% · 현재 "${pos.current?.title ?? '-'}"'
-                      : '저축 점수 ${formatWon(value)} · 현재 "${pos.current?.title ?? '흙'}"',
-                  style: TextStyle(fontSize: AppText.label, color: scheme.onSurfaceVariant)),
+              const SizedBox(height: AppGap.sm),
+              _ScoreHeader(pos: pos, isPercent: isPercent),
               const SizedBox(height: AppGap.md),
               if (showScoreTab) ...[
                 SegmentedButton<int>(
@@ -511,7 +588,7 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
               if (showScoreTab && tab == 0)
                 _TierScoreExplainer(childId: childId)
               else
-                ..._tierLadder(context, tiers, currentId, threshText),
+                ..._tierLadder(context, tiers, pos, isPercent),
             ],
           ),
         ),
@@ -520,16 +597,135 @@ void showTierTable(BuildContext context, List<Tier> tiers, int value,
   );
 }
 
+/// 티어표 시트 맨 위: 내 점수를 크게, 그 아래 다음 등급이 몇 점부터인지.
+class _ScoreHeader extends StatelessWidget {
+  final TierPosition pos;
+  final bool isPercent;
+  const _ScoreHeader({required this.pos, required this.isPercent});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fg = scheme.onPrimaryContainer;
+    final cur = pos.current;
+    final next = pos.next;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(isPercent ? '이번 주 저축률' : '내 저축 점수',
+              style: TextStyle(
+                  fontSize: AppText.label,
+                  fontWeight: FontWeight.w700,
+                  color: fg.withValues(alpha: 0.75))),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(tierValueText(pos.value, isPercent: isPercent),
+                      style: TextStyle(
+                          fontSize: AppText.numHero,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1,
+                          color: fg)),
+                ),
+              ),
+              if (cur != null) ...[
+                const SizedBox(width: AppGap.sm),
+                TierIcon(tier: cur, size: 20),
+                const SizedBox(width: AppGap.xs),
+                Text(cur.title,
+                    style: TextStyle(
+                        fontSize: AppText.title, fontWeight: FontWeight.w800, color: fg)),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppGap.xs),
+          if (next == null)
+            Text('최고 등급이에요! 🎉',
+                style: TextStyle(fontSize: AppText.bodyLg, fontWeight: FontWeight.w800, color: fg))
+          else
+            Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: AppText.bodyLg, color: fg, height: 1.4),
+                children: [
+                  const TextSpan(text: '다음 '),
+                  WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: TierIcon(tier: next, size: 15)),
+                  TextSpan(
+                      text: ' ${next.title} ',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  TextSpan(
+                      text: tierStartText(next, isPercent: isPercent),
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                  TextSpan(
+                      text: '  ·  ${tierValueText(pos.remaining ?? 0, isPercent: isPercent)} 남음',
+                      style: TextStyle(fontSize: AppText.label, color: fg.withValues(alpha: 0.8))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 등급 사다리(기존 목록). 시트가 탭으로 갈라지면서 따로 뺐다.
-List<Widget> _tierLadder(BuildContext context, List<Tier> tiers,
-    String? currentId, String Function(Tier) threshText) {
+/// 각 줄 오른쪽에 "몇 점부터"를 굵게 두고, 현재 등급과 다음 목표를 표시한다.
+List<Widget> _tierLadder(
+    BuildContext context, List<Tier> tiers, TierPosition pos, bool isPercent) {
   final scheme = Theme.of(context).colorScheme;
+  final currentId = pos.current?.id;
+  final nextId = pos.next?.id;
   return [
             for (final t in tiers)
               Card(
                 color: t.id == currentId ? scheme.primaryContainer : null,
+                shape: t.id == nextId
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        side: BorderSide(color: scheme.primary, width: 1.6),
+                      )
+                    : null,
                 child: ListTile(
                   leading: TierIcon(tier: t, size: 26),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(tierValueText(t.threshold, isPercent: isPercent),
+                          style: TextStyle(
+                              fontSize: AppText.title,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                              color: t.id == currentId ? scheme.onPrimaryContainer : null)),
+                      Text(
+                          t.id == currentId
+                              ? '지금 여기'
+                              : t.id == nextId
+                                  ? '다음 목표'
+                                  : '부터',
+                          style: TextStyle(
+                              fontSize: AppText.caption,
+                              fontWeight: t.id == currentId || t.id == nextId
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: t.id == currentId
+                                  ? scheme.onPrimaryContainer
+                                  : t.id == nextId
+                                      ? scheme.primary
+                                      : scheme.onSurfaceVariant)),
+                    ],
+                  ),
                   title: Row(
                     children: [
                       Flexible(
@@ -556,14 +752,15 @@ List<Widget> _tierLadder(BuildContext context, List<Tier> tiers,
                       ],
                     ],
                   ),
-                  subtitle: Text(
-                    '${threshText(t)}${t.reward != null && t.reward!.isNotEmpty ? '\n🎁 ${t.reward}' : ''}',
-                    style: TextStyle(
-                        color: t.id == currentId
-                            ? scheme.onPrimaryContainer.withValues(alpha: 0.85)
-                            : scheme.onSurfaceVariant),
-                  ),
-                  isThreeLine: t.reward != null && t.reward!.isNotEmpty,
+                  subtitle: t.reward != null && t.reward!.isNotEmpty
+                      ? Text(
+                          '🎁 ${t.reward}',
+                          style: TextStyle(
+                              color: t.id == currentId
+                                  ? scheme.onPrimaryContainer.withValues(alpha: 0.85)
+                                  : scheme.onSurfaceVariant),
+                        )
+                      : null,
                 ),
               ),
   ];

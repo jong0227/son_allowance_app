@@ -29,6 +29,16 @@ class ReleaseNote {
 /// 최신 버전이 맨 위.
 const List<ReleaseNote> kReleaseNotes = [
   ReleaseNote(
+    version: '1.33.1',
+    date: '2026년 10월 12일',
+    headline: '내 저축 점수가 한눈에 보여요',
+    changes: [
+      '홈의 부자 등급 카드에 "내 저축 점수"가 큰 숫자로 나와요.',
+      '다음 등급이 무엇인지, 몇 점부터인지(예: 🟧 구리 100,000원부터), 얼마 남았는지 바로 보여요.',
+      '등급표에서도 각 등급이 몇 점부터인지 오른쪽에 크게 써 있고, "지금 여기"와 "다음 목표"가 표시돼요.',
+    ],
+  ),
+  ReleaseNote(
     version: '1.33.0',
     date: '2026년 10월 12일',
     headline: '경제왕 퀴즈가 더 어려워지고 똑똑해졌어요',
