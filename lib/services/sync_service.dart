@@ -171,6 +171,9 @@ class FamilySyncService {
       // 매 원격 병합마다 중복 프로필 정리를 재확인한다(온보딩을 다시 하거나
       // 여러 기기가 거의 동시에 참여하는 경우에도 계속 하나로 수렴하도록).
       await db.reconcileToSingleChild(_editedBy);
+      // 다른 폰(특히 예전 버전)이 만든 같은 날 용돈 일정이 들어왔으면 바로 하나로 정리한다.
+      // 전에는 앱을 다시 켜거나 지급을 눌러야 정리돼서 그 사이 카드가 두 장 보였다.
+      await db.tidySchedulesAfterSync(_editedBy);
       _lastSignature = signature;
       lastSyncedAt = DateTime.now();
       _statusController.add(SyncStatus.idle);

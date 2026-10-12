@@ -128,11 +128,12 @@ void main() {
     expect(atToday.length, 1);
   });
 
-  test('경합으로 같은 날짜에 소프트 삭제 중복이 여러 개 남아있으면(진짜 건너뛰기는 1개뿐) 자동으로 되살린다', () async {
+  test('같은 날 삭제된 일정이 여러 개여도 되살리지 않는다(중복 정리 뒤 건너뛴 주일 수 있다)', () async {
     final child = await createChild();
     final now = DateTime.now();
-    // 진짜 사용자의 "건너뛰기"라면 절대 만들어지지 않는 상태: 같은 날짜에
-    // 소프트 삭제된 중복이 2개 이상. 과거 동시 호출 경합이 남긴 쓰레기를 흉내낸다.
+    // v1.32까지는 이걸 "동시 실행 경합의 잔재"로 보고 하나를 되살렸다. 그런데 두 폰이
+    // 만든 중복을 정리(삭제 1)한 뒤 부모가 그 주를 건너뛰면(삭제 1) 똑같은 모양이 되어,
+    // 건너뛴 주가 다시 "지급 예정"으로 떴다.
     for (final id in ['race-a', 'race-b']) {
       await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
         id: id,
@@ -145,9 +146,8 @@ void main() {
     }
     expect((await alive()).where((s) => s.scheduledDate == today).length, 0);
     await db.ensureUpcomingSchedule(child, 'test');
-    final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
-    expect(atToday.length, 1);
-    expect(atToday.first.isPaid, false);
+    await db.ensureUpcomingSchedule(child, 'test'); // 앱을 다시 켜도
+    expect((await alive()).where((s) => s.scheduledDate == today), isEmpty);
   });
 
   test('이번 주(오늘) 용돈을 지급해도 다음 주 일정이 미리 뜨지 않는다', () async {
@@ -347,25 +347,6 @@ void main() {
     expect((await alive()).where((s) => s.scheduledDate == oldWeek).length, 0);
   });
 
-  test('자가치유 후 다시 호출해도(예: 앱을 다시 켜도) 또 하나를 되살려 중복이 생기지 않는다', () async {
-    final child = await createChild();
-    final now = DateTime.now();
-    for (final id in ['race-a', 'race-b', 'race-c']) {
-      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
-        id: id,
-        childId: child.id,
-        scheduledDate: today,
-        amount: 3000,
-        deletedAt: Value(now),
-        updatedAt: Value(now),
-      ));
-    }
-    await db.ensureUpcomingSchedule(child, 'test'); // 1차: 하나를 되살림
-    await db.ensureUpcomingSchedule(child, 'test'); // 2차: 이미 살아있으니 또 되살리면 안 됨
-    final atToday = (await alive()).where((s) => s.scheduledDate == today).toList();
-    expect(atToday.length, 1);
-  });
-
   test('엄마·아빠가 각자 폰에서 같은 주 용돈을 지급해도 동기화 후 한 번만 들어간다', () async {
     const io = ExportImportService();
     final child = await createChild();
@@ -506,5 +487,228 @@ void main() {
         .toList();
     expect(future.length, 1);
     expect(future.first.scheduledDate.weekday, newPayDay);
+  });
+
+  // 2026-10-12 실제 사례: 오늘 용돈 카드가 두 장 떴고, 한 장을 지급하자 나머지도 사라졌다.
+  // 엄마·아빠 폰이 동기화 전에 각자 "오늘 일정"을 무작위 id로 만들어서, 합친 뒤
+  // 같은 날 일정이 두 줄이 됐다. 중복 정리는 앱 시작·지급 때만 돌아서 그 사이엔 두 장이 보였다.
+  group('두 폰이 각자 일정을 만든 경우', () {
+    const io = ExportImportService();
+    late AppDatabase mom;
+
+    /// from 폰의 데이터를 to 폰에 합친다(가족 동기화와 같은 병합 규칙).
+    Future<void> sync(AppDatabase from, AppDatabase to, String who) async =>
+        io.applyImport(await io.previewImportData(await io.serializeAll(from, who), to), to);
+
+    Future<List<AllowanceSchedule>> aliveOn(AppDatabase d) async =>
+        (await d.allSchedulesRaw()).where((s) => s.deletedAt == null).toList();
+
+    Future<List<TransactionEntry>> allowancesOn(AppDatabase d) async => (await d.allTransactionsRaw())
+        .where((t) => t.deletedAt == null && t.category == AppDatabase.kRegularAllowance)
+        .toList();
+
+    bool isToday(AllowanceSchedule s) => s.scheduledDate == today;
+
+    /// 아빠 폰에서 아이를 만들고, 일정이 생기기 전에 엄마 폰과 한 번 동기화한 상태.
+    Future<(Child, Child)> twoPhones() async {
+      final dadChild = await createChild();
+      mom = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(mom.close);
+      await sync(db, mom, '아빠');
+      return (dadChild, (await mom.allChildrenRaw()).first);
+    }
+
+    /// 예전 버전(무작위 id)이 만든 것 같은 오늘 일정 두 줄.
+    Future<void> legacyDuplicatesToday(Child child) async {
+      for (final id in ['legacy-b', 'legacy-a']) {
+        await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+          id: id,
+          childId: child.id,
+          scheduledDate: today,
+          amount: 3000,
+        ));
+      }
+    }
+
+    test('동기화 전에 두 폰이 각자 오늘 일정을 만들어도 합치면 하나', () async {
+      final (dadChild, momChild) = await twoPhones();
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await mom.ensureUpcomingSchedule(momChild, '엄마');
+
+      await sync(mom, db, '엄마');
+      await sync(db, mom, '아빠');
+      expect((await aliveOn(db)).where(isToday).length, 1);
+      expect((await aliveOn(mom)).where(isToday).length, 1);
+    });
+
+    test('예전 버전이 만든 같은 날 중복이 있어도 화면 목록엔 하루에 한 장만 보인다', () async {
+      final child = await createChild();
+      await legacyDuplicatesToday(child);
+      final shown = await db.watchSchedules(child.id).first;
+      expect(shown.where(isToday).length, 1);
+    });
+
+    test('동기화로 중복이 들어오면 바로 정리된다(지급 버튼을 누르기 전에)', () async {
+      final child = await createChild();
+      await legacyDuplicatesToday(child);
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await aliveOn(db)).where(isToday).length, 1);
+    });
+
+    test('중복 상태에서 보이는 카드를 지급하면 한 번만 들어가고 미지급 카드는 남지 않는다', () async {
+      final child = await createChild();
+      await legacyDuplicatesToday(child);
+      final shown = (await db.watchSchedules(child.id).first).where(isToday).single;
+      await db.markSchedulePaid(shown, '아빠', child);
+
+      final todays = (await aliveOn(db)).where(isToday).toList();
+      expect(todays.length, 1);
+      expect(todays.single.isPaid, true);
+      expect((await allowancesOn(db)).length, 1);
+    });
+
+    test('중복 상태에서 건너뛰면 그날 일정이 모두 사라지고 다시 생기지 않는다', () async {
+      final child = await createChild();
+      await legacyDuplicatesToday(child);
+      final shown = (await db.watchSchedules(child.id).first).where(isToday).single;
+      await db.skipSchedule(shown, '아빠');
+      await db.ensureUpcomingSchedule(child, '아빠');
+
+      expect((await aliveOn(db)).where(isToday), isEmpty, reason: '숨어 있던 다른 한 줄이 다시 뜨면 안 된다');
+      expect((await db.watchSchedules(child.id).first).where(isToday), isEmpty);
+    });
+
+    test('두 폰이 동기화 전에 각자 오늘 용돈을 지급해도 한 번만 들어간다', () async {
+      final (dadChild, momChild) = await twoPhones();
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await mom.ensureUpcomingSchedule(momChild, '엄마');
+      await db.markSchedulePaid((await aliveOn(db)).single, '아빠', dadChild);
+      await mom.markSchedulePaid((await aliveOn(mom)).single, '엄마', momChild);
+
+      await sync(mom, db, '엄마');
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await allowancesOn(db)).length, 1);
+      expect((await aliveOn(db)).where(isToday).length, 1);
+    });
+
+    test('예전 버전 폰과 새 버전 폰이 각자 지급해도 동기화 정리 후 한 번만 남는다', () async {
+      final (dadChild, momChild) = await twoPhones();
+      // 엄마 폰은 아직 예전 버전: 무작위 id 일정
+      await mom.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: 'old-version-random',
+        childId: momChild.id,
+        scheduledDate: today,
+        amount: 3000,
+      ));
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await db.markSchedulePaid((await aliveOn(db)).single, '아빠', dadChild);
+      await mom.markSchedulePaid((await aliveOn(mom)).single, '엄마', momChild);
+
+      await sync(mom, db, '엄마');
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await allowancesOn(db)).length, 1);
+      expect((await aliveOn(db)).where(isToday).length, 1);
+    });
+
+    test('지급 → 취소 → 다른 폰과 동기화 → 다시 지급해도 한 번만 들어간다', () async {
+      final (dadChild, momChild) = await twoPhones();
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      final s = (await aliveOn(db)).single;
+      await db.markSchedulePaid(s, '아빠', dadChild);
+      await db.markScheduleUnpaid(s, '아빠', dadChild);
+      await sync(db, mom, '아빠');
+      await mom.tidySchedulesAfterSync('엄마');
+
+      final onMom = (await aliveOn(mom)).where(isToday).single;
+      expect(onMom.isPaid, false);
+      // 시각은 초 단위로 저장되고 병합은 "더 최신"만 받는다. 실제로는 동기화를 거치며
+      // 1초 넘게 지나므로, 같은 초에 취소·재지급이 겹치는 테스트만의 상황을 피한다.
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await mom.markSchedulePaid(onMom, '엄마', momChild);
+      await sync(mom, db, '엄마');
+      expect((await allowancesOn(db)).length, 1);
+    });
+
+    test('두 폰에서 같은 날짜를 소급 지급해도 합치면 한 번', () async {
+      final (dadChild, momChild) = await twoPhones();
+      final past = today.subtract(const Duration(days: 7));
+      await db.addPastAllowance(dadChild, past, 3000, '아빠');
+      await mom.addPastAllowance(momChild, past, 3000, '엄마');
+
+      await sync(mom, db, '엄마');
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await allowancesOn(db)).length, 1);
+      expect((await aliveOn(db)).where((s) => s.scheduledDate == past).length, 1);
+    });
+
+    test('아이 폰이 만든 일정과 부모 폰 일정도 같은 하나로 합쳐진다', () async {
+      final (dadChild, kidChild) = await twoPhones(); // mom 자리를 아이 폰으로 사용
+      await mom.ensureUpcomingSchedule(kidChild, '아들');
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await sync(mom, db, '아들');
+      final shown = (await db.watchSchedules(dadChild.id).first).where(isToday).toList();
+      expect(shown.length, 1);
+      // 시각은 초 단위 저장 — 실제처럼 아이 폰이 만든 뒤 시간이 지나 지급한 상황.
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await db.markSchedulePaid(shown.single, '아빠', dadChild);
+      await sync(db, mom, '아빠');
+      final onKid = (await aliveOn(mom)).where(isToday).toList();
+      expect(onKid.length, 1);
+      expect(onKid.single.isPaid, true, reason: '아이 폰에도 "받음"으로 보여야 한다');
+    });
+
+    test('한 폰은 지급, 다른 폰은 나중에 건너뛰기 → 합쳐도 용돈이 두 번 들어가거나 카드가 남지 않는다', () async {
+      final (dadChild, momChild) = await twoPhones();
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await sync(db, mom, '아빠');
+      await db.markSchedulePaid((await aliveOn(db)).single, '아빠', dadChild);
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await mom.skipSchedule((await aliveOn(mom)).single, '엄마');
+
+      await sync(mom, db, '엄마');
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await allowancesOn(db)).length, lessThanOrEqualTo(1));
+      expect((await db.watchSchedules(dadChild.id).first).where((s) => isToday(s) && !s.isPaid), isEmpty);
+    });
+
+    test('한 폰은 건너뛰기, 다른 폰은 나중에 지급 → 지급이 남고 한 번만 들어간다', () async {
+      final (dadChild, momChild) = await twoPhones();
+      await db.ensureUpcomingSchedule(dadChild, '아빠');
+      await sync(db, mom, '아빠');
+      await db.skipSchedule((await aliveOn(db)).single, '아빠');
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await mom.markSchedulePaid((await aliveOn(mom)).single, '엄마', momChild);
+
+      await sync(mom, db, '엄마');
+      await db.tidySchedulesAfterSync('아빠');
+      expect((await allowancesOn(db)).length, 1);
+      final todays = (await aliveOn(db)).where(isToday).toList();
+      expect(todays.length, 1);
+      expect(todays.single.isPaid, true);
+    });
+
+    test('고정 id가 이미 다른 날짜로 옮겨진 일정에 쓰였으면 덮어쓰지 않는다', () async {
+      final child = await createChild();
+      final lastWeek = today.subtract(const Duration(days: 7));
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: 'paid-2w',
+        childId: child.id,
+        scheduledDate: today.subtract(const Duration(days: 14)),
+        amount: 3000,
+        isPaid: const Value(true),
+      ));
+      // 지난주 날짜로 만들어졌다가 지급요일 변경으로 오늘로 옮겨진 일정
+      await db.upsertSchedule(AllowanceSchedulesCompanion.insert(
+        id: AppDatabase.scheduleIdFor(child.id, lastWeek),
+        childId: child.id,
+        scheduledDate: today,
+        amount: 3000,
+      ));
+      await db.ensureUpcomingSchedule(child, '아빠');
+
+      final rows = await aliveOn(db);
+      expect(rows.where(isToday).length, 1, reason: '오늘 일정이 지난주로 끌려가면 안 된다');
+      expect(rows.where((s) => s.scheduledDate == lastWeek).length, 1, reason: '밀린 지난주도 생긴다');
+    });
   });
 }

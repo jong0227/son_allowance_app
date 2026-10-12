@@ -29,11 +29,16 @@ class QuizScreen extends ConsumerStatefulWidget {
 
 class _QuizScreenState extends ConsumerState<QuizScreen> {
   _Phase _phase = _Phase.asking;
-  String? _questionId; // 지금 화면에 띄운 문제(바뀌면 상태 초기화)
-  List<int> _order = [0, 1, 2]; // 보기 표시 순서
+  // 지금 화면에 띄운 문제. 답을 기록하면 스트림이 곧바로 다음 문제를 내주지만,
+  // 아이가 "다음 문제"를 누를 때까지는 이 문제(축하 카드·해설)를 붙잡아 둔다.
+  QuizQuestion? _shown;
+  int _number = 1; // 이번 주 몇 번째 문제인지(기록 전에 정해 둔다)
+  List<int> _order = const []; // 보기 표시 순서
   int? _picked; // 사용자가 고른 보기(원본 인덱스)
   int _reward = 0;
   int _countdown = 0;
+  bool _saving = false; // 기록 중에는 다음 문제로 못 넘어가게(같은 문제가 다시 뜨는 것 방지)
+  final Set<String> _answeredHere = {}; // 이 화면에서 답한 문제(스트림이 따라오기 전 재출제 방지)
   Timer? _timer;
 
   @override
@@ -42,14 +47,35 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     super.dispose();
   }
 
-  void _resetFor(QuizQuestion q) {
-    _questionId = q.id;
+  void _resetFor(QuizQuestion q, QuizState state) {
+    _shown = q;
+    _number = state.answeredThisWeek + 1;
     _phase = _Phase.asking;
-    _order = List.generate(q.options.length, (i) => i);
+    _order = q.displayOrder;
     _picked = null;
     _reward = 0;
+    _saving = false;
     _timer?.cancel();
     _countdown = 0;
+  }
+
+  Future<void> _record(QuizQuestion q,
+      {required bool correct, required bool firstTry, required int reward, required int picked}) async {
+    _answeredHere.add(q.id);
+    setState(() => _saving = true);
+    try {
+      await ref.read(databaseProvider).recordQuizAnswer(
+            childId: widget.child.id,
+            questionId: q.id,
+            correct: correct,
+            firstTry: firstTry,
+            reward: reward,
+            pickedIndex: picked,
+            editedBy: ref.read(settingsProvider).deviceOwner ?? '',
+          );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _startReadTimer() {
@@ -65,6 +91,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Future<void> _answer(QuizQuestion q, int originalIndex) async {
+    // 이미 답이 정해진 뒤에 들어온 연타는 무시한다.
+    if (_phase != _Phase.asking && _phase != _Phase.retrying) return;
     final isCorrect = originalIndex == q.answerIndex;
     final firstTry = _phase == _Phase.asking;
 
@@ -76,15 +104,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _reward = reward;
         _phase = _Phase.correct;
       });
-      await ref.read(databaseProvider).recordQuizAnswer(
-            childId: widget.child.id,
-            questionId: q.id,
-            correct: true,
-            firstTry: firstTry,
-            reward: reward,
-            pickedIndex: originalIndex,
-            editedBy: ref.read(settingsProvider).deviceOwner ?? '',
-          );
+      await _record(q, correct: true, firstTry: firstTry, reward: reward, picked: originalIndex);
       return;
     }
 
@@ -102,25 +122,26 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _reward = 0;
         _phase = _Phase.failed;
       });
-      await ref.read(databaseProvider).recordQuizAnswer(
-            childId: widget.child.id,
-            questionId: q.id,
-            correct: false,
-            firstTry: false,
-            reward: 0,
-            pickedIndex: originalIndex,
-            editedBy: ref.read(settingsProvider).deviceOwner ?? '',
-          );
+      await _record(q, correct: false, firstTry: false, reward: 0, picked: originalIndex);
     }
   }
 
+  /// 재도전 때는 정답이 처음과 다른 자리에 오도록 섞는다("몇 번째였지"로 찍는 걸 막는다).
   void _goRetry(QuizQuestion q) {
+    final before = _order.indexOf(q.answerIndex);
+    final next = [..._order];
+    final rnd = Random();
+    do {
+      next.shuffle(rnd);
+    } while (next.length > 1 && next.indexOf(q.answerIndex) == before);
     setState(() {
-      _order = List.generate(q.options.length, (i) => i)..shuffle(Random());
+      _order = next;
       _picked = null;
       _phase = _Phase.retrying;
     });
   }
+
+  void _goNext() => setState(() => _shown = null);
 
   @override
   Widget build(BuildContext context) {
@@ -131,10 +152,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('오류: $e')),
         data: (state) {
+          // 방금 푼 문제는 "다음 문제"/"결과 보기"를 누를 때까지 그대로 보여준다.
+          final shown = _shown;
+          if (shown != null && (_phase == _Phase.correct || _phase == _Phase.failed)) {
+            return _buildQuestion(context, state, shown);
+          }
           if (state.weekDone) return _WeekDoneView(state: state);
           final q = state.current;
           if (q == null) return const _BankEmptyView();
-          if (_questionId != q.id) _resetFor(q);
+          if (_answeredHere.contains(q.id)) {
+            // 방금 기록한 문제가 아직 목록에 남아 있음 — 스트림이 따라올 때까지 잠깐 기다린다.
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (shown?.id != q.id) _resetFor(q, state);
           return _buildQuestion(context, state, q);
         },
       ),
@@ -176,7 +206,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           children: [
             TagChip(label: q.topic),
             const Spacer(),
-            Text('${done + 1} / $kQuizPerWeek 문제',
+            Text('$_number / $kQuizPerWeek 문제',
                 style: TextStyle(fontSize: AppText.label, color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
@@ -216,7 +246,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           const SizedBox(height: AppGap.md),
           _ExplanationCard(explanation: q.explanation),
           const SizedBox(height: AppGap.lg),
-          _NextButton(state: state, onNext: () => setState(() => _questionId = null)),
+          _NextButton(last: _number >= kQuizPerWeek, onNext: _saving ? null : _goNext),
         ],
 
         if (_phase == _Phase.failed) ...[
@@ -224,7 +254,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           const SizedBox(height: AppGap.md),
           _ExplanationCard(explanation: q.explanation),
           const SizedBox(height: AppGap.lg),
-          _NextButton(state: state, onNext: () => setState(() => _questionId = null)),
+          _NextButton(last: _number >= kQuizPerWeek, onNext: _saving ? null : _goNext),
         ],
       ],
     );
@@ -393,13 +423,12 @@ class _AnswerRevealCard extends StatelessWidget {
 }
 
 class _NextButton extends StatelessWidget {
-  final QuizState state;
-  final VoidCallback onNext;
-  const _NextButton({required this.state, required this.onNext});
+  final bool last;
+  final VoidCallback? onNext;
+  const _NextButton({required this.last, required this.onNext});
 
   @override
   Widget build(BuildContext context) {
-    final last = state.answeredThisWeek >= kQuizPerWeek;
     return SizedBox(
       width: double.infinity,
       child: FilledButton(

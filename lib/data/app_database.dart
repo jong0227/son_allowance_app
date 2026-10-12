@@ -799,10 +799,47 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ---------------- Allowance schedules ----------------
+  /// 정기용돈 일정 id = 자녀 + 지급일. 엄마·아빠·아이 폰이 동기화 전에 각자 같은 날
+  /// 일정을 만들어도 같은 id라 합치면 한 줄이 된다(무작위 id면 카드가 두 장 떴다).
+  static String scheduleIdFor(String childId, DateTime date) =>
+      'as_${childId}_${date.year}${date.month.toString().padLeft(2, '0')}'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  /// 가족 동기화로 원격 데이터를 합친 직후 호출. 예전 버전 폰이 만든 같은 날 중복 일정을
+  /// 바로 정리한다(전에는 앱을 다시 켜거나 지급을 눌러야 정리돼서 그 사이 카드가 두 장 보였다).
+  Future<void> tidySchedulesAfterSync(String editedBy) async {
+    for (final c in await allChildrenRaw()) {
+      if (c.deletedAt != null) continue;
+      await ensureUpcomingSchedule(c, editedBy);
+    }
+  }
+
+  /// 같은 날 일정이 여러 줄이면 어느 것을 남길지. 지급된 것 우선, 그다음 id 순.
+  /// 화면 표시([onePerDay])와 정리(ensureUpcomingSchedule)가 같은 규칙을 써야
+  /// 화면에서 누른 카드가 정리 뒤에도 살아남는다.
+  static int _keepOrder(AllowanceSchedule a, AllowanceSchedule b) {
+    if (a.isPaid != b.isPaid) return a.isPaid ? -1 : 1;
+    return a.id.compareTo(b.id);
+  }
+
+  /// 같은 날짜 일정은 한 줄만 남긴다(원래 순서 유지). 정리가 돌기 전이라도
+  /// 카드가 두 장 뜨지 않게 하는 화면용 안전장치.
+  static List<AllowanceSchedule> onePerDay(List<AllowanceSchedule> rows) {
+    final keep = <DateTime, AllowanceSchedule>{};
+    for (final s in rows) {
+      final day = DateTime(s.scheduledDate.year, s.scheduledDate.month, s.scheduledDate.day);
+      final cur = keep[day];
+      if (cur == null || _keepOrder(s, cur) < 0) keep[day] = s;
+    }
+    final kept = keep.values.toSet();
+    return rows.where(kept.contains).toList();
+  }
+
   Stream<List<AllowanceSchedule>> watchSchedules(String childId) => (select(allowanceSchedules)
         ..where((t) => t.childId.equals(childId) & t.deletedAt.isNull())
         ..orderBy([(t) => OrderingTerm.desc(t.scheduledDate)]))
-      .watch();
+      .watch()
+      .map(onePerDay);
 
   Future<void> upsertSchedule(AllowanceSchedulesCompanion s) =>
       into(allowanceSchedules).insertOnConflictUpdate(s);
@@ -831,7 +868,12 @@ class AppDatabase extends _$AppDatabase {
       }
     }
 
-    final scheduleId = sameDay?.id ?? const Uuid().v4();
+    // 두 폰에서 같은 날짜를 소급 지급해도 합치면 한 줄이 되도록 고정 id를 쓴다.
+    final fixedId = scheduleIdFor(child.id, d);
+    final fixedTaken = (await (select(allowanceSchedules)..where((t) => t.id.equals(fixedId)))
+            .getSingleOrNull()) !=
+        null;
+    final scheduleId = sameDay?.id ?? (fixedTaken ? const Uuid().v4() : fixedId);
     if (sameDay == null) {
       await upsertSchedule(AllowanceSchedulesCompanion.insert(
         id: scheduleId,
@@ -858,7 +900,8 @@ class AppDatabase extends _$AppDatabase {
     final linked = await findTransactionByScheduleId(scheduleId);
     if (linked == null) {
       await upsertTransaction(TransactionEntriesCompanion.insert(
-        id: const Uuid().v4(),
+        // markSchedulePaid와 같은 규칙: 일정 id로 고정해 두 폰이 각자 만들어도 한 건.
+        id: 'sch_$scheduleId',
         childId: child.id,
         date: d,
         flow: 'income',
@@ -867,6 +910,7 @@ class AppDatabase extends _$AppDatabase {
         memo: Value('${d.month}/${d.day} 정기용돈 (소급 지급)'),
         linkedScheduleId: Value(scheduleId),
         editedBy: Value(editedBy),
+        deletedAt: const Value(null),
         updatedAt: Value(now),
       ));
     }
@@ -916,15 +960,25 @@ class AppDatabase extends _$AppDatabase {
 
   /// 밀린 용돈 "건너뛰기": 그 주는 안 주기로 하고 목록에서 제거(소프트 삭제).
   /// 소프트 삭제된 일정은 백필 시 다시 생성되지 않으므로 영구히 건너뛴 것으로 남는다.
+  /// 같은 날 중복 일정(동기화 산물)이 있으면 함께 지운다. 화면엔 한 장만 보이므로
+  /// 그것만 지우면 숨어 있던 다른 한 줄이 다시 카드로 떴다.
   Future<void> skipSchedule(AllowanceSchedule s, String editedBy) async {
     final now = DateTime.now();
-    await (update(allowanceSchedules)..where((t) => t.id.equals(s.id))).write(
-      AllowanceSchedulesCompanion(
-        deletedAt: Value(now),
-        editedBy: Value(editedBy),
-        updatedAt: Value(now),
-      ),
-    );
+    final day = DateTime(s.scheduledDate.year, s.scheduledDate.month, s.scheduledDate.day);
+    final rows = await (select(allowanceSchedules)
+          ..where((t) => t.childId.equals(s.childId) & t.deletedAt.isNull()))
+        .get();
+    for (final r in rows) {
+      final d = DateTime(r.scheduledDate.year, r.scheduledDate.month, r.scheduledDate.day);
+      if (r.id != s.id && (d != day || r.isPaid)) continue;
+      await (update(allowanceSchedules)..where((t) => t.id.equals(r.id))).write(
+        AllowanceSchedulesCompanion(
+          deletedAt: Value(now),
+          editedBy: Value(editedBy),
+          updatedAt: Value(now),
+        ),
+      );
+    }
   }
 
   /// 정기 용돈 일정 유지 규칙 (v1.4 개편: "밀린 용돈" 지원).
@@ -937,6 +991,7 @@ class AppDatabase extends _$AppDatabase {
   /// 3. 마지막 지급 완료일 이후 ~ 다음 지급일까지 매주 지급일마다 일정을 백필한다.
   ///    → 못 준 주는 "밀린 용돈"으로 화면에 남고, 나중에 지급하거나 건너뛸 수 있다.
   ///    건너뛴(소프트 삭제) 날짜는 다시 만들지 않는다. 백필은 최근 12건까지만.
+  ///    새 일정 id는 [scheduleIdFor](자녀+날짜)로 고정해 폰마다 따로 만들어도 한 줄로 합쳐진다.
   Future<void> ensureUpcomingSchedule(Child child, String editedBy) {
     // 동시 호출이 서로의 쓰기를 못 보고 같은 주 일정을 중복 생성하는 것을 막는다.
     // 진행 중인 게 있으면 그 뒤에 "이어서" 실행한다(그냥 진행 중인 future를 돌려주면
@@ -977,12 +1032,8 @@ class AppDatabase extends _$AppDatabase {
     final removedIds = <String>{};
     for (final entry in byDay.entries) {
       if (entry.value.length <= 1) continue;
-      // 지급된 것 우선, 그다음 id 순으로 대표 1개만 남긴다
-      final list = entry.value
-        ..sort((a, b) {
-          if (a.isPaid != b.isPaid) return a.isPaid ? -1 : 1;
-          return a.id.compareTo(b.id);
-        });
+      // 지급된 것 우선, 그다음 id 순으로 대표 1개만 남긴다(화면 표시와 같은 규칙)
+      final list = entry.value..sort(_keepOrder);
       final keep = list.first;
       for (final dup in list.skip(1)) {
         removedIds.add(dup.id);
@@ -1038,48 +1089,18 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.childId.equals(child.id)))
         .get();
 
-    // ---- 2.5) 자가 치유: 예전 버전의 동시 호출 경합으로 같은 날짜에 소프트 삭제된
-    // 중복이 2개 이상 쌓인 채 살아있는 일정이 하나도 없는 경우를 복구한다.
-    // (사용자의 "건너뛰기"는 항상 정확히 1개만 남기므로 2개 이상은 시스템 산물)
-    //
-    // 되살리는 조건을 좁게 잡는 이유: 위 1.5(먼 미래 정리)와 2(지급요일 변경 정리)도
-    // 소프트 삭제를 쓰기 때문에, 조건이 넓으면 그쪽이 지운 걸 여기서 되살리고
-    // 다음 실행에 또 지우는 무한 반복이 생긴다. 그래서
-    //   - 지급요일과 일치하는 날짜만 (요일 변경으로 정리된 잔재 제외)
-    //   - 다음 지급일 이내만 (먼 미래 정리 대상 제외)
-    //   - 마지막 지급 완료일 이후만 (이미 정산이 끝난 주를 되살리지 않음)
-    //   - 미지급이었던 것만 (지급 완료 일정을 되살리면 연결된 수입 내역이 없어 어긋남)
-    // 만 되살린다.
+    // (v1.24.4~v1.32의 2.5단계 "자가 치유"는 v1.33에서 뺐다. 같은 날 삭제된 일정이
+    // 2개 이상이면 동시 실행 경합의 잔재로 보고 하나를 되살렸는데, 두 폰이 쓰면서 생긴
+    // 중복을 정리한 뒤 부모가 그 주를 건너뛰어도 삭제 행이 2개가 되어 건너뛰기가
+    // 되돌려졌다. 경합 자체는 v1.24.4에서 막혔고, 그 시절 잔재는 이후 지급으로
+    // "마지막 지급일 이후" 조건 밖이라 더는 되살릴 대상도 없다.)
     DateTime? lastPaid;
     for (final s in refreshed.where((s) => s.isPaid && s.deletedAt == null)) {
       final d = dateOnly(s.scheduledDate);
       if (lastPaid == null || d.isAfter(lastPaid)) lastPaid = d;
     }
-    final aliveDatesNow = refreshed
-        .where((s) => s.deletedAt == null)
-        .map((s) => dateOnly(s.scheduledDate))
-        .toSet();
-    final deletedByDay = <DateTime, List<AllowanceSchedule>>{};
-    for (final s in refreshed.where((s) => s.deletedAt != null)) {
-      deletedByDay.putIfAbsent(dateOnly(s.scheduledDate), () => []).add(s);
-    }
-    for (final entry in deletedByDay.entries) {
-      if (entry.value.length < 2) continue;
-      if (aliveDatesNow.contains(entry.key)) continue;
-      if (entry.key.weekday != child.payDayOfWeek) continue;
-      if (entry.key.isAfter(nextUpcoming)) continue;
-      if (lastPaid != null && !entry.key.isAfter(lastPaid)) continue;
-      final revivable = entry.value.where((s) => !s.isPaid).toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      if (revivable.isEmpty) continue;
-      await (update(allowanceSchedules)
-            ..where((t) => t.id.equals(revivable.first.id)))
-          .write(
-        AllowanceSchedulesCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
-      );
-    }
 
-    // ---- 3) 백필: 마지막 지급 완료일(위 2.5에서 계산) 다음부터 다음 지급일까지 ----
+    // ---- 3) 백필: 마지막 지급 완료일 다음부터 다음 지급일까지 ----
     // 건너뛴(삭제된) 것 포함, 이미 일정이 있는 "주"에는 만들지 않는다.
     // 지급요일이 바뀌었어도 ±3일 안에 일정이 있으면 같은 주기의 용돈으로 간주
     // (지급일 간격이 7일이라 ±3일 창은 이웃 후보와 겹치지 않는다).
@@ -1104,10 +1125,14 @@ class AppDatabase extends _$AppDatabase {
     if (candidates.length > 12) {
       candidates = candidates.sublist(candidates.length - 12);
     }
+    final usedIds = refreshed.map((s) => s.id).toSet();
     for (final date in candidates) {
       if (weekOccupied(date)) continue;
+      // 고정 id가 이미 쓰였으면(그 날짜로 만들었다가 지급요일 변경으로 옮겨진 일정)
+      // 덮어쓰지 않도록 그때만 무작위 id를 쓴다.
+      final fixedId = scheduleIdFor(child.id, date);
       await upsertSchedule(AllowanceSchedulesCompanion.insert(
-        id: const Uuid().v4(),
+        id: usedIds.contains(fixedId) ? const Uuid().v4() : fixedId,
         childId: child.id,
         scheduledDate: date,
         amount: child.weeklyAllowanceDefault,
@@ -1551,8 +1576,10 @@ class AppDatabase extends _$AppDatabase {
     int? pickedIndex,
   }) async {
     final now = DateTime.now();
+    // 한 문제는 한 번만 나오므로 (자녀, 문제)로 id를 고정한다.
+    // 버튼 연타 등으로 같은 기록이 두 번 저장돼도 결과·보상이 한 건으로 남는다.
     await upsertQuizAttempt(QuizAttemptsCompanion.insert(
-      id: const Uuid().v4(),
+      id: 'quiz_${childId}_$questionId',
       childId: childId,
       questionId: questionId,
       weekStart: weekStartOf(now),
@@ -1565,7 +1592,7 @@ class AppDatabase extends _$AppDatabase {
     ));
     if (reward > 0) {
       await upsertTransaction(TransactionEntriesCompanion.insert(
-        id: const Uuid().v4(),
+        id: 'quizr_${childId}_$questionId',
         childId: childId,
         date: now,
         flow: 'income',
@@ -1658,39 +1685,43 @@ class AppDatabase extends _$AppDatabase {
     final fee = buyFeeOf(amount);
     final cost = amount + fee; // 실제로 빠지는 돈
 
-    final s = await computeSummary(child.id);
-    final balance = s['balance'] ?? 0;
-    final invested = s['invested'] ?? 0;
-    final totalSavings = balance + invested; // 주식이체분은 제외한 "쓸 수 있는 저축"
-    final cap = (totalSavings * child.investLimitPercent / 100).floor();
+    // 잔액·한도 검사와 기록을 한 트랜잭션으로 묶는다. 버튼을 연타해도
+    // 두 번째 매수는 첫 매수가 반영된 잔액으로 검사받는다.
+    return transaction(() async {
+      final s = await computeSummary(child.id);
+      final balance = s['balance'] ?? 0;
+      final invested = s['invested'] ?? 0;
+      final totalSavings = balance + invested; // 주식이체분은 제외한 "쓸 수 있는 저축"
+      final cap = (totalSavings * child.investLimitPercent / 100).floor();
 
-    if (cost > balance) {
-      return '저축 포인트가 모자라요. '
-          '($shares주 $amount원 + 수수료 $fee원 = ${formatWonPlain(cost)}, '
-          '쓸 수 있는 돈 ${formatWonPlain(balance)})';
-    }
-    if (invested + cost > cap) {
-      final left = cap - invested;
-      return '투자 한도를 넘었어요. 지금은 ${formatWonPlain(left < 0 ? 0 : left)}까지 넣을 수 있어요.'
-          ' (한도: 총 저축의 ${_trimPercent(child.investLimitPercent)}%)';
-    }
+      if (cost > balance) {
+        return '저축 포인트가 모자라요. '
+            '($shares주 $amount원 + 수수료 $fee원 = ${formatWonPlain(cost)}, '
+            '쓸 수 있는 돈 ${formatWonPlain(balance)})';
+      }
+      if (invested + cost > cap) {
+        final left = cap - invested;
+        return '투자 한도를 넘었어요. 지금은 ${formatWonPlain(left < 0 ? 0 : left)}까지 넣을 수 있어요.'
+            ' (한도: 총 저축의 ${_trimPercent(child.investLimitPercent)}%)';
+      }
 
-    final now = DateTime.now();
-    await upsertInvestTrade(InvestTradesCompanion.insert(
-      id: const Uuid().v4(),
-      childId: child.id,
-      indexKey: indexKey,
-      label: label,
-      symbol: symbol,
-      kind: 'buy',
-      shares: shares,
-      pricePerShare: price,
-      fee: Value(fee),
-      indexValue: Value(indexValue),
-      tradedAt: Value(now),
-      updatedAt: Value(now),
-    ));
-    return null;
+      final now = DateTime.now();
+      await upsertInvestTrade(InvestTradesCompanion.insert(
+        id: const Uuid().v4(),
+        childId: child.id,
+        indexKey: indexKey,
+        label: label,
+        symbol: symbol,
+        kind: 'buy',
+        shares: shares,
+        pricePerShare: price,
+        fee: Value(fee),
+        indexValue: Value(indexValue),
+        tradedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+      return null;
+    });
   }
 
   /// 모의 투자 매도(주 단위, 부분 매도 가능).
@@ -1703,52 +1734,63 @@ class AppDatabase extends _$AppDatabase {
     required double indexValue,
     required String editedBy,
   }) async {
-    if (shares <= 0 || holding.shares <= 0) return null;
+    if (shares <= 0) return null;
     if (indexValue <= 0) return null;
     final price = sharePriceOf(holding.indexKey, indexValue);
     if (price <= 0) return null;
 
-    final quote = quoteSell(
-      holding: holding,
-      sellShares: shares,
-      pricePerShare: price,
-    );
-    if (quote.shares <= 0) return null;
+    return transaction(() async {
+      // 화면이 넘겨준 holding은 판매 시트를 열 때의 옛 정보일 수 있다(팔기 연타).
+      // 트랜잭션 안에서 원장으로 지금 보유량을 다시 계산해 그걸로 판다.
+      Holding? current;
+      for (final h in await holdingsOf(child.id)) {
+        if (h.indexKey == holding.indexKey) current = h;
+      }
+      if (current == null || current.shares <= 0) return null;
+      final holdingNow = current;
 
-    final now = DateTime.now();
-    await upsertInvestTrade(InvestTradesCompanion.insert(
-      id: const Uuid().v4(),
-      childId: child.id,
-      indexKey: holding.indexKey,
-      label: holding.label,
-      symbol: holding.symbol,
-      kind: 'sell',
-      shares: quote.shares,
-      pricePerShare: price,
-      fee: Value(quote.fee),
-      indexValue: Value(indexValue),
-      tradedAt: Value(now),
-      updatedAt: Value(now),
-    ));
+      final quote = quoteSell(
+        holding: holdingNow,
+        sellShares: shares,
+        pricePerShare: price,
+      );
+      if (quote.shares <= 0) return null;
 
-    // 확정 손익(매수·매도 수수료 모두 반영)을 내역으로 남긴다.
-    final diff = quote.realizedProfit;
-    if (diff != 0) {
-      await upsertTransaction(TransactionEntriesCompanion.insert(
+      final now = DateTime.now();
+      await upsertInvestTrade(InvestTradesCompanion.insert(
         id: const Uuid().v4(),
         childId: child.id,
-        date: now,
-        flow: diff > 0 ? 'income' : 'expense',
-        category: diff > 0 ? kInvestProfit : kInvestLoss,
-        amount: diff.abs(),
-        // 지수가 아니라 "우리가 만든 ETF"를 판 것이므로 내역에도 그렇게 남긴다.
-        memo: Value('모의투자 아빠표 ${holding.label} ETF ${quote.shares}주 '
-            '${diff > 0 ? '수익' : '손실'} (수수료 ${quote.fee}원 포함)'),
-        editedBy: Value(editedBy),
+        indexKey: holdingNow.indexKey,
+        label: holdingNow.label,
+        symbol: holdingNow.symbol,
+        kind: 'sell',
+        shares: quote.shares,
+        pricePerShare: price,
+        fee: Value(quote.fee),
+        indexValue: Value(indexValue),
+        tradedAt: Value(now),
         updatedAt: Value(now),
       ));
-    }
-    return quote.netProceeds;
+
+      // 확정 손익(매수·매도 수수료 모두 반영)을 내역으로 남긴다.
+      final diff = quote.realizedProfit;
+      if (diff != 0) {
+        await upsertTransaction(TransactionEntriesCompanion.insert(
+          id: const Uuid().v4(),
+          childId: child.id,
+          date: now,
+          flow: diff > 0 ? 'income' : 'expense',
+          category: diff > 0 ? kInvestProfit : kInvestLoss,
+          amount: diff.abs(),
+          // 지수가 아니라 "우리가 만든 ETF"를 판 것이므로 내역에도 그렇게 남긴다.
+          memo: Value('모의투자 아빠표 ${holdingNow.label} ETF ${quote.shares}주 '
+              '${diff > 0 ? '수익' : '손실'} (수수료 ${quote.fee}원 포함)'),
+          editedBy: Value(editedBy),
+          updatedAt: Value(now),
+        ));
+      }
+      return quote.netProceeds;
+    });
   }
 
   /// 콤마 찍은 금액 문자열(원). intl 의존 없이 DB 계층에서 메시지 만들 때 쓴다.

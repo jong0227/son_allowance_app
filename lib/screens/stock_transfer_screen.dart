@@ -369,6 +369,8 @@ class StockTransferScreen extends ConsumerWidget {
     final amountController = TextEditingController();
     final memoController = TextEditingController();
     final sharesController = TextEditingController();
+    // 새 이체 id는 창을 열 때 한 번만 정한다. "추가"를 연타해도 한 건만 생긴다.
+    final newId = const Uuid().v4();
     DateTime selectedDate = DateTime.now();
     StockQuote? picked;
 
@@ -435,7 +437,7 @@ class StockTransferScreen extends ConsumerWidget {
                 final db = ref.read(databaseProvider);
                 final owner = ref.read(settingsProvider).deviceOwner ?? '';
                 await db.upsertStockTransfer(StockTransfersCompanion.insert(
-                  id: const Uuid().v4(),
+                  id: newId,
                   childId: child.id,
                   date: selectedDate,
                   amount: amount,

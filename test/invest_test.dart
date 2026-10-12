@@ -166,6 +166,32 @@ void main() {
     expect((await db.computeSummary('kid1'))['invested'], 0);
   });
 
+  test('팔기 버튼을 두 번 눌러도(같은 옛 보유 정보) 가진 만큼만 팔린다', () async {
+    final child = await makeChild();
+    await buyKospi(child, 40, index: 2000);
+    // 판매 시트를 열 때 받아둔 보유 정보 — 첫 매도 뒤에도 화면엔 40주로 남아 있다.
+    final stale = (await db.holdingsOf('kid1')).single;
+
+    await Future.wait([
+      for (var i = 0; i < 2; i++)
+        db.sellSharesInvest(
+            child: child, holding: stale, shares: 40, indexValue: 2200, editedBy: '아들'),
+    ]);
+
+    expect((await db.holdingsOf('kid1')).single.shares, 0, reason: '마이너스 보유가 생기면 안 된다');
+    final s = await db.computeSummary('kid1');
+    expect(s['invested'], 0);
+    expect(s['balance'], 100740, reason: '수익(740원)은 한 번만');
+  });
+
+  test('사기 버튼을 동시에 두 번 눌러도 한도·잔액 검사를 함께 통과하지 못한다', () async {
+    final child = await makeChild(); // 한도 1만원
+    // 30주 = 6,000 + 30원. 한 번은 되지만 두 번이면 한도(10,000원) 초과.
+    final results = await Future.wait([buyKospi(child, 30), buyKospi(child, 30)]);
+    expect(results.where((e) => e == null).length, 1);
+    expect((await db.computeSummary('kid1'))['invested'], 6030);
+  });
+
   test('투자 손실은 카테고리별 지출 통계에 잡히지 않는다', () async {
     final child = await makeChild();
     await buyKospi(child, 40, index: 2000);

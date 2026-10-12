@@ -19,10 +19,14 @@ const int kQuizLowBankThreshold = 5;
 
 /// 문제 출제 순서. 고정 시드로 섞어서 주제가 골고루 나오게 하되,
 /// 모든 기기에서 같은 순서가 나오도록(동기화 안전) 결정적으로 만든다.
+/// 시사 문제(timely)는 뉴스가 낡기 전에 먼저 낸다.
 final List<QuizQuestion> _orderedBank = () {
   final list = [...kQuizBank];
   list.shuffle(Random(20260721));
-  return List<QuizQuestion>.unmodifiable(list);
+  return List<QuizQuestion>.unmodifiable([
+    ...list.where((q) => q.timely),
+    ...list.where((q) => !q.timely),
+  ]);
 }();
 
 /// 퀴즈 화면이 필요로 하는 상태 묶음.

@@ -621,6 +621,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     );
     final memoController = TextEditingController(text: existing?.memo ?? '');
     final customGiverController = TextEditingController();
+    // 새 내역 id는 시트를 열 때 한 번만 정한다. 저장 버튼을 연타해도 한 건만 생긴다.
+    final newId = const Uuid().v4();
     String category = (isEdit && categories.contains(existing.category))
         ? existing.category
         : categories.first;
@@ -678,7 +680,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               } else {
                 await db.upsertTransaction(
                   TransactionEntriesCompanion.insert(
-                    id: const Uuid().v4(),
+                    id: newId,
                     childId: widget.child.id,
                     date: date,
                     flow: flow,

@@ -184,7 +184,7 @@ class _UnsolvedTile extends StatelessWidget {
           title: Text(question.question,
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppText.body)),
           children: [
-            for (var i = 0; i < question.options.length; i++)
+            for (final i in question.displayOrder)
               _OptionRow(
                 text: question.options[i],
                 isAnswer: i == question.answerIndex,
@@ -304,7 +304,7 @@ class _AttemptTile extends StatelessWidget {
                   style: TextStyle(fontSize: AppText.body, color: scheme.onSurfaceVariant))
             else ...[
               // 보기를 전부 보여주고 "내가 고른 답"과 정답을 표시한다.
-              for (var i = 0; i < q.options.length; i++)
+              for (final i in q.displayOrder)
                 _OptionRow(
                   text: q.options[i],
                   isAnswer: i == q.answerIndex,
